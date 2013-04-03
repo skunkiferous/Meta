@@ -13,25 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta.types;
+package com.blockwithme.meta.infrastructure;
 
 import com.blockwithme.meta.Definition;
 
 /**
- * Describes a property of some type.
+ * Represents some storage. This include file systems and databases.
  *
  * @author monster
  */
-public interface Property extends Definition<Property> {
-
-    /** The property name. */
-    @Override
-    String name();
-
-    /** The property type range. */
-    TypeRange typeRange();
-
-    // We should have access control specifications
-
-    // TODO ...
+public interface Storage extends Definition<Storage> {
+    // TODO
 }

@@ -29,8 +29,10 @@ public interface Definition<D extends Definition<D>> extends Comparable<D> {
     String name();
 
     /** Returns the list of property names. */
+    // TODO Properties must be under time
     String[] properties();
 
     /** Returns the value of a property. It should be immutable. */
+    // TODO Properties must be under time
     Object getProperty(final String name);
 }
