@@ -13,22 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta.infrastructure;
+package com.blockwithme.meta.types;
 
 import com.blockwithme.meta.Definition;
 
 /**
- * An region is a geographically distinct area on the globe, where
- * an hosting provider can have availability zones.
+ * This describes a service *type*, not a service instance.
  *
- * We assume AvailabilityZones are statically configured...
+ * Not all bundles are there to offer services, but it is common.
  *
  * @author monster
  */
-public interface Region extends Definition<Region> {
-    /** Returns the availability zones in this region. */
-    AvailabilityZone[] availabilityZones();
+public interface Service extends Definition<Service> {
+    /** What kind of service is it? */
+    ServiceType lifecycle();
 
-    /** Returns the availability zone with the given name, if any. */
-    AvailabilityZone findAvailabilityZone(final String name);
+    /** What type defines the service interface? */
+    Type api();
 }

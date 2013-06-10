@@ -31,7 +31,10 @@ public interface Property extends Definition<Property> {
     /** The property type range. */
     TypeRange typeRange();
 
-    // We should have access control specifications
+    // TODO: We should have access control specifications
+
+    /** The kinds of persistence supported by this property. */
+    String[] persistence();
 
     // TODO ...
 }

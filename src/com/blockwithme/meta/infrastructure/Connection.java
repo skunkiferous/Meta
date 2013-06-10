@@ -15,6 +15,8 @@
  */
 package com.blockwithme.meta.infrastructure;
 
+import java.net.URL;
+
 import com.blockwithme.meta.Definition;
 
 /**
@@ -23,5 +25,8 @@ import com.blockwithme.meta.Definition;
  * @author monster
  */
 public interface Connection extends Definition<Connection> {
+    /** Returns an URL used to create this connection. */
+    URL url();
+
     // TODO
 }

@@ -21,6 +21,8 @@ import com.blockwithme.meta.Definition;
  * An availability zone is a geographically distinct area on the globe, where
  * an hosting provider can have inter-linked data-centers.
  *
+ * We assume DataCenters are statically configured...
+ *
  * @author monster
  */
 public interface AvailabilityZone extends Definition<AvailabilityZone> {

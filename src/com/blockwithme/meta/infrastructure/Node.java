@@ -15,10 +15,14 @@
  */
 package com.blockwithme.meta.infrastructure;
 
+import com.blockwithme.meta.Dynamic;
+
 /**
  * A node can be either a hardware node, or a virtual node.
  *
  * The children nodes are normally virtual nodes, within a hardware node.
+ *
+ * We assume then Networks are statically configured...
  *
  * @author monster
  */
@@ -36,5 +40,6 @@ public interface Node extends ExecutionEnvironment<Node> {
     boolean hasNetworkAddress(final Network network, final String address);
 
     /** A node can be running any number of processes. */
+    @Dynamic
     Process[] processes();
 }

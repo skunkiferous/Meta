@@ -21,5 +21,5 @@ package com.blockwithme.meta.infrastructure;
  * @author monster
  */
 public enum ProcessType {
-    Native, JVM, Python, Perl, OtherNonNative
+    Native, JVM, Python, Perl, Ruby, PHP, OtherNonNative
 }

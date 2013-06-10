@@ -13,22 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta.infrastructure;
-
-import com.blockwithme.meta.Definition;
+package com.blockwithme.meta.types;
 
 /**
- * An region is a geographically distinct area on the globe, where
- * an hosting provider can have availability zones.
- *
- * We assume AvailabilityZones are statically configured...
+ * Lists the possible OSGi bundle lifecycles
  *
  * @author monster
  */
-public interface Region extends Definition<Region> {
-    /** Returns the availability zones in this region. */
-    AvailabilityZone[] availabilityZones();
-
-    /** Returns the availability zone with the given name, if any. */
-    AvailabilityZone findAvailabilityZone(final String name);
+public enum BundleLifecycle {
+    /** The bundle has been successfully installed. */
+    Installed,
+    /** All Java classes that the bundle needs are available. */
+    Resolved,
+    /** The bundle is being started */
+    Starting,
+    /** The bundle has been successfully activated and is running */
+    Active,
+    /** The bundle is being stopped. */
+    Stopping,
+    /** The bundle has been uninstalled. */
+    Uninstalled
 }

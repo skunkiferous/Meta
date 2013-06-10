@@ -34,6 +34,9 @@ public interface Type extends Definition<Type> {
      */
     boolean isData();
 
+    /** true only if it is an array (and therefore also a data). */
+    boolean isArray();
+
     /**
      * A Root type is at the base of an hierarchy of types.
      * It cannot inherit, directly or indirectly, from another Root type, or
@@ -88,11 +91,11 @@ public interface Type extends Definition<Type> {
     /** List all the properties of this type. */
     Property[] allProperties();
 
-    /** List all direct properties of this type. */
-    Property[] directProperties();
-
     /** Returns the property with the given name, if any. */
     Property findProperty(final String name);
+
+    /** List all direct properties of this type. */
+    Property[] directProperties();
 
     /** Returns the direct property with the given name, if any. */
     Property findDirectProperty(final String name);
@@ -100,8 +103,14 @@ public interface Type extends Definition<Type> {
     /** All the parents of this type. */
     Type[] parents();
 
+    /** Search for a parent with the given name, if any. */
+    Type findParent(final String name);
+
     /** All the direct parents of this type. */
     Type[] directParents();
+
+    /** Search for a direct parent with the given name, if any. */
+    Type findDirectParent(final String name);
 
     /** Is the given other type a parent of this type? */
     boolean isParent(final Type otherType);
@@ -112,8 +121,14 @@ public interface Type extends Definition<Type> {
     /** All the children of this type. */
     Type[] children();
 
+    /** Search for a child with the given name, if any. */
+    Type findChild(final String name);
+
     /** All the direct children of this type. */
     Type[] directChildren();
+
+    /** Search for a direct child with the given name, if any. */
+    Type findDirectChild(final String name);
 
     /** Is the given other type a child of this type? */
     boolean isChild(final Type otherType);
@@ -129,4 +144,7 @@ public interface Type extends Definition<Type> {
 
     /** The Domain of this type. Could be null for Data and Trait. */
     Type domain();
+
+    /** The kinds of persistence supported by this type. */
+    String[] persistence();
 }

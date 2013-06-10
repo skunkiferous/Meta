@@ -16,9 +16,13 @@
 package com.blockwithme.meta.types;
 
 import com.blockwithme.meta.Definition;
+import com.blockwithme.meta.Dynamic;
+import com.blockwithme.meta.infrastructure.Application;
 
 /**
  * A bundle is a grouping of resources. Typically types, but also media-files.
+ *
+ * The static data comes from configuration files in the bundle (jar) itself.
  *
  * @author monster
  */
@@ -40,4 +44,21 @@ public interface Bundle extends Definition<Bundle> {
 
     /** Returns the dependency with the given name, if any. */
     Dependency findDependency(final String name);
+
+    /** All the services offered by this bundle. */
+    Service[] services();
+
+    /** Returns the Service with the given name, if any. */
+    Service findService(final String name);
+
+    /**
+     * Returns the list of applications that use that bundle at the moment, if
+     * any.
+     */
+    @Dynamic
+    Application[] users();
+
+    /** Returns the current lifecycle of the bundle. */
+    @Dynamic
+    BundleLifecycle lifecycle();
 }

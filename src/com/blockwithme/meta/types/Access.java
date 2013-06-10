@@ -18,7 +18,7 @@ package com.blockwithme.meta.types;
 /**
  * Defines the access-level to some type.
  *
- * The child of a private type, explicitly of by default, cannot be a public
+ * The child of a private type, explicitly or by default, cannot be a public
  * type.
  *
  * @author monster

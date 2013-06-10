@@ -20,6 +20,8 @@ import com.blockwithme.meta.Definition;
 /**
  * A data-center contains one or more computer clusters.
  *
+ * We assume Clusters are statically configured...
+ *
  * @author monster
  */
 public interface DataCenter extends Definition<DataCenter> {

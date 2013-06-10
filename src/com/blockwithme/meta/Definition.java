@@ -24,15 +24,8 @@ package com.blockwithme.meta;
  *
  * @author monster
  */
-public interface Definition<D extends Definition<D>> extends Comparable<D> {
+public interface Definition<D extends Definition<D>> extends Configurable<D>,
+        Comparable<D> {
     /** The name of this definition. */
     String name();
-
-    /** Returns the list of property names. */
-    // TODO Properties must be under time
-    String[] properties();
-
-    /** Returns the value of a property. It should be immutable. */
-    // TODO Properties must be under time
-    Object getProperty(final String name);
 }

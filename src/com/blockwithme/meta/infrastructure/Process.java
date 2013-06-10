@@ -16,6 +16,8 @@
 package com.blockwithme.meta.infrastructure;
 
 import com.blockwithme.meta.Definition;
+import com.blockwithme.meta.Dynamic;
+import com.blockwithme.meta.types.Bundle;
 
 /**
  * A process. It could be a Java Virtual Machine.
@@ -30,8 +32,19 @@ public interface Process extends Definition<Process> {
     ProcessType getProcessType();
 
     /** The applications *currently* running in this process. */
+    @Dynamic
     Application[] applications();
 
     /** Returns the application with the given name, if any. */
     Application findApplication(final String name);
+
+    /** Returns all the currently available bundles. */
+    @Dynamic
+    Bundle[] bundles();
+
+    /**
+     * Returns the bundles with the given name, if any.
+     * There could be multiple versions available!
+     */
+    Bundle[] findBundle(final String name);
 }

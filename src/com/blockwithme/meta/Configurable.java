@@ -13,22 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta.infrastructure;
-
-import com.blockwithme.meta.Definition;
+package com.blockwithme.meta;
 
 /**
- * An region is a geographically distinct area on the globe, where
- * an hosting provider can have availability zones.
- *
- * We assume AvailabilityZones are statically configured...
+ * A Configurable can have any number of generic properties, in addition to
+ * the properties provided over it's interface.
  *
  * @author monster
  */
-public interface Region extends Definition<Region> {
-    /** Returns the availability zones in this region. */
-    AvailabilityZone[] availabilityZones();
+public interface Configurable<C extends Configurable<C>> {
+    /** Returns the list of property names. */
+    // TODO Properties must be under time
+    String[] properties();
 
-    /** Returns the availability zone with the given name, if any. */
-    AvailabilityZone findAvailabilityZone(final String name);
+    /** Returns the value of a property. It should be immutable. */
+    // TODO Properties must be under time
+    Object getProperty(final String name);
 }

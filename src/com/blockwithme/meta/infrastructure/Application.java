@@ -15,10 +15,8 @@
  */
 package com.blockwithme.meta.infrastructure;
 
-import java.net.URL;
-
 import com.blockwithme.meta.Definition;
-import com.blockwithme.meta.types.ActorRef;
+import com.blockwithme.meta.Dynamic;
 import com.blockwithme.meta.types.Bundle;
 
 /**
@@ -28,6 +26,8 @@ import com.blockwithme.meta.types.Bundle;
  *
  * Application instances with the same name, refer to the same logical
  * application.
+ *
+ * We assume Connectors are unchangeable, once created...
  *
  * @author monster
  */
@@ -41,12 +41,24 @@ public interface Application extends Definition<Application> {
     /** Is this a JVM-based application? */
     boolean javaApp();
 
-    /** Returns the name of all the application connectors. */
-    String[] connectors();
+    /** Returns all the application connectors. */
+    Connector[] connectors();
 
-    /** Returns the URL to the connector with the given name, if any. */
-    URL findConnector(final String name);
+    /** Returns the connector with the given name, if any. */
+    Connector findConnector(final String name);
 
-    /** Returns the actors belonging to a particular application. */
+    /**
+     * Returns all the application connections to other applications.
+     * Connections with "clients" are not included here.
+     */
+    @Dynamic
+    Connection[] connections();
+
+    /**
+     * Returns the actors belonging to a particular application.
+     *
+     * TODO: Not sure if that is the right thing to do; there could be very many ...
+     */
+    @Dynamic
     ActorRef[] actors();
 }

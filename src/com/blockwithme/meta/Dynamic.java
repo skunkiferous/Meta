@@ -13,19 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta.infrastructure;
+package com.blockwithme.meta;
 
-import com.blockwithme.meta.Definition;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
- * Represents a notion of time.
+ * Used to denote a dynamic property.
  *
- * There will be multiple types of time in the system.
- * For simplicity, the time will always be represented as a 64bit Java long,
- * but the meaning of that long can differ.
+ * A dynamic property is one that can change "at any time".
+ * Therefore, the getter, even if thread-safe, can only return a "snapshot"
+ * of the current state.
  *
  * @author monster
  */
-public interface Time extends Definition<Time> {
-    // TODO
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Dynamic {
+    // NOP
 }

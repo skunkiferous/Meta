@@ -18,17 +18,13 @@ package com.blockwithme.meta.infrastructure;
 import com.blockwithme.meta.Definition;
 
 /**
- * An region is a geographically distinct area on the globe, where
- * an hosting provider can have availability zones.
- *
- * We assume AvailabilityZones are statically configured...
+ * An actor is an active component, that can send and receive messages, and
+ * runs within a JVM. Some actors can migrate from one JVM to another, within
+ * the same Application.
  *
  * @author monster
  */
-public interface Region extends Definition<Region> {
-    /** Returns the availability zones in this region. */
-    AvailabilityZone[] availabilityZones();
-
-    /** Returns the availability zone with the given name, if any. */
-    AvailabilityZone findAvailabilityZone(final String name);
+public interface ActorRef extends Definition<ActorRef> {
+    /** The actor's globally unique ID. */
+    long id();
 }

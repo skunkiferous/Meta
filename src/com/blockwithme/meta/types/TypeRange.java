@@ -15,15 +15,20 @@
  */
 package com.blockwithme.meta.types;
 
+import com.blockwithme.meta.Configurable;
+
 /**
  * The type range defines the range of possible types accepted by a
  * non-primitive, non-Data, property.
  *
  * A type range should not specify any Implementation type.
  *
+ * TODO: Can we represent the fact, that an instance could be of multiple types
+ * at the same time? (Composition)
+ *
  * @author monster
  */
-public interface TypeRange {
+public interface TypeRange extends Configurable<TypeRange> {
 
     /** Is the actual instance preserved, implying any child type is accepted? */
     boolean actualInstance();
@@ -39,6 +44,9 @@ public interface TypeRange {
      * An empty list means an exact type match.
      */
     Type[] children();
+
+    /** Returns the explicitly accepted children type, if any. */
+    Type findChild(final String name);
 
     /** Is the given type an accepted child type? */
     boolean accept(final Type type);

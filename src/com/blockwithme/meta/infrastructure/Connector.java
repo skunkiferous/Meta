@@ -15,20 +15,18 @@
  */
 package com.blockwithme.meta.infrastructure;
 
+import java.net.URL;
+
 import com.blockwithme.meta.Definition;
 
 /**
- * An region is a geographically distinct area on the globe, where
- * an hosting provider can have availability zones.
- *
- * We assume AvailabilityZones are statically configured...
+ * Represents a "receiving" network connection (server socket, ...)
  *
  * @author monster
  */
-public interface Region extends Definition<Region> {
-    /** Returns the availability zones in this region. */
-    AvailabilityZone[] availabilityZones();
+public interface Connector extends Definition<Connector> {
+    /** Returns an URL defining how to connect to this connector. */
+    URL url();
 
-    /** Returns the availability zone with the given name, if any. */
-    AvailabilityZone findAvailabilityZone(final String name);
+    // TODO
 }

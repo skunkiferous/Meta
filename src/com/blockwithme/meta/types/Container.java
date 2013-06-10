@@ -15,12 +15,14 @@
  */
 package com.blockwithme.meta.types;
 
+import com.blockwithme.meta.Configurable;
+
 /**
  * Describes the property of some type, which is a container for another type.
  *
  * @author monster
  */
-public interface Container {
+public interface Container extends Configurable<Container> {
     /** Container. */
     Type container();
 

@@ -23,4 +23,7 @@ public interface Dependency extends Definition<Dependency> {
 
     /** Is this dependency optional? */
     boolean optional();
+
+    /** (Mutable) Is this dependency currently use? */
+    boolean actual();
 }

@@ -104,4 +104,7 @@ public @interface TypeDef {
      * be Domain-specific.
      */
     Class<?> domain() default Object.class;
+
+    /** What kinds of persistence are allowed. */
+    String[] persistence() default {};
 }

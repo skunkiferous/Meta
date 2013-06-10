@@ -21,7 +21,7 @@ package com.blockwithme.meta.types;
  * the declared type, as is the Java convention, when not specified.
  *
  * A type range should not specify any Implementation type.
- * 
+ *
  * If both inclusions and exclusions are specified, the exclusions win.
  *
  * @author monster

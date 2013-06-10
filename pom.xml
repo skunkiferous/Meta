@@ -20,6 +20,15 @@
 	<groupId>com.blockwithme</groupId>
 	<artifactId>Meta</artifactId>
 	<version>0.0.1</version>
+	<name>Meta</name>
+	<description>Allows the complete *high-level* representation of a IT infrastructure, for hosting providers, all the way down to data-types included in a Java jar. Most details are given to the meta-model descriptions of the code used in the Domain Model.</description>
+	<organization>
+		<name>Sebastien Diot</name>
+	</organization>
+	<scm>
+		<url>https://github.com/skunkiferous/Meta</url>
+	</scm>
+	<url>https://github.com/skunkiferous/Meta</url>
 
 	<properties>
 	    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -50,14 +59,15 @@
 		</resources>
 	</build>
 	<dependencies>
+		<dependency>
+			<groupId>commons-lang</groupId>
+			<artifactId>commons-lang</artifactId>
+			<version>[2.6,3)</version>
+		</dependency>
+	    <dependency>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+			<version>[14.0,15)</version>
+		</dependency>
 	</dependencies>
-	<name>Meta</name>
-	<description>Allows the complete *high-level* representation of a IT infrastructure, for hosting providers, all the way down to data-types included in a Java jar. Most details are given to the meta-model descriptions of the code used in the Domain Model.</description>
-	<organization>
-		<name>Sebastien Diot</name>
-	</organization>
-	<scm>
-		<url>https://github.com/skunkiferous/Meta</url>
-	</scm>
-	<url>https://github.com/skunkiferous/Meta</url>
 </project>

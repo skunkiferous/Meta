@@ -13,18 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta.types;
+package com.blockwithme.meta;
 
-import com.blockwithme.meta.Definition;
+import com.blockwithme.meta.infrastructure.HostingProvider;
+import com.blockwithme.meta.infrastructure.Process;
 
 /**
- * An actor is an active component, that can send and receive messages, and
- * runs within a JVM. Some actors can migrate from one JVM to another, within
- * the same Application.
+ * Life, the Universe and Everything!
+ *
+ * Everything is the root of everything in "meta".
+ * It gives access to both static and dynamic information.
+ *
+ * We assume HostingProviders are statically configured...
  *
  * @author monster
  */
-public interface ActorRef extends Definition<ActorRef> {
-    /** The actor's globally unique ID. */
-    long id();
+public interface Everything extends Configurable<Everything> {
+    /** The process in which the code is currently executing ...*/
+    Process currentProcess();
+
+    /** The known HostingProviders; the root of the infrastructure. */
+    HostingProvider[] providers();
 }

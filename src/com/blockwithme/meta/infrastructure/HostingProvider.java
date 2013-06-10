@@ -21,6 +21,8 @@ import com.blockwithme.meta.Definition;
  * An hosting provider provides hardware and/or virtual nodes, that we can
  * rent, to run our JVMs and applications.
  *
+ * We assume Regions are statically configured...
+ *
  * @author monster
  */
 public interface HostingProvider extends Definition<HostingProvider> {
