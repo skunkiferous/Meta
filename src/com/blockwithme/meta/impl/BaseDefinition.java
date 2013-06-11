@@ -25,6 +25,9 @@ import com.blockwithme.meta.Definition;
 public abstract class BaseDefinition<D extends Definition<D>> extends
         BaseConfigurable<D> implements Definition<D> {
 
+    /** The name */
+    private volatile String name;
+
     /* (non-Javadoc)
      * @see java.lang.Comparable#compareTo(java.lang.Object)
      */
@@ -44,12 +47,14 @@ public abstract class BaseDefinition<D extends Definition<D>> extends
      */
     @Override
     public String name() {
-        return (String) getProperty("name");
+        return name;
     }
 
     /** Set the name */
+    @SuppressWarnings("unchecked")
     public D name(final String value) {
-        return setProperty("name", value);
+        name = value;
+        return (D) this;
     }
 
     /** Returns the "unique key" to this definition. */
@@ -58,7 +63,9 @@ public abstract class BaseDefinition<D extends Definition<D>> extends
     /** Called, after the initial values have been set. */
     @Override
     protected void _postInit() {
-        checkProp("name", String.class);
+        if (name == null) {
+            throw new IllegalStateException("name not set");
+        }
         super._postInit();
     }
 }

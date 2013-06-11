@@ -13,22 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta;
+package com.blockwithme.meta.meta;
 
-import com.blockwithme.meta.infrastructure.Application;
+import com.blockwithme.meta.Definition;
 
 /**
- * A Configurable can have any number of generic properties, in addition to
- * the properties provided over it's interface.
+ * Represents a relationship between concepts.
  *
  * @author monster
  */
-public interface Configurable<C extends Configurable<C>> {
-    /** Returns the list of property names. */
-    String[] properties();
+public interface Relationship extends Definition<Relationship> {
+    /** All relationships have a reciprocal, which could be itself. */
+    Relationship reciprocal();
 
-    /**
-     * Returns the value of a property. It should be immutable.
-     */
-    Object getProperty(final Application app, final long time, final String name);
+    /** The relationship participants. */
+    Participant[] participants();
+
+    /** Returns the Participant with the given name, if any. */
+    Participant findParticipant(final String name);
 }

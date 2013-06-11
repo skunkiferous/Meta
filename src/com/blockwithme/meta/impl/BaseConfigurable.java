@@ -15,11 +15,15 @@
  */
 package com.blockwithme.meta.impl;
 
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
 import com.blockwithme.meta.Configurable;
 import com.blockwithme.meta.Definition;
+import com.blockwithme.meta.infrastructure.Application;
+import com.blockwithme.meta.types.Bundle;
 
 /**
  * Base class for all configurables.
@@ -30,14 +34,15 @@ public class BaseConfigurable<C extends Configurable<C>> implements
         Configurable<C> {
 
     /** All the state of this definition. */
-    private final Map<String, Object> state = new TreeMap<String, Object>();
+    private final TreeMap<String, Map<Bundle, TreeMap<Long, Object>>> state = new TreeMap<>();
 
     /** Are we fully initialized? */
     private boolean initialized;
 
     /** Checks that the property is set. */
-    protected void checkProp(final String name, final Class<?> type) {
-        final Object value = state.get(name);
+    protected void checkProp(final Application app, final String name,
+            final Class<?> type) {
+        final Object value = getProperty(app, Long.MAX_VALUE, name);
         if (value == null) {
             throw new IllegalStateException("Property " + name + " not set");
         }
@@ -52,7 +57,7 @@ public class BaseConfigurable<C extends Configurable<C>> implements
     public String toString() {
         String result = getClass().getSimpleName() + "(";
         for (final String prop : properties()) {
-            final Object value = state.get(prop);
+            final Object value = getProperty(null, Long.MAX_VALUE, prop);
             final String valueStr = (value instanceof Definition<?>) ? ((Definition<?>) value)
                     .name() : value.toString();
             result += prop + "=>" + valueStr + ", ";
@@ -65,36 +70,65 @@ public class BaseConfigurable<C extends Configurable<C>> implements
      */
     @Override
     public String[] properties() {
-        return state.keySet().toArray(new String[state.size()]);
+        synchronized (state) {
+            return state.keySet().toArray(new String[state.size()]);
+        }
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.Definition#getProperty(java.lang.String)
      */
     @Override
-    public Object getProperty(final String name) {
-        return state.get(name);
+    public Object getProperty(final Application app, final long time,
+            final String name) {
+        synchronized (state) {
+            final Map<Bundle, TreeMap<Long, Object>> bundlesMap = state
+                    .get(name);
+            if (bundlesMap == null) {
+                return null;
+            }
+            final Bundle[] bundles = bundlesMap.keySet().toArray(
+                    new Bundle[bundlesMap.size()]);
+            Arrays.sort(bundles, app.bundleComparator());
+            final TreeMap<Long, Object> values = bundlesMap.get(bundles[0]);
+            Object result = null;
+            for (final Long t : values.keySet()) {
+                if (t.longValue() <= time) {
+                    result = values.get(t);
+                }
+            }
+            return result;
+        }
     }
 
     /** Sets a property. */
     @SuppressWarnings("unchecked")
-    public C setProperty(final String name, final Object value) {
-        if (initialized) {
-            throw new IllegalStateException("already initialized");
+    public C setProperty(final Bundle bundle, final long time,
+            final String name, final Object value) {
+        synchronized (state) {
+            if (initialized) {
+                throw new IllegalStateException("already initialized");
+            }
+            Map<Bundle, TreeMap<Long, Object>> bundlesMap = state.get(name);
+            if (bundlesMap == null) {
+                bundlesMap = new HashMap<Bundle, TreeMap<Long, Object>>();
+                state.put(name, bundlesMap);
+            }
+            TreeMap<Long, Object> values = bundlesMap.get(bundle);
+            if (values == null) {
+                values = new TreeMap<Long, Object>();
+                bundlesMap.put(bundle, values);
+            }
+            values.put(time, value);
+            return (C) this;
         }
-        if (value == null) {
-            state.remove(name);
-        } else {
-            state.put(name, value);
-        }
-        return (C) this;
     }
 
     /** Finds and return the definition with the given name, if any, for a property. */
-    protected <E extends Definition<E>> E findDefinition(final String property,
-            final String name) {
+    protected <E extends Definition<E>> E findDefinition(final Application app,
+            final long time, final String property, final String name) {
         @SuppressWarnings("unchecked")
-        final E[] defs = (E[]) getProperty(property);
+        final E[] defs = (E[]) getProperty(app, time, property);
         if (defs != null) {
             for (final E e : defs) {
                 if (name.equals(e.name())) {

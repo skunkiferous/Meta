@@ -17,6 +17,7 @@ package com.blockwithme.meta;
 
 import com.blockwithme.meta.infrastructure.HostingProvider;
 import com.blockwithme.meta.infrastructure.Process;
+import com.blockwithme.meta.meta.Concept;
 
 /**
  * Life, the Universe and Everything!
@@ -34,4 +35,7 @@ public interface Everything extends Configurable<Everything> {
 
     /** The known HostingProviders; the root of the infrastructure. */
     HostingProvider[] providers();
+
+    /** Returns all the concepts part of the meta API. */
+    Concept[] concepts();
 }

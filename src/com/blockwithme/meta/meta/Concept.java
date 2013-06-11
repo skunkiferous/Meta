@@ -13,22 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta;
+package com.blockwithme.meta.meta;
 
-import com.blockwithme.meta.infrastructure.Application;
+import com.blockwithme.meta.Definition;
 
 /**
- * A Configurable can have any number of generic properties, in addition to
- * the properties provided over it's interface.
+ * The meta-meta-level!
+ *
+ * A concept represent one of the other classes in the packages:
+ *
+ * com.blockwithme.meta.types
+ * com.blockwithme.meta.infrastructure
+ *
+ * It can be used to describe the relationships between the parts of the meta
+ * API.
  *
  * @author monster
  */
-public interface Configurable<C extends Configurable<C>> {
-    /** Returns the list of property names. */
-    String[] properties();
-
+public interface Concept extends Definition<Concept> {
     /**
-     * Returns the value of a property. It should be immutable.
+     * A concept has some relationship to other concepts (and possibly to
+     * itself).
      */
-    Object getProperty(final Application app, final long time, final String name);
+    Relationship[] relationships();
+
+    /** Returns the relationship with the given name, if any. */
+    Relationship findRelationship(final String name);
 }

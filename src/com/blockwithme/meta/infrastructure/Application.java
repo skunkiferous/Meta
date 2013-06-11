@@ -15,6 +15,8 @@
  */
 package com.blockwithme.meta.infrastructure;
 
+import java.util.Comparator;
+
 import com.blockwithme.meta.Definition;
 import com.blockwithme.meta.Dynamic;
 import com.blockwithme.meta.types.Bundle;
@@ -32,8 +34,17 @@ import com.blockwithme.meta.types.Bundle;
  * @author monster
  */
 public interface Application extends Definition<Application> {
-    /** Return the bundles. */
-    Bundle[] bundles();
+    /** The "root" application bundle, which can use any number of other bundles. */
+    Bundle bundle();
+
+    /**
+     * Returns the shortest distance from the root bundle (0) through
+     * dependencies. Returns Integer.MAX_VALUE when unknown/not found.
+     */
+    int distanceFromRoot(final Bundle bundle);
+
+    /** Returns a Bundle Comparator. */
+    Comparator<Bundle> bundleComparator();
 
     /** Is this a distributed application? */
     boolean distributed();
