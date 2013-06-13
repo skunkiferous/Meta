@@ -17,6 +17,7 @@ package com.blockwithme.meta.types.impl;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.blockwithme.meta.infrastructure.Application;
 import com.blockwithme.meta.types.Dependency;
 
 /**
@@ -29,9 +30,12 @@ public class DependencyImpl extends BundleChild<Dependency> implements
     /** Actually using that dependency? */
     private final AtomicBoolean actual = new AtomicBoolean();
 
-    /** Constructor */
-    public DependencyImpl() {
-        setProperty("actual", actual);
+    /**
+     * @param theApp
+     * @param theName
+     */
+    protected DependencyImpl(final Application theApp, final String theName) {
+        super(theApp, theName);
     }
 
     /* (non-Javadoc)
@@ -39,11 +43,12 @@ public class DependencyImpl extends BundleChild<Dependency> implements
      */
     @Override
     public int minimumVersion() {
-        return (Integer) getProperty("minimumVersion");
+        return (Integer) getProperty(null, "minimumVersion");
     }
 
     public DependencyImpl minimumVersion(final int newMinimumVersion) {
-        return (DependencyImpl) setProperty("minimumVersion", newMinimumVersion);
+        return (DependencyImpl) setProperty(bundle(), Long.MIN_VALUE,
+                "minimumVersion", newMinimumVersion);
     }
 
     /* (non-Javadoc)
@@ -51,11 +56,12 @@ public class DependencyImpl extends BundleChild<Dependency> implements
      */
     @Override
     public int maximumVersion() {
-        return (Integer) getProperty("maximumVersion");
+        return (Integer) getProperty(null, "maximumVersion");
     }
 
     public DependencyImpl maximumVersion(final int newMaximumVersion) {
-        return (DependencyImpl) setProperty("maximumVersion", newMaximumVersion);
+        return (DependencyImpl) setProperty(bundle(), Long.MIN_VALUE,
+                "maximumVersion", newMaximumVersion);
     }
 
     /* (non-Javadoc)
@@ -63,11 +69,12 @@ public class DependencyImpl extends BundleChild<Dependency> implements
      */
     @Override
     public boolean optional() {
-        return (Boolean) getProperty("optional");
+        return (Boolean) getProperty(null, "optional");
     }
 
     public DependencyImpl optional(final boolean newOptional) {
-        return (DependencyImpl) setProperty("optional", newOptional);
+        return (DependencyImpl) setProperty(bundle(), Long.MIN_VALUE,
+                "optional", newOptional);
     }
 
     /** (Mutable) Is this dependency currently use? */
@@ -85,6 +92,7 @@ public class DependencyImpl extends BundleChild<Dependency> implements
     /** Called, after the initial values have been set. */
     @Override
     protected void _postInit() {
+        setProperty(bundle(), Long.MIN_VALUE, "actual", actual);
         checkProp("minimumVersion", Integer.class);
         checkProp("maximumVersion", Integer.class);
         checkProp("optional", Boolean.class);

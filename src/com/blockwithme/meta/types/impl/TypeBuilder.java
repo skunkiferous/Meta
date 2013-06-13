@@ -46,7 +46,7 @@ public class TypeBuilder extends AbstractBuilder {
         if (result.isRoot()) {
             result.domain(result);
         }
-        result.persistence(annot.persistence());
+        result.persistence(bundle, Long.MIN_VALUE, annot.persistence());
 
         result.directChildren(null);
         result.directParents(null);
@@ -58,7 +58,7 @@ public class TypeBuilder extends AbstractBuilder {
             result.domain(fac.type(fac.bundleFor(domain), domain.getName()));
         }
         result.allProperties(null);
-        result.biggerThanParents(false);
+        result.biggerThanParents(bundle, Long.MIN_VALUE, false);
         result.children(null);
         result.containers(null);
         result.parents(null);

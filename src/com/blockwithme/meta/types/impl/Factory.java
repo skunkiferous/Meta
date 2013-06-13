@@ -18,6 +18,9 @@ package com.blockwithme.meta.types.impl;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+
+import com.blockwithme.meta.infrastructure.Application;
 
 /**
  * Create the implementations of the types package.
@@ -42,12 +45,19 @@ public class Factory {
     /** The services. */
     private final Map<Map<BundleImpl, String>, ServiceImpl> services = new HashMap<Map<BundleImpl, String>, ServiceImpl>();
 
+    private final Application app;
+
     /** A TypeBuilder */
     private final TypeBuilder typeBuilder = new TypeBuilder();
 
     /** Creates a pair, in form of a singleton map. */
     private <K, V> Map<K, V> pair(final K key, final V value) {
         return Collections.singletonMap(key, value);
+    }
+
+    /** Constructor */
+    public Factory(final Application theApp) {
+        app = Objects.requireNonNull(theApp);
     }
 
     /** Creates a bundle with the given name. */
@@ -57,19 +67,13 @@ public class Factory {
     }
 
     /** Creates a bundle with the given name. */
-    public BundleImpl bundle(final String name) {
+    public BundleImpl bundle(final String name, final String version) {
         BundleImpl result = bundles.get(name);
         if (result == null) {
-            result = new BundleImpl();
-            result.name(name);
+            result = new BundleImpl(app, name, version);
             bundles.put(name, result);
         }
         return result;
-    }
-
-    /** Creates a dependency, from the given bundle, with the given name. */
-    public DependencyImpl dependency(final String bundle, final String name) {
-        return dependency(bundle(bundle), name);
     }
 
     /** Creates a dependency, from the given bundle, with the given name. */
@@ -77,17 +81,10 @@ public class Factory {
         final Map<BundleImpl, String> key = pair(bundle, name);
         DependencyImpl result = dependencies.get(key);
         if (result == null) {
-            result = new DependencyImpl();
-            result.name(name);
+            result = new DependencyImpl(app, name);
             dependencies.put(key, result);
         }
         return result;
-    }
-
-    /** Creates a property with the given name. */
-    public PropertyImpl property(final String bundle, final String type,
-            final String name) {
-        return property(type(bundle, type), name);
     }
 
     /** Creates a property with the given name. */
@@ -95,16 +92,10 @@ public class Factory {
         final Map<TypeImpl, String> key = pair(type, name);
         PropertyImpl result = properties.get(key);
         if (result == null) {
-            result = new PropertyImpl();
-            result.name(name);
+            result = new PropertyImpl(app, name);
             properties.put(key, result);
         }
         return result;
-    }
-
-    /** Creates a service, from the given bundle, with the given name. */
-    public ServiceImpl service(final String bundle, final String name) {
-        return service(bundle(bundle), name);
     }
 
     /** Creates a service, from the given bundle, with the given name. */
@@ -112,16 +103,10 @@ public class Factory {
         final Map<BundleImpl, String> key = pair(bundle, name);
         ServiceImpl result = services.get(key);
         if (result == null) {
-            result = new ServiceImpl();
-            result.name(name);
+            result = new ServiceImpl(app, name);
             services.put(key, result);
         }
         return result;
-    }
-
-    /** Creates a type, form the given bundle, with the given name. */
-    public TypeImpl type(final String bundle, final String name) {
-        return type(bundle(bundle), name);
     }
 
     /** Creates a type, from the given bundle, with the given name. */
@@ -129,8 +114,7 @@ public class Factory {
         final Map<BundleImpl, String> key = pair(bundle, name);
         TypeImpl result = types.get(key);
         if (result == null) {
-            result = new TypeImpl();
-            result.name(name);
+            result = new TypeImpl(app, name);
             types.put(key, result);
         }
         return result;
@@ -138,12 +122,12 @@ public class Factory {
 
     /** Creates a typeRange. */
     public TypeRangeImpl typeRange() {
-        return new TypeRangeImpl();
+        return new TypeRangeImpl(app);
     }
 
     /** Creates a Container. */
     public ContainerImpl container() {
-        return new ContainerImpl();
+        return new ContainerImpl(app);
     }
 
     /** Builds a type. */

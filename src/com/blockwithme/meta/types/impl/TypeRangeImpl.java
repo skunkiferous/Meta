@@ -16,6 +16,8 @@
 package com.blockwithme.meta.types.impl;
 
 import com.blockwithme.meta.impl.BaseConfigurable;
+import com.blockwithme.meta.infrastructure.Application;
+import com.blockwithme.meta.types.Bundle;
 import com.blockwithme.meta.types.Type;
 import com.blockwithme.meta.types.TypeFilter;
 import com.blockwithme.meta.types.TypeRange;
@@ -26,51 +28,62 @@ import com.blockwithme.meta.types.TypeRange;
  */
 public class TypeRangeImpl extends BaseConfigurable<TypeRange> implements
         TypeRange {
+    /**
+     * @param theApp
+     */
+    protected TypeRangeImpl(final Application theApp) {
+        super(theApp);
+    }
+
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.TypeRange#actualInstance()
      */
     @Override
-    public boolean actualInstance() {
-        return (Boolean) getProperty("actualInstance");
+    public boolean actualInstance(final Long time) {
+        return (Boolean) getProperty(time, "actualInstance");
     }
 
     /** Sets the ID */
-    public TypeRangeImpl actualInstance(final boolean value) {
-        return (TypeRangeImpl) setProperty("actualInstance", value);
+    public TypeRangeImpl actualInstance(final Bundle bundle, final long time,
+            final boolean value) {
+        return (TypeRangeImpl) setProperty(bundle, time, "actualInstance",
+                value);
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.TypeRange#contains()
      */
     @Override
-    public boolean contains() {
-        return (Boolean) getProperty("contains");
+    public boolean contains(final Long time) {
+        return (Boolean) getProperty(time, "contains");
     }
 
     /** Sets the ID */
-    public TypeRangeImpl contains(final boolean value) {
-        return (TypeRangeImpl) setProperty("contains", value);
+    public TypeRangeImpl contains(final Bundle bundle, final long time,
+            final boolean value) {
+        return (TypeRangeImpl) setProperty(bundle, time, "contains", value);
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.TypeRange#children()
      */
     @Override
-    public Type[] children() {
-        return (Type[]) getProperty("children");
+    public Type[] children(final Long time) {
+        return (Type[]) getProperty(time, "children");
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.TypeRange#findChild(java.lang.String)
      */
     @Override
-    public Type findChild(final String name) {
-        return findDefinition("children", name);
+    public Type findChild(final Long time, final String name) {
+        return findDefinition(time, "children", name);
     }
 
     /** Sets the ID */
-    public TypeRangeImpl children(final Type[] value) {
-        return (TypeRangeImpl) setProperty("children", value);
+    public TypeRangeImpl children(final Bundle bundle, final long time,
+            final Type[] value) {
+        return (TypeRangeImpl) setProperty(bundle, time, "children", value);
     }
 
     /**
@@ -79,46 +92,51 @@ public class TypeRangeImpl extends BaseConfigurable<TypeRange> implements
      * An empty list does not imply an exact type match.
      */
     @SuppressWarnings("unchecked")
-    public Class<? extends TypeFilter>[] childrenFilters() {
-        return (Class<? extends TypeFilter>[]) getProperty("childrenFilters");
+    public Class<? extends TypeFilter>[] childrenFilters(final Long time) {
+        return (Class<? extends TypeFilter>[]) getProperty(time,
+                "childrenFilters");
     }
 
     /** Sets the ID */
-    public TypeRangeImpl childrenFilters(
+    public TypeRangeImpl childrenFilters(final Bundle bundle, final long time,
             final Class<? extends TypeFilter>[] value) {
-        return (TypeRangeImpl) setProperty("childrenFilters", value);
+        return (TypeRangeImpl) setProperty(bundle, time, "childrenFilters",
+                value);
     }
 
     /**
      * Additional type restrictions, which limit the types of the instances,
      * by specifying that some other type cannot be accepted.
      */
-    public Class<?>[] excludes() {
-        return (Class<?>[]) getProperty("excludes");
+    public Class<?>[] excludes(final Long time) {
+        return (Class<?>[]) getProperty(time, "excludes");
     }
 
     /** Sets the ID */
-    public TypeRangeImpl excludes(final Class<?>[] value) {
-        return (TypeRangeImpl) setProperty("excludes", value);
+    public TypeRangeImpl excludes(final Bundle bundle, final long time,
+            final Class<?>[] value) {
+        return (TypeRangeImpl) setProperty(bundle, time, "excludes", value);
     }
 
     /** Implicit type exclusion, through custom filters. */
     @SuppressWarnings("unchecked")
-    public Class<? extends TypeFilter>[] excludeFilters() {
-        return (Class<? extends TypeFilter>[]) getProperty("excludeFilters");
+    public Class<? extends TypeFilter>[] excludeFilters(final Long time) {
+        return (Class<? extends TypeFilter>[]) getProperty(time,
+                "excludeFilters");
     }
 
     /** Sets the ID */
-    public TypeRangeImpl excludeFilters(
+    public TypeRangeImpl excludeFilters(final Bundle bundle, final long time,
             final Class<? extends TypeFilter>[] value) {
-        return (TypeRangeImpl) setProperty("excludeFilters", value);
+        return (TypeRangeImpl) setProperty(bundle, time, "excludeFilters",
+                value);
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.TypeRange#accept(com.blockwithme.meta.types.Type)
      */
     @Override
-    public boolean accept(final Type type) {
+    public boolean accept(final Long time, final Type type) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("TODO");
     }

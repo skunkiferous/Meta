@@ -24,17 +24,13 @@ import com.blockwithme.meta.Definition;
  */
 public interface Property extends Definition<Property> {
 
-    /** The property name. */
-    @Override
-    String name();
-
     /** The property type range. */
-    TypeRange typeRange();
+    TypeRange typeRange(final Long time);
 
     // TODO: We should have access control specifications
 
     /** The kinds of persistence supported by this property. */
-    String[] persistence();
+    String[] persistence(final Long time);
 
     // TODO ...
 }

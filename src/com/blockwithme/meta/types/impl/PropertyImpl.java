@@ -15,6 +15,8 @@
  */
 package com.blockwithme.meta.types.impl;
 
+import com.blockwithme.meta.infrastructure.Application;
+import com.blockwithme.meta.types.Bundle;
 import com.blockwithme.meta.types.Property;
 import com.blockwithme.meta.types.TypeRange;
 
@@ -23,28 +25,40 @@ import com.blockwithme.meta.types.TypeRange;
  *
  */
 public class PropertyImpl extends TypeChild<Property> implements Property {
+    /**
+     * @param theApp
+     * @param theName
+     */
+    protected PropertyImpl(final Application theApp, final String theName) {
+        super(theApp, theName);
+    }
+
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Property#typeRange()
      */
     @Override
-    public TypeRange typeRange() {
-        return (TypeRange) getProperty("typeRange");
+    public TypeRange typeRange(final Long time) {
+        return (TypeRange) getProperty(time, "typeRange");
     }
 
-    public PropertyImpl typeRange(final TypeRange newTypeRange) {
-        return (PropertyImpl) setProperty("typeRange", newTypeRange);
+    public PropertyImpl typeRange(final Bundle bundle, final long time,
+            final TypeRange newTypeRange) {
+        return (PropertyImpl) setProperty(bundle, time, "typeRange",
+                newTypeRange);
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Property#persistence()
      */
     @Override
-    public String[] persistence() {
-        return (String[]) getProperty("persistence");
+    public String[] persistence(final Long time) {
+        return (String[]) getProperty(time, "persistence");
     }
 
-    public PropertyImpl persistence(final String[] newPersistence) {
-        return (PropertyImpl) setProperty("persistence", newPersistence);
+    public PropertyImpl persistence(final Bundle bundle, final long time,
+            final String[] newPersistence) {
+        return (PropertyImpl) setProperty(bundle, time, "persistence",
+                newPersistence);
     }
 
     /** Called, after the initial values have been set. */
@@ -53,6 +67,6 @@ public class PropertyImpl extends TypeChild<Property> implements Property {
         checkProp("typeRange", TypeRange.class);
         checkProp("persistence", String[].class);
         super._postInit();
-        postInit(typeRange());
+        postInit(typeRange(null));
     }
 }

@@ -15,7 +15,7 @@
  */
 package com.blockwithme.meta.infrastructure;
 
-import com.blockwithme.meta.Definition;
+import com.blockwithme.meta.Configurable;
 
 /**
  * An actor is an active component, that can send and receive messages, and
@@ -24,7 +24,7 @@ import com.blockwithme.meta.Definition;
  *
  * @author monster
  */
-public interface ActorRef extends Definition<ActorRef> {
+public interface ActorRef extends Configurable<ActorRef> {
     /** The actor's globally unique ID. */
     long id();
 }

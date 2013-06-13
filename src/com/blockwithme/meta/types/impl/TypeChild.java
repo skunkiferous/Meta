@@ -16,21 +16,29 @@
 package com.blockwithme.meta.types.impl;
 
 import com.blockwithme.meta.Definition;
-import com.blockwithme.meta.impl.BaseDefinition;
+import com.blockwithme.meta.infrastructure.Application;
 
 /**
  * @author monster
  *
  */
-public class TypeChild<C extends Definition<C>> extends BaseDefinition<C> {
+public class TypeChild<C extends Definition<C>> extends BundleChild<C> {
+
+    /**
+     * @param theApp
+     * @param theName
+     */
+    protected TypeChild(final Application theApp, final String theName) {
+        super(theApp, theName);
+    }
 
     public TypeImpl type() {
-        return (TypeImpl) getProperty("type");
+        return (TypeImpl) getProperty(null, "type");
     }
 
     /** Sets the type */
     public C type(final TypeImpl value) {
-        return setProperty("type", value);
+        return setProperty(bundle(), Long.MIN_VALUE, "type", value);
     }
 
     /** Returns the "unique key" to this definition. */

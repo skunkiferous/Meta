@@ -15,7 +15,6 @@
  */
 package com.blockwithme.meta;
 
-import com.blockwithme.meta.infrastructure.Application;
 
 /**
  * A Configurable can have any number of generic properties, in addition to
@@ -28,7 +27,8 @@ public interface Configurable<C extends Configurable<C>> {
     String[] properties();
 
     /**
-     * Returns the value of a property. It should be immutable.
+     * Returns the value of a property. Use null as time to get the value for
+     * the current application time.
      */
-    Object getProperty(final Application app, final long time, final String name);
+    Object getProperty(final Long time, final String name);
 }

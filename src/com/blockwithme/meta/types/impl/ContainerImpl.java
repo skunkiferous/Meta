@@ -16,6 +16,8 @@
 package com.blockwithme.meta.types.impl;
 
 import com.blockwithme.meta.impl.BaseConfigurable;
+import com.blockwithme.meta.infrastructure.Application;
+import com.blockwithme.meta.types.Bundle;
 import com.blockwithme.meta.types.Container;
 import com.blockwithme.meta.types.Property;
 import com.blockwithme.meta.types.Type;
@@ -27,17 +29,25 @@ import com.blockwithme.meta.types.Type;
 public class ContainerImpl extends BaseConfigurable<Container> implements
         Container {
 
+    /**
+     * @param theApp
+     */
+    protected ContainerImpl(final Application theApp) {
+        super(theApp);
+    }
+
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Container#container()
      */
     @Override
     public Type container() {
-        return (Type) getProperty("container");
+        return (Type) getProperty(null, "container");
     }
 
     /** Sets the container */
-    public ContainerImpl container(final Type theContainer) {
-        return (ContainerImpl) setProperty("container", theContainer);
+    public ContainerImpl container(final Bundle bundle, final Type theContainer) {
+        return (ContainerImpl) setProperty(bundle, Long.MIN_VALUE, "container",
+                theContainer);
     }
 
     /* (non-Javadoc)
@@ -45,12 +55,13 @@ public class ContainerImpl extends BaseConfigurable<Container> implements
      */
     @Override
     public Property property() {
-        return (Property) getProperty("property");
+        return (Property) getProperty(null, "property");
     }
 
     /** Sets the property */
-    public ContainerImpl property(final Type theProperty) {
-        return (ContainerImpl) setProperty("property", theProperty);
+    public ContainerImpl property(final Bundle bundle, final Type theProperty) {
+        return (ContainerImpl) setProperty(bundle, Long.MIN_VALUE, "property",
+                theProperty);
     }
 
     /** Called, after the initial values have been set. */

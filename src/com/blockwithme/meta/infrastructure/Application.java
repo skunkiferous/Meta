@@ -17,8 +17,8 @@ package com.blockwithme.meta.infrastructure;
 
 import java.util.Comparator;
 
+import com.blockwithme.meta.Configurable;
 import com.blockwithme.meta.Definition;
-import com.blockwithme.meta.Dynamic;
 import com.blockwithme.meta.types.Bundle;
 
 /**
@@ -37,6 +37,9 @@ public interface Application extends Definition<Application> {
     /** The "root" application bundle, which can use any number of other bundles. */
     Bundle bundle();
 
+    /** Returns the current application time. */
+    long time();
+
     /**
      * Returns the shortest distance from the root bundle (0) through
      * dependencies. Returns Integer.MAX_VALUE when unknown/not found.
@@ -52,24 +55,22 @@ public interface Application extends Definition<Application> {
     /** Is this a JVM-based application? */
     boolean javaApp();
 
-    /** Returns all the application connectors. */
-    Connector[] connectors();
+    /** Returns the application state. */
+    AppState appState();
 
-    /** Returns the connector with the given name, if any. */
-    Connector findConnector(final String name);
-
-    /**
-     * Returns all the application connections to other applications.
-     * Connections with "clients" are not included here.
-     */
-    @Dynamic
-    Connection[] connections();
+    /** Allows adding empty property names slots at the end of the array. */
+    String[] properties(final Configurable<?> cfg, final int freeslots);
 
     /**
-     * Returns the actors belonging to a particular application.
-     *
-     * TODO: Not sure if that is the right thing to do; there could be very many ...
+     * @param cfg
+     * @param time
+     * @param name
+     * @return
      */
-    @Dynamic
-    ActorRef[] actors();
+    Object getProperty(final Configurable<?> cfg, final Long time,
+            final String name);
+
+    /** Sets a property. */
+    Application setProperty(final Configurable<?> cfg, final Bundle bundle,
+            final long time, final String name, final Object value);
 }

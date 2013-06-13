@@ -17,7 +17,6 @@ package com.blockwithme.meta.types;
 
 import com.blockwithme.meta.Definition;
 import com.blockwithme.meta.Dynamic;
-import com.blockwithme.meta.infrastructure.Application;
 
 /**
  * A bundle is a grouping of resources. Typically types, but also media-files.
@@ -50,13 +49,6 @@ public interface Bundle extends Definition<Bundle> {
 
     /** Returns the Service with the given name, if any. */
     Service findService(final String name);
-
-    /**
-     * Returns the list of applications that use that bundle at the moment, if
-     * any.
-     */
-    @Dynamic
-    Application[] users();
 
     /** Returns the current lifecycle of the bundle. */
     @Dynamic

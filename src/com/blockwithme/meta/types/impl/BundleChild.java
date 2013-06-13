@@ -15,8 +15,11 @@
  */
 package com.blockwithme.meta.types.impl;
 
+import java.util.Objects;
+
 import com.blockwithme.meta.Definition;
 import com.blockwithme.meta.impl.BaseDefinition;
+import com.blockwithme.meta.infrastructure.Application;
 
 /**
  * @author monster
@@ -24,13 +27,21 @@ import com.blockwithme.meta.impl.BaseDefinition;
  */
 public class BundleChild<C extends Definition<C>> extends BaseDefinition<C> {
 
+    /**
+     * @param theApp
+     * @param theName
+     */
+    protected BundleChild(final Application theApp, final String theName) {
+        super(theApp, theName);
+    }
+
     public BundleImpl bundle() {
-        return (BundleImpl) getProperty("bundle");
+        return Objects.requireNonNull((BundleImpl) getProperty(null, "bundle"));
     }
 
     /** Sets the bundle */
     public C bundle(final BundleImpl value) {
-        return setProperty("bundle", value);
+        return setProperty(value, Long.MIN_VALUE, "bundle", value);
     }
 
     /** Returns the "unique key" to this definition. */

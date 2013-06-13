@@ -16,7 +16,6 @@
 package com.blockwithme.meta.types.impl;
 
 import java.util.Objects;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.blockwithme.meta.Dynamic;
@@ -34,18 +33,18 @@ import com.blockwithme.meta.types.Type;
  */
 public class BundleImpl extends BaseDefinition<Bundle> implements Bundle {
 
-    /** Empty Application array */
-    private static final Application[] NO_USER = new Application[0];
-
-    /** The users. Thread safe. */
-    private final CopyOnWriteArrayList<Application> users = new CopyOnWriteArrayList<>();
+    /** The version */
+    private final String version;
 
     /** The Bundle Lifecycle */
     private final AtomicReference<BundleLifecycle> lifecycle = new AtomicReference<BundleLifecycle>();
 
     /** Constructor */
-    public BundleImpl() {
-        setProperty("lifecycle", lifecycle);
+    public BundleImpl(final Application theApp, final String theName,
+            final String theVersion) {
+        super(theApp, theName);
+        version = Objects.requireNonNull(theVersion, "theVersion");
+        setProperty(this, Long.MIN_VALUE, "lifecycle", lifecycle);
     }
 
     /* (non-Javadoc)
@@ -53,12 +52,7 @@ public class BundleImpl extends BaseDefinition<Bundle> implements Bundle {
      */
     @Override
     public String version() {
-        return (String) getProperty("version");
-    }
-
-    /** Sets the version */
-    public BundleImpl version(final String theVersion) {
-        return (BundleImpl) setProperty("version", theVersion);
+        return version;
     }
 
     /* (non-Javadoc)
@@ -66,12 +60,8 @@ public class BundleImpl extends BaseDefinition<Bundle> implements Bundle {
      */
     @Override
     public int versionAsInt() {
-        return (Integer) getProperty("versionAsInt");
-    }
-
-    /** Sets the versionAsInt */
-    public BundleImpl versionAsInt(final String theVersionAsInt) {
-        return (BundleImpl) setProperty("versionAsInt", theVersionAsInt);
+        // TODO
+        throw new UnsupportedOperationException();
     }
 
     /* (non-Javadoc)
@@ -79,12 +69,12 @@ public class BundleImpl extends BaseDefinition<Bundle> implements Bundle {
      */
     @Override
     public Type[] types() {
-        return (Type[]) getProperty("types");
+        return (Type[]) getProperty(null, "types");
     }
 
     /** Sets the types */
     public BundleImpl types(final Type[] theTypes) {
-        return (BundleImpl) setProperty("types", theTypes);
+        return (BundleImpl) setProperty(this, Long.MIN_VALUE, "types", theTypes);
     }
 
     /* (non-Javadoc)
@@ -105,12 +95,13 @@ public class BundleImpl extends BaseDefinition<Bundle> implements Bundle {
      */
     @Override
     public Dependency[] dependencies() {
-        return (Dependency[]) getProperty("dependencies");
+        return (Dependency[]) getProperty(null, "dependencies");
     }
 
     /** Sets the dependencies */
     public BundleImpl dependencies(final Dependency[] theDependencies) {
-        return (BundleImpl) setProperty("dependencies", theDependencies);
+        return (BundleImpl) setProperty(this, Long.MIN_VALUE, "dependencies",
+                theDependencies);
     }
 
     /* (non-Javadoc)
@@ -131,7 +122,7 @@ public class BundleImpl extends BaseDefinition<Bundle> implements Bundle {
      */
     @Override
     public Service[] services() {
-        return (Service[]) getProperty("services");
+        return (Service[]) getProperty(null, "services");
     }
 
     /* (non-Javadoc)
@@ -139,29 +130,7 @@ public class BundleImpl extends BaseDefinition<Bundle> implements Bundle {
      */
     @Override
     public Service findService(final String name) {
-        return findDefinition("services", name);
-    }
-
-    /** Adds a user to the list. */
-    public BundleImpl addUser(final Application user) {
-        users.addIfAbsent(user);
-        return this;
-    }
-
-    /** Removes a user from the list. */
-    public BundleImpl removeUser(final Application user) {
-        users.remove(user);
-        return this;
-    }
-
-    /* (non-Javadoc)
-     * @see com.blockwithme.meta.types.Bundle#queryUsers()
-     */
-    @Override
-    public Application[] users() {
-        // Must always pass empty array, otherwise something might get removed
-        // while calling, and we end up with nulls in the return value.
-        return users.toArray(NO_USER);
+        return findDefinition(Long.MIN_VALUE, "services", name);
     }
 
     /* (non-Javadoc)
@@ -188,8 +157,6 @@ public class BundleImpl extends BaseDefinition<Bundle> implements Bundle {
     /** Called, after the initial values have been set. */
     @Override
     protected void _postInit() {
-        checkProp("version", String.class);
-        checkProp("versionAsInt", Integer.class);
         checkProp("dependencies", Dependency[].class);
         checkProp("types", Type[].class);
         checkProp("services", Service[].class);

@@ -31,23 +31,23 @@ import com.blockwithme.meta.Configurable;
 public interface TypeRange extends Configurable<TypeRange> {
 
     /** Is the actual instance preserved, implying any child type is accepted? */
-    boolean actualInstance();
+    boolean actualInstance(final Long time);
 
     /**
      * Does the owner of this property contains/owns the content of the
      * property? Defaults to true.
      */
-    boolean contains();
+    boolean contains(final Long time);
 
     /**
      * Lists the explicitly accepted children type, of the declared type.
      * An empty list means an exact type match.
      */
-    Type[] children();
+    Type[] children(final Long time);
 
     /** Returns the explicitly accepted children type, if any. */
-    Type findChild(final String name);
+    Type findChild(final Long time, final String name);
 
     /** Is the given type an accepted child type? */
-    boolean accept(final Type type);
+    boolean accept(final Long time, final Type type);
 }

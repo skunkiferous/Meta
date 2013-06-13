@@ -86,65 +86,65 @@ public interface Type extends Definition<Type> {
      * footprint), when it defines new *properties*, in addition to the
      * existing properties of the parent types.
      */
-    boolean biggerThanParents();
+    boolean biggerThanParents(final Long time);
 
     /** List all the properties of this type. */
-    Property[] allProperties();
+    Property[] allProperties(final Long time);
 
     /** Returns the property with the given name, if any. */
-    Property findProperty(final String name);
+    Property findProperty(final Long time, final String name);
 
     /** List all direct properties of this type. */
-    Property[] directProperties();
+    Property[] directProperties(final Long time);
 
     /** Returns the direct property with the given name, if any. */
-    Property findDirectProperty(final String name);
+    Property findDirectProperty(final Long time, final String name);
 
     /** All the parents of this type. */
-    Type[] parents();
+    Type[] parents(final Long time);
 
     /** Search for a parent with the given name, if any. */
-    Type findParent(final String name);
+    Type findParent(final Long time, final String name);
 
     /** All the direct parents of this type. */
-    Type[] directParents();
+    Type[] directParents(final Long time);
 
     /** Search for a direct parent with the given name, if any. */
-    Type findDirectParent(final String name);
+    Type findDirectParent(final Long time, final String name);
 
     /** Is the given other type a parent of this type? */
-    boolean isParent(final Type otherType);
+    boolean isParent(final Long time, final Type otherType);
 
     /** Is the given other type a direct parent of this type? */
-    boolean isDirectParent(final Type otherType);
+    boolean isDirectParent(final Long time, final Type otherType);
 
     /** All the children of this type. */
-    Type[] children();
+    Type[] children(final Long time);
 
     /** Search for a child with the given name, if any. */
-    Type findChild(final String name);
+    Type findChild(final Long time, final String name);
 
     /** All the direct children of this type. */
-    Type[] directChildren();
+    Type[] directChildren(final Long time);
 
     /** Search for a direct child with the given name, if any. */
-    Type findDirectChild(final String name);
+    Type findDirectChild(final Long time, final String name);
 
     /** Is the given other type a child of this type? */
-    boolean isChild(final Type otherType);
+    boolean isChild(final Long time, final Type otherType);
 
     /** Is the given other type a direct child of this type? */
-    boolean isDirectChild(final Type otherType);
+    boolean isDirectChild(final Long time, final Type otherType);
 
     /** All the other types containing this type. */
-    Container[] containers();
+    Container[] containers(final Long time);
 
     /** Is the given other type a container of this type? */
-    Container[] findContainer(final Type otherType);
+    Container[] findContainer(final Long time, final Type otherType);
 
     /** The Domain of this type. Could be null for Data and Trait. */
     Type domain();
 
     /** The kinds of persistence supported by this type. */
-    String[] persistence();
+    String[] persistence(final Long time);
 }

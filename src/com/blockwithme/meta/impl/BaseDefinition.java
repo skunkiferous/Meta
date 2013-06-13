@@ -15,7 +15,10 @@
  */
 package com.blockwithme.meta.impl;
 
+import java.util.Objects;
+
 import com.blockwithme.meta.Definition;
+import com.blockwithme.meta.infrastructure.Application;
 
 /**
  * Base class for all definitions.
@@ -26,20 +29,32 @@ public abstract class BaseDefinition<D extends Definition<D>> extends
         BaseConfigurable<D> implements Definition<D> {
 
     /** The name */
-    private volatile String name;
+    private final String name;
+
+    protected BaseDefinition(final Application theApp, final String theName) {
+        super(theApp);
+        name = Objects.requireNonNull(theName, "theName");
+    }
+
+    @Override
+    public String[] properties() {
+        final String[] result = properties(1);
+        result[result.length - 1] = "name";
+        return result;
+    }
 
     /* (non-Javadoc)
      * @see java.lang.Comparable#compareTo(java.lang.Object)
      */
     @Override
     public int compareTo(final D o) {
-        return name().compareTo(o.name());
+        return name.compareTo(o.name());
     }
 
     /** */
     @Override
     public int hashCode() {
-        return name().hashCode();
+        return name.hashCode();
     }
 
     /* (non-Javadoc)
@@ -50,22 +65,11 @@ public abstract class BaseDefinition<D extends Definition<D>> extends
         return name;
     }
 
-    /** Set the name */
-    @SuppressWarnings("unchecked")
-    public D name(final String value) {
-        name = value;
-        return (D) this;
+    @Override
+    public Object getProperty(final Long time, final String name) {
+        return "name".equals(name) ? this.name : super.getProperty(time, name);
     }
 
     /** Returns the "unique key" to this definition. */
     public abstract String key();
-
-    /** Called, after the initial values have been set. */
-    @Override
-    protected void _postInit() {
-        if (name == null) {
-            throw new IllegalStateException("name not set");
-        }
-        super._postInit();
-    }
 }

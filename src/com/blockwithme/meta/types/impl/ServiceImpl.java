@@ -15,6 +15,7 @@
  */
 package com.blockwithme.meta.types.impl;
 
+import com.blockwithme.meta.infrastructure.Application;
 import com.blockwithme.meta.types.Service;
 import com.blockwithme.meta.types.ServiceType;
 import com.blockwithme.meta.types.Type;
@@ -25,17 +26,26 @@ import com.blockwithme.meta.types.Type;
  */
 public class ServiceImpl extends BundleChild<Service> implements Service {
 
+    /**
+     * @param theApp
+     * @param theName
+     */
+    protected ServiceImpl(final Application theApp, final String theName) {
+        super(theApp, theName);
+    }
+
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Service#lifecycle()
      */
     @Override
     public ServiceType lifecycle() {
-        return (ServiceType) getProperty("lifecycle");
+        return (ServiceType) getProperty(null, "lifecycle");
     }
 
     /** Sets the lifecycle */
     public ServiceImpl lifecycle(final ServiceType value) {
-        return (ServiceImpl) setProperty("lifecycle", value);
+        return (ServiceImpl) setProperty(bundle(), Long.MIN_VALUE, "lifecycle",
+                value);
     }
 
     /* (non-Javadoc)
@@ -43,12 +53,12 @@ public class ServiceImpl extends BundleChild<Service> implements Service {
      */
     @Override
     public Type api() {
-        return (Type) getProperty("api");
+        return (Type) getProperty(null, "api");
     }
 
     /** Sets the api */
     public ServiceImpl api(final Type value) {
-        return (ServiceImpl) setProperty("api", value);
+        return (ServiceImpl) setProperty(bundle(), Long.MIN_VALUE, "api", value);
     }
 
     /** Called, after the initial values have been set. */

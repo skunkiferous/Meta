@@ -15,34 +15,36 @@
  */
 package com.blockwithme.meta.infrastructure.impl;
 
-import com.blockwithme.meta.impl.BaseDefinition;
+import com.blockwithme.meta.impl.BaseConfigurable;
 import com.blockwithme.meta.infrastructure.ActorRef;
+import com.blockwithme.meta.infrastructure.Application;
+import com.blockwithme.meta.types.Bundle;
 
 /**
  * @author monster
  *
  */
-public class ActorRefImpl extends BaseDefinition<ActorRef> implements ActorRef {
+public class ActorRefImpl extends BaseConfigurable<ActorRef> implements
+        ActorRef {
+
+    /**
+     * @param theApp
+     */
+    protected ActorRefImpl(final Application theApp) {
+        super(theApp);
+    }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.ActorRef#id()
      */
     @Override
     public long id() {
-        return (Long) getProperty("id");
+        return (Long) getProperty(null, "id");
     }
 
     /** Sets the ID */
-    public ActorRefImpl id(final long theID) {
-        return (ActorRefImpl) setProperty("id", theID);
-    }
-
-    /* (non-Javadoc)
-     * @see com.blockwithme.meta.impl.BaseDefinition#key()
-     */
-    @Override
-    public String key() {
-        return String.valueOf(id());
+    public ActorRefImpl id(final Bundle bundle, final long theID) {
+        return (ActorRefImpl) setProperty(bundle, Long.MIN_VALUE, "id", theID);
     }
 
     /** Called, after the initial values have been set. */

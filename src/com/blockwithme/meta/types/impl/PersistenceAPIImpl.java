@@ -15,7 +15,7 @@
  */
 package com.blockwithme.meta.types.impl;
 
-import com.blockwithme.meta.impl.BaseDefinition;
+import com.blockwithme.meta.infrastructure.Application;
 import com.blockwithme.meta.types.PersistenceAPI;
 import com.blockwithme.meta.types.Property;
 import com.blockwithme.meta.types.Type;
@@ -25,8 +25,16 @@ import com.blockwithme.meta.types.Type;
  *
  */
 public class PersistenceAPIImpl<SERIALIZER> extends
-        BaseDefinition<PersistenceAPI<SERIALIZER>> implements
+        BundleChild<PersistenceAPI<SERIALIZER>> implements
         PersistenceAPI<SERIALIZER> {
+
+    /**
+     * @param theApp
+     * @param theName
+     */
+    protected PersistenceAPIImpl(final Application theApp, final String theName) {
+        super(theApp, theName);
+    }
 
     /** Returns the "unique key" to this definition. */
     @Override
