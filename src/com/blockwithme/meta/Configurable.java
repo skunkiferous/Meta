@@ -15,6 +15,7 @@
  */
 package com.blockwithme.meta;
 
+import com.blockwithme.meta.infrastructure.Application;
 
 /**
  * A Configurable can have any number of generic properties, in addition to
@@ -23,6 +24,9 @@ package com.blockwithme.meta;
  * @author monster
  */
 public interface Configurable<C extends Configurable<C>> {
+    /** Returns the application owning this Configurable. */
+    Application app();
+
     /** Returns the list of property names. */
     String[] properties();
 

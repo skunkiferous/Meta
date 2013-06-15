@@ -15,7 +15,7 @@
  */
 package com.blockwithme.meta.types.impl;
 
-import com.blockwithme.meta.infrastructure.Application;
+import com.blockwithme.meta.types.Bundle;
 import com.blockwithme.meta.types.Service;
 import com.blockwithme.meta.types.ServiceType;
 import com.blockwithme.meta.types.Type;
@@ -24,14 +24,14 @@ import com.blockwithme.meta.types.Type;
  * @author monster
  *
  */
-public class ServiceImpl extends BundleChild<Service> implements Service {
+public class ServiceImpl extends BundledDefinition<Service> implements Service {
 
     /**
      * @param theApp
      * @param theName
      */
-    protected ServiceImpl(final Application theApp, final String theName) {
-        super(theApp, theName);
+    protected ServiceImpl(final Bundle theBundle, final String theName) {
+        super(theBundle, theName);
     }
 
     /* (non-Javadoc)
@@ -40,6 +40,12 @@ public class ServiceImpl extends BundleChild<Service> implements Service {
     @Override
     public ServiceType lifecycle() {
         return (ServiceType) getProperty(null, "lifecycle");
+    }
+
+    /** Returns the "unique key" to this definition. */
+    @Override
+    public String key() {
+        return bundle().key() + "|Service|" + name();
     }
 
     /** Sets the lifecycle */

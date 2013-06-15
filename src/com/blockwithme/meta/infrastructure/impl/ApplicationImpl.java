@@ -79,6 +79,22 @@ public class ApplicationImpl implements Application {
     }
 
     /* (non-Javadoc)
+     * @see com.blockwithme.meta.Definition#key()
+     */
+    @Override
+    public String key() {
+        return bundle.key();
+    }
+
+    /* (non-Javadoc)
+     * @see com.blockwithme.meta.Configurable#app()
+     */
+    @Override
+    public Application app() {
+        return this;
+    }
+
+    /* (non-Javadoc)
      * @see com.blockwithme.meta.Definition#name()
      */
     @Override

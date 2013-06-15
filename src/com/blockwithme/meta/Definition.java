@@ -28,4 +28,7 @@ public interface Definition<D extends Definition<D>> extends Configurable<D>,
         Comparable<D> {
     /** The name of this definition. */
     String name();
+
+    /** Returns the unique key to this definition. */
+    String key();
 }

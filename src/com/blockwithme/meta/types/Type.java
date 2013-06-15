@@ -24,7 +24,7 @@ import com.blockwithme.meta.Definition;
  *
  * @author monster
  */
-public interface Type extends Definition<Type> {
+public interface Type extends Definition<Type>, Bundled<Type> {
     /** The Java class representing this type. */
     Class<?> type();
 

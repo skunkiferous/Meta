@@ -69,5 +69,11 @@
 			<artifactId>guava</artifactId>
 			<version>[14.0,15)</version>
 		</dependency>
-	</dependencies>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>[4.10,5)</version>
+			<scope>test</scope>
+		</dependency>
+   	</dependencies>
 </project>

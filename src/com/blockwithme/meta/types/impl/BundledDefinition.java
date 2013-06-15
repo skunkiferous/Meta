@@ -16,6 +16,7 @@
 package com.blockwithme.meta.types.impl;
 
 import com.blockwithme.meta.Definition;
+import com.blockwithme.meta.impl.BaseDefinition;
 import com.blockwithme.meta.types.Bundle;
 import com.blockwithme.meta.types.Bundled;
 
@@ -23,37 +24,24 @@ import com.blockwithme.meta.types.Bundled;
  * @author monster
  *
  */
-public abstract class TypeChild<C extends Definition<C> & Bundled<C>> extends
-        BundledDefinition<C> {
+public abstract class BundledDefinition<C extends Definition<C> & Bundled<C>>
+        extends BaseDefinition<C> implements Bundled<C> {
+    /**  */
+    private final Bundle bundle;
+
+    /** The bundle. */
+    @Override
+    public Bundle bundle() {
+        return bundle;
+    }
 
     /**
      * @param theApp
      * @param theName
      */
-    protected TypeChild(final Bundle theBundle, final String theName) {
-        super(theBundle, theName);
-    }
-
-    public TypeImpl type() {
-        return (TypeImpl) getProperty(null, "type");
-    }
-
-    /** Sets the type */
-    public C type(final TypeImpl value) {
-        return setProperty(bundle(), Long.MIN_VALUE, "type", value);
-    }
-
-    /** Returns the "unique key" to this definition. */
-    @Override
-    public String key() {
-        return type().key() + "|" + name();
-    }
-
-    /** Called, after the initial values have been set. */
-    @Override
-    protected void _postInit() {
-        checkProp("type", TypeImpl.class);
-        super._postInit();
-        postInit(type());
+    protected BundledDefinition(final Bundle theBundle, final String theName) {
+        super(theBundle.app(), theName);
+        // theBundle cannot be null here, because it would have failed when getting app
+        bundle = theBundle;
     }
 }

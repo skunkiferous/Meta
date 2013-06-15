@@ -15,7 +15,6 @@
  */
 package com.blockwithme.meta.types.impl;
 
-import com.blockwithme.meta.infrastructure.Application;
 import com.blockwithme.meta.types.Bundle;
 import com.blockwithme.meta.types.Property;
 import com.blockwithme.meta.types.TypeRange;
@@ -29,8 +28,14 @@ public class PropertyImpl extends TypeChild<Property> implements Property {
      * @param theApp
      * @param theName
      */
-    protected PropertyImpl(final Application theApp, final String theName) {
-        super(theApp, theName);
+    protected PropertyImpl(final Bundle theBundle, final String theName) {
+        super(theBundle, theName);
+    }
+
+    /** Returns the "unique key" to this definition. */
+    @Override
+    public String key() {
+        return type().key() + "|Property|" + name();
     }
 
     /* (non-Javadoc)

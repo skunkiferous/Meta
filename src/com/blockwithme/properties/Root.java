@@ -13,24 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta.types;
-
-import com.blockwithme.meta.Definition;
+package com.blockwithme.properties;
 
 /**
- * Describes a property of some type.
+ * Root is the top of a Properties hierarchy.
+ *
+ * It has no parent (null).
+ *
+ * It also defines the global "time" value for the whole hierarchy.
+ * Properties are always read at the current time, but can be set in the future.
+ * This allows the scheduling of system reconfigurations. All changes scheduled
+ * for a specific time are performed atomically all at the same time.
  *
  * @author monster
  */
-public interface Property extends Definition<Property>, Bundled<Property> {
+public interface Root<TIME extends Comparable<TIME>> extends Properties<TIME> {
+    /** Returns the current time. */
+    TIME getTime();
 
-    /** The property type range. */
-    TypeRange typeRange(final Long time);
-
-    // TODO: We should have access control specifications
-
-    /** The kinds of persistence supported by this property. */
-    String[] persistence(final Long time);
-
-    // TODO ...
+    /** Sets the current time. */
+    void setTime(final TIME now);
 }

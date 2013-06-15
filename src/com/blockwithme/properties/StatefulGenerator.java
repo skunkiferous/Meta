@@ -13,24 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta.types;
-
-import com.blockwithme.meta.Definition;
+package com.blockwithme.properties;
 
 /**
- * Describes a property of some type.
+ * Stateful Generator is a Generator that contains property-specific state
+ * and therefore cannot be reused.
+ *
+ * Generator instances are reused by default, unless they implement
+ * StatefulGenerator.
  *
  * @author monster
  */
-public interface Property extends Definition<Property>, Bundled<Property> {
-
-    /** The property type range. */
-    TypeRange typeRange(final Long time);
-
-    // TODO: We should have access control specifications
-
-    /** The kinds of persistence supported by this property. */
-    String[] persistence(final Long time);
-
-    // TODO ...
+public interface StatefulGenerator extends Generator {
+    // NOP
 }

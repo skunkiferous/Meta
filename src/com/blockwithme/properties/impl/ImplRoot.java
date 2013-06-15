@@ -13,24 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta.types;
+package com.blockwithme.properties.impl;
 
-import com.blockwithme.meta.Definition;
+import com.blockwithme.properties.Properties;
+import com.blockwithme.properties.Root;
 
 /**
- * Describes a property of some type.
+ * ImplRoot must be implemented by Roots, to allow future changes.
  *
  * @author monster
  */
-public interface Property extends Definition<Property>, Bundled<Property> {
+public interface ImplRoot<TIME extends Comparable<TIME>> extends Root<TIME> {
 
-    /** The property type range. */
-    TypeRange typeRange(final Long time);
+    /** Records changes for the future. They will be applied when the time has come. */
+    void onFutureChange(final Properties<TIME> properties,
+            final String localKey, final Object newValu, final TIME when);
 
-    // TODO: We should have access control specifications
-
-    /** The kinds of persistence supported by this property. */
-    String[] persistence(final Long time);
-
-    // TODO ...
 }

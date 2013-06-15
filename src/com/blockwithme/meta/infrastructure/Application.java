@@ -20,6 +20,7 @@ import java.util.Comparator;
 import com.blockwithme.meta.Configurable;
 import com.blockwithme.meta.Definition;
 import com.blockwithme.meta.types.Bundle;
+import com.blockwithme.meta.types.Bundled;
 
 /**
  * An application is a specific *application configuration* of an application,
@@ -33,8 +34,10 @@ import com.blockwithme.meta.types.Bundle;
  *
  * @author monster
  */
-public interface Application extends Definition<Application> {
+public interface Application extends Definition<Application>,
+        Bundled<Application> {
     /** The "root" application bundle, which can use any number of other bundles. */
+    @Override
     Bundle bundle();
 
     /** Returns the current application time. */

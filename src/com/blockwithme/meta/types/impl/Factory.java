@@ -81,7 +81,7 @@ public class Factory {
         final Map<BundleImpl, String> key = pair(bundle, name);
         DependencyImpl result = dependencies.get(key);
         if (result == null) {
-            result = new DependencyImpl(app, name);
+            result = new DependencyImpl(bundle, name);
             dependencies.put(key, result);
         }
         return result;
@@ -92,7 +92,7 @@ public class Factory {
         final Map<TypeImpl, String> key = pair(type, name);
         PropertyImpl result = properties.get(key);
         if (result == null) {
-            result = new PropertyImpl(app, name);
+            result = new PropertyImpl(type.bundle(), name);
             properties.put(key, result);
         }
         return result;
@@ -103,7 +103,7 @@ public class Factory {
         final Map<BundleImpl, String> key = pair(bundle, name);
         ServiceImpl result = services.get(key);
         if (result == null) {
-            result = new ServiceImpl(app, name);
+            result = new ServiceImpl(bundle, name);
             services.put(key, result);
         }
         return result;
@@ -114,20 +114,20 @@ public class Factory {
         final Map<BundleImpl, String> key = pair(bundle, name);
         TypeImpl result = types.get(key);
         if (result == null) {
-            result = new TypeImpl(app, name);
+            result = new TypeImpl(bundle, name);
             types.put(key, result);
         }
         return result;
     }
 
     /** Creates a typeRange. */
-    public TypeRangeImpl typeRange() {
-        return new TypeRangeImpl(app);
+    public TypeRangeImpl typeRange(final BundleImpl bundle) {
+        return new TypeRangeImpl(bundle);
     }
 
     /** Creates a Container. */
-    public ContainerImpl container() {
-        return new ContainerImpl(app);
+    public ContainerImpl container(final BundleImpl bundle) {
+        return new ContainerImpl(bundle);
     }
 
     /** Builds a type. */

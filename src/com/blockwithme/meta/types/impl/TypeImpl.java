@@ -20,7 +20,6 @@ import java.util.List;
 
 import org.apache.commons.lang.ArrayUtils;
 
-import com.blockwithme.meta.infrastructure.Application;
 import com.blockwithme.meta.types.Access;
 import com.blockwithme.meta.types.Bundle;
 import com.blockwithme.meta.types.Container;
@@ -31,13 +30,19 @@ import com.blockwithme.meta.types.Type;
 /**
  * @author monster
  */
-public class TypeImpl extends BundleChild<Type> implements Type {
+public class TypeImpl extends BundledDefinition<Type> implements Type {
     /**
      * @param theApp
      * @param theName
      */
-    protected TypeImpl(final Application theApp, final String theName) {
-        super(theApp, theName);
+    protected TypeImpl(final Bundle theBundle, final String theName) {
+        super(theBundle, theName);
+    }
+
+    /** Returns the "unique key" to this definition. */
+    @Override
+    public String key() {
+        return bundle().key() + "|Type|" + name();
     }
 
     /* (non-Javadoc)

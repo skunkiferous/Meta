@@ -13,31 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta.types;
+package com.blockwithme.properties.impl;
 
-import com.blockwithme.meta.Definition;
+import com.blockwithme.properties.Properties;
 
 /**
- * Represents some persistence API.
+ * Called when the value of a property changes.
  *
  * @author monster
  */
-public interface PersistenceAPI<SERIALIZER> extends
-        Definition<PersistenceAPI<SERIALIZER>>,
-        Bundled<PersistenceAPI<SERIALIZER>> {
-
+public interface ChangeTracker<TIME extends Comparable<TIME>> {
     /**
-     * Returns the serializer to use for the given type.
+     * Called when the value of a property changes. Null newValue means removed.
      *
-     * Returns null if serialization is not supported (for this type).
+     * If localKey is null, the both oldValue and newValue must be null, and
+     * this means the Properties object was just created.
      */
-    SERIALIZER serializerFor(final Type type);
-
-    /**
-     * Returns the serializer to use for the given property.
-     *
-     * Returns null if serialization is not supported (for this property).
-     */
-    SERIALIZER serializerFor(final Property property);
-    // TODO
+    void onChange(final Properties<TIME> properties, final String localKey,
+            final Object oldValue, final Object newValue);
 }

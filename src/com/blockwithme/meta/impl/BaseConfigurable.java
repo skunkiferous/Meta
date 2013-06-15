@@ -52,6 +52,12 @@ public class BaseConfigurable<C extends Configurable<C>> implements
         app = Objects.requireNonNull(theApp, "theApp");
     }
 
+    /** Returns the application owning this Configurable. */
+    @Override
+    public Application app() {
+        return app;
+    }
+
     /** toString */
     @Override
     public String toString() {

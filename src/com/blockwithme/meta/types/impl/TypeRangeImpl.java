@@ -15,8 +15,6 @@
  */
 package com.blockwithme.meta.types.impl;
 
-import com.blockwithme.meta.impl.BaseConfigurable;
-import com.blockwithme.meta.infrastructure.Application;
 import com.blockwithme.meta.types.Bundle;
 import com.blockwithme.meta.types.Type;
 import com.blockwithme.meta.types.TypeFilter;
@@ -26,13 +24,13 @@ import com.blockwithme.meta.types.TypeRange;
  * @author monster
  *
  */
-public class TypeRangeImpl extends BaseConfigurable<TypeRange> implements
+public class TypeRangeImpl extends BundledConfigurable<TypeRange> implements
         TypeRange {
     /**
      * @param theApp
      */
-    protected TypeRangeImpl(final Application theApp) {
-        super(theApp);
+    protected TypeRangeImpl(final Bundle theBundle) {
+        super(theBundle);
     }
 
     /* (non-Javadoc)

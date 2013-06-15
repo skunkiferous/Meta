@@ -15,7 +15,6 @@
  */
 package com.blockwithme.meta.types;
 
-import com.blockwithme.meta.Configurable;
 
 /**
  * The type range defines the range of possible types accepted by a
@@ -28,7 +27,7 @@ import com.blockwithme.meta.Configurable;
  *
  * @author monster
  */
-public interface TypeRange extends Configurable<TypeRange> {
+public interface TypeRange extends Bundled<TypeRange> {
 
     /** Is the actual instance preserved, implying any child type is accepted? */
     boolean actualInstance(final Long time);

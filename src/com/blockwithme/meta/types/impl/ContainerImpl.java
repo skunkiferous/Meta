@@ -15,8 +15,6 @@
  */
 package com.blockwithme.meta.types.impl;
 
-import com.blockwithme.meta.impl.BaseConfigurable;
-import com.blockwithme.meta.infrastructure.Application;
 import com.blockwithme.meta.types.Bundle;
 import com.blockwithme.meta.types.Container;
 import com.blockwithme.meta.types.Property;
@@ -26,14 +24,14 @@ import com.blockwithme.meta.types.Type;
  * @author monster
  *
  */
-public class ContainerImpl extends BaseConfigurable<Container> implements
+public class ContainerImpl extends BundledConfigurable<Container> implements
         Container {
 
     /**
      * @param theApp
      */
-    protected ContainerImpl(final Application theApp) {
-        super(theApp);
+    protected ContainerImpl(final Bundle theBundle) {
+        super(theBundle);
     }
 
     /* (non-Javadoc)

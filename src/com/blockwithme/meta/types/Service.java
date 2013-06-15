@@ -24,7 +24,7 @@ import com.blockwithme.meta.Definition;
  *
  * @author monster
  */
-public interface Service extends Definition<Service> {
+public interface Service extends Definition<Service>, Bundled<Service> {
     /** What kind of service is it? */
     ServiceType lifecycle();
 

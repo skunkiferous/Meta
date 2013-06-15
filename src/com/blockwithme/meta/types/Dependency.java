@@ -14,7 +14,7 @@ import com.blockwithme.meta.Definition;
  *
  * @author monster
  */
-public interface Dependency extends Definition<Dependency> {
+public interface Dependency extends Definition<Dependency>, Bundled<Dependency> {
     /** The minimum version of the required bundle. */
     int minimumVersion();
 

@@ -17,14 +17,14 @@ package com.blockwithme.meta.types.impl;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.blockwithme.meta.infrastructure.Application;
+import com.blockwithme.meta.types.Bundle;
 import com.blockwithme.meta.types.Dependency;
 
 /**
  * @author monster
  *
  */
-public class DependencyImpl extends BundleChild<Dependency> implements
+public class DependencyImpl extends BundledDefinition<Dependency> implements
         Dependency {
 
     /** Actually using that dependency? */
@@ -34,8 +34,14 @@ public class DependencyImpl extends BundleChild<Dependency> implements
      * @param theApp
      * @param theName
      */
-    protected DependencyImpl(final Application theApp, final String theName) {
-        super(theApp, theName);
+    protected DependencyImpl(final Bundle theBundle, final String theName) {
+        super(theBundle, theName);
+    }
+
+    /** Returns the "unique key" to this definition. */
+    @Override
+    public String key() {
+        return bundle().key() + "|Dependency|" + name();
     }
 
     /* (non-Javadoc)

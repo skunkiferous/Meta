@@ -15,29 +15,14 @@
  */
 package com.blockwithme.meta.types;
 
-import com.blockwithme.meta.Definition;
+import com.blockwithme.meta.Configurable;
 
 /**
- * Represents some persistence API.
+ * Something that comes from a bundle.
  *
  * @author monster
  */
-public interface PersistenceAPI<SERIALIZER> extends
-        Definition<PersistenceAPI<SERIALIZER>>,
-        Bundled<PersistenceAPI<SERIALIZER>> {
-
-    /**
-     * Returns the serializer to use for the given type.
-     *
-     * Returns null if serialization is not supported (for this type).
-     */
-    SERIALIZER serializerFor(final Type type);
-
-    /**
-     * Returns the serializer to use for the given property.
-     *
-     * Returns null if serialization is not supported (for this property).
-     */
-    SERIALIZER serializerFor(final Property property);
-    // TODO
+public interface Bundled<B extends Bundled<B>> extends Configurable<B> {
+    /** The bundle. */
+    Bundle bundle();
 }

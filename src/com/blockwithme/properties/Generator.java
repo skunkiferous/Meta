@@ -13,24 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta.types;
-
-import com.blockwithme.meta.Definition;
+package com.blockwithme.properties;
 
 /**
- * Describes a property of some type.
+ * Generates a property value on the fly.
+ *
+ * Generator instances are reused by default, unless they implement
+ * StatefulGenerator.
+ *
+ * Links are implemented using a Generator.
  *
  * @author monster
  */
-public interface Property extends Definition<Property>, Bundled<Property> {
-
-    /** The property type range. */
-    TypeRange typeRange(final Long time);
-
-    // TODO: We should have access control specifications
-
-    /** The kinds of persistence supported by this property. */
-    String[] persistence(final Long time);
-
-    // TODO ...
+public interface Generator {
+    /**
+     * Generates the value of a property.
+     *
+     * It receives the Properties instance from which it was executed, the
+     * property name with which it was associated, and the expected data type
+     * to return. The expected data-type might be null.
+     */
+    <E> E generate(final Properties<?> prop, final String name,
+            final Class<E> expectedType);
 }
