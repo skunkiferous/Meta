@@ -18,9 +18,6 @@ package com.blockwithme.properties;
 /**
  * Generates a property value on the fly.
  *
- * Generator instances are reused by default, unless they implement
- * StatefulGenerator.
- *
  * Links are implemented using a Generator.
  *
  * @author monster

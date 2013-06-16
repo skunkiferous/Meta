@@ -15,24 +15,68 @@
  */
 package com.blockwithme.properties.impl;
 
-import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.blockwithme.properties.Generator;
 import com.blockwithme.properties.Properties;
 
 /**
- * A link simply returns some other property from some (possibly other) Properties.
+ * A link, used as a Property value in a Properties object, simply returns some
+ * other property from some (possibly other) Properties. It is an indirection,
+ * and is generated automatically in most cases, where a Properties refers to
+ * another Properties, which is not a direct child.
  *
  * @author monster
  */
-public class Link implements Generator {
+public final class Link implements Generator {
+
+    /** Static cache. */
+    private static final ConcurrentHashMap<String, Link> CACHE = new ConcurrentHashMap<>();
 
     /** The link path. */
     private final String path;
 
     /** Creates a link with the given path */
     public Link(final String path) {
-        this.path = Objects.requireNonNull(path);
+        PropertiesImpl.checkPath(path, "path");
+        this.path = path;
+    }
+
+    /** toString */
+    @Override
+    public String toString() {
+        return "Link(" + path + ")";
+    }
+
+    /* (non-Javadoc)
+     * @see java.lang.Object#hashCode()
+     */
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((path == null) ? 0 : path.hashCode());
+        return result;
+    }
+
+    /* (non-Javadoc)
+     * @see java.lang.Object#equals(java.lang.Object)
+     */
+    @Override
+    public boolean equals(final Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        final Link other = (Link) obj;
+        if (path == null) {
+            if (other.path != null)
+                return false;
+        } else if (!path.equals(other.path))
+            return false;
+        return true;
     }
 
     /* (non-Javadoc)
@@ -42,5 +86,12 @@ public class Link implements Generator {
     public <E> E generate(final Properties<?> prop, final String name,
             final Class<E> expectedType) {
         return prop.find(path, expectedType);
+    }
+
+    /** Returned a statically cached Link. */
+    public static Link cache(final String path) {
+        final Link newLink = new Link(path);
+        final Link oldLink = CACHE.putIfAbsent(path, newLink);
+        return (oldLink == null) ? newLink : oldLink;
     }
 }

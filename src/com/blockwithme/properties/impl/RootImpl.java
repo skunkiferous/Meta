@@ -21,20 +21,25 @@ import java.util.Objects;
 import java.util.TreeMap;
 
 import com.blockwithme.properties.Properties;
+import com.blockwithme.properties.Root;
 
 /**
  * Default Root implementation.
  *
+ * It must manage the time, and the postponed updates.
+ *
  * @author monster
  */
 public class RootImpl<TIME extends Comparable<TIME>> extends
-        PropertiesImpl<TIME> implements ImplRoot<TIME> {
+        PropertiesImpl<TIME> implements Root<TIME> {
 
     /** Represents a future change. */
     private static final class Change<TIME extends Comparable<TIME>> {
         public Properties<TIME> properties;
         public String localKey;
         public Object newValue;
+        public Properties<TIME> setter;
+        public boolean forceWrite;
     }
 
     /** The current time. */
@@ -71,11 +76,12 @@ public class RootImpl<TIME extends Comparable<TIME>> extends
                     + now + " newTime=" + newTime);
         }
         if (cmp < 0) {
+            // Perform buffered updates
             for (final TIME when : new ArrayList<>(changes.keySet())) {
                 if (newTime.compareTo(when) >= 0) {
                     for (final Change<TIME> change : changes.remove(when)) {
-                        change.properties.set(change.localKey,
-                                change.newValue, null);
+                        change.properties.set(change.setter, change.localKey,
+                                change.newValue, null, change.forceWrite);
                     }
                 }
             }
@@ -83,19 +89,21 @@ public class RootImpl<TIME extends Comparable<TIME>> extends
         }
     }
 
-    /* (non-Javadoc)
-     * @see com.blockwithme.properties.impl.ImplRoot#onFutureChange(com.blockwithme.properties.Properties, java.lang.String, java.lang.Object)
-     */
-    @Override
-    public final void onFutureChange(final Properties<TIME> properties,
-            final String localKey, final Object newValue, final TIME when) {
+    /** Receives changes that will only be applied in the future. */
+    public final void onFutureChange(final Properties<TIME> setter,
+            final Properties<TIME> properties, final String localKey,
+            final Object newValue, final TIME when, final boolean forceWrite) {
         if (now.compareTo(when) >= 0) {
-            properties.set(localKey, newValue, null);
+            // OK time was past/present, so perform now
+            properties.set(setter, localKey, newValue, null, forceWrite);
         } else {
+            // Save for later
             final Change<TIME> change = new Change<TIME>();
             change.properties = properties;
             change.localKey = localKey;
             change.newValue = newValue;
+            change.setter = setter;
+            change.forceWrite = forceWrite;
             List<Change<TIME>> changeList = changes.get(when);
             if (changeList == null) {
                 changeList = new ArrayList<>();
@@ -103,5 +111,22 @@ public class RootImpl<TIME extends Comparable<TIME>> extends
             }
             changeList.add(change);
         }
+    }
+
+    /** Informs the root of changes. */
+    public void onChange(final Properties<TIME> setter,
+            final Properties<TIME> properties, final String localKey,
+            final Object oldValue, final Object newValue) {
+        // NOP
+    }
+
+    /**
+     * Returns true, if the first instance has lower priority as the second
+     * instance. The default implementation always returns false, which results
+     * in the last-writer-wins semantic.
+     */
+    public boolean lowerPriority(final Properties<TIME> setter1,
+            final Properties<TIME> setter2) {
+        return false;
     }
 }

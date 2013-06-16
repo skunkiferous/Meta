@@ -5,6 +5,7 @@ import java.util.TreeSet;
 
 import junit.framework.TestCase;
 
+import com.blockwithme.properties.Properties;
 import com.blockwithme.properties.impl.LazyGen;
 import com.blockwithme.properties.impl.PropertiesImpl;
 import com.blockwithme.properties.impl.RootImpl;
@@ -36,14 +37,6 @@ public class PropertiesImplTest extends TestCase {
             final String globalKey, final String localKey) {
         assertEquals(globalKey, prop.globalKey());
         assertEquals(localKey, prop.localKey());
-        assertEquals(globalKey, prop.findRaw("globalKey", true));
-        assertEquals(localKey, prop.findRaw("localKey", true));
-        assertEquals(localKey, prop.find("localKey", String.class));
-        assertEquals(globalKey, prop.find("globalKey", String.class));
-        assertEquals(localKey, prop.find("localKey", String.class, null));
-        assertEquals(globalKey, prop.find("globalKey", String.class, null));
-        assertEquals(localKey, prop.get("localKey", String.class));
-        assertEquals(globalKey, prop.get("globalKey", String.class));
         assertNull(prop.find("notthere", String.class));
 
         boolean failed = false;
@@ -71,7 +64,7 @@ public class PropertiesImplTest extends TestCase {
         assertNull(root.findRaw("..", true));
         assertSame(root, root.findRaw("/", true));
         doTestGlobalLocalKeyes(root, "", "");
-        compareKeyes(root, "globalKey", "localKey");
+        compareKeyes(root);
     }
 
     public void testDirectChild() {
@@ -91,8 +84,8 @@ public class PropertiesImplTest extends TestCase {
         assertSame(root, root.findRaw("child/..", true));
         assertSame(child, root.findRaw("child/../child", true));
 
-        compareKeyes(root, "globalKey", "localKey", "child");
-        compareKeyes(child, "globalKey", "localKey");
+        compareKeyes(root, "child");
+        compareKeyes(child);
     }
 
     public void testGrandChild() {
@@ -114,9 +107,9 @@ public class PropertiesImplTest extends TestCase {
         assertSame(child, child.findRaw("grandChild/..", true));
         assertSame(grandChild, child.findRaw("grandChild/../grandChild", true));
 
-        compareKeyes(root, "globalKey", "localKey", "child");
-        compareKeyes(child, "globalKey", "localKey", "grandChild");
-        compareKeyes(grandChild, "globalKey", "localKey");
+        compareKeyes(root, "child");
+        compareKeyes(child, "grandChild");
+        compareKeyes(grandChild);
     }
 
     public void testProperties() {
@@ -125,12 +118,12 @@ public class PropertiesImplTest extends TestCase {
                 "child");
         final PropertiesImpl<Long> grandChild = new PropertiesImpl<Long>(child,
                 "grandChild");
-        root.set("rootProp", true, null);
-        child.set("childProp", 0, null);
-        grandChild.set("grandChildProp", 10.0, null);
-        root.set("rootProp", false, 5L);
-        child.set("childProp", 10, 10L);
-        grandChild.set("grandChildProp", 0.0, 20L);
+        root.set(root, "rootProp", true);
+        child.set(child, "childProp", 0);
+        grandChild.set(grandChild, "grandChildProp", 10.0);
+        root.set(root, "rootProp", false, 5L, false);
+        child.set(child, "childProp", 10, 10L, false);
+        grandChild.set(grandChild, "grandChildProp", 0.0, 20L, false);
 
         assertEquals(true, root.findRaw("rootProp", true));
         assertEquals(true, child.findRaw("../rootProp", true));
@@ -151,7 +144,7 @@ public class PropertiesImplTest extends TestCase {
         assertEquals(0.0, grandChild.findRaw("grandChildProp", true));
 
         // Set value in past? Must work directly
-        root.set("rootProp", true, 5L);
+        root.set(root, "rootProp", true, 5L, false);
         assertEquals(true, root.findRaw("rootProp", true));
     }
 
@@ -161,12 +154,51 @@ public class PropertiesImplTest extends TestCase {
                 "child");
         final PropertiesImpl<Long> grandChild = new PropertiesImpl<Long>(child,
                 "grandChild");
-        root.set("rootProp", true, null);
-        grandChild.set("grandChildProp", new LazyGen(
-                "com.blockwithme.properties.impl.Link(../../rootProp)"), null);
+        root.set(root, "rootProp", true);
+        grandChild.set(grandChild, "grandChildProp", new LazyGen(
+                "com.blockwithme.properties.impl.Link(../../rootProp)"));
         assertEquals(Boolean.TRUE,
                 grandChild.find("grandChildProp", Boolean.class));
-        // TODO Test replacement worked
+        // Check non-child Properties replaced by path ...
+        root.set(root, "grandChild", grandChild);
+        assertSame(grandChild, root.find("grandChild", PropertiesImpl.class));
+        assertNotSame(grandChild, root.findRaw("grandChild", false));
+
+        grandChild.set(grandChild, "grandParent", root);
+        assertSame(root, grandChild.find("grandParent", PropertiesImpl.class));
+        assertNotSame(root, grandChild.findRaw("grandParent", false));
+        final PropertiesImpl<Long> grandChild2 = new PropertiesImpl<Long>(
+                child, "grandChild2");
+        grandChild.set(grandChild, "grandChild2", grandChild2);
+        assertSame(grandChild2,
+                grandChild.find("grandChild2", PropertiesImpl.class));
+        assertNotSame(grandChild2, grandChild.findRaw("grandChild2", false));
+    }
+
+    public void testSettersPriority() {
+        final RootImpl<Long> root = new RootImpl<Long>(0L) {
+            @Override
+            public boolean lowerPriority(final Properties<Long> setter1,
+                    final Properties<Long> setter2) {
+                final Integer id1 = setter1.get("id", Integer.class);
+                final Integer id2 = setter2.get("id", Integer.class);
+                return id1.compareTo(id2) < 0;
+            }
+        };
+        root.set(root, "id", 0);
+        final PropertiesImpl<Long> child = new PropertiesImpl<Long>(root,
+                "child");
+        child.set(child, "id", 1);
+        final PropertiesImpl<Long> grandChild = new PropertiesImpl<Long>(child,
+                "grandChild");
+        grandChild.set(grandChild, "id", 2);
+        root.set(root, "rootProp", true);
+        assertEquals(Boolean.TRUE, root.find("rootProp", Boolean.class));
+        root.set(grandChild, "rootProp", false);
+        assertEquals(Boolean.FALSE, root.find("rootProp", Boolean.class));
+        // Change ignored because of priority
+        root.set(child, "rootProp", true);
+        assertEquals(Boolean.FALSE, root.find("rootProp", Boolean.class));
     }
 }
 
