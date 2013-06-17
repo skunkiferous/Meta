@@ -15,6 +15,8 @@
  */
 package com.blockwithme.properties;
 
+import java.util.List;
+
 /**
  * Represents an object that contains properties.
  *
@@ -112,6 +114,15 @@ public interface Properties<TIME extends Comparable<TIME>> extends
     /** Returns the global key of this Properties ("" for root) */
     String globalKey();
 
+    /** Returns the keys matching the given value, or empty list if not found. */
+    List<String> query(final Filter query);
+
+    /** Returns the keys matching the given value, or empty list if not found. */
+    List<String> keysOf(final Object value);
+
+    /** Returns true if the value was found (!keysOf(value).isEmpty()). */
+    boolean contains(final Object value);
+
     /**
      * Returns the property value, if any. Null if absent.
      * Generators are executed, if executeGenerators is true.
@@ -162,4 +173,19 @@ public interface Properties<TIME extends Comparable<TIME>> extends
      */
     void set(final Properties<TIME> setter, final String path,
             final Object value, final TIME when, final boolean forceWrite);
+
+    /** Clears the list back to empty, with optional filter. */
+    void clear(final Properties<TIME> setter, final Filter query);
+
+    // List-oriented processing ...
+
+    /**
+     * Search all the property keys, and find the highest integer property key,
+     * for all keys >= 0. Then adds one. Returns 0 when no integer property exists.
+     * Does not consider keys with a null value.
+     */
+    String nextIndex();
+
+    /** Returns true if the list is nextIndex() == "0". */
+    boolean isEmptyList();
 }

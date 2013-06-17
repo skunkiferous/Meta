@@ -15,13 +15,17 @@
  */
 package com.blockwithme.properties.impl;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
 
+import com.blockwithme.properties.Filter;
 import com.blockwithme.properties.Generator;
 import com.blockwithme.properties.Properties;
-import com.blockwithme.properties.Root;
 
 /**
  * Base class for Properties.
@@ -153,9 +157,42 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
         return path1.substring(0, end);
     }
 
+    /** Returns the common ancestor type. */
+    @SuppressWarnings("unchecked")
+    public static Class<? extends Properties<?>> ancestor(
+            final Class<? extends Properties<?>> type, final Object value) {
+        if (value != null) {
+            final Class<? extends Properties<?>> ctype = (Class<? extends Properties<?>>) value
+                    .getClass();
+            if (type == null) {
+                return ctype;
+            } else if (type != ctype) {
+                Class<? extends Properties<?>> t1 = type;
+                Class<? extends Properties<?>> t2 = ctype;
+                while (true) {
+                    if (t1.isAssignableFrom(t2)) {
+                        return t1;
+                    }
+                    if (t2.isAssignableFrom(t1)) {
+                        return t2;
+                    }
+                    t1 = (Class<? extends Properties<?>>) t1.getSuperclass();
+                    t2 = (Class<? extends Properties<?>>) t2.getSuperclass();
+                }
+            }
+        }
+        return type;
+    }
+
     /** Constructs a PropertiesImpl. */
     public PropertiesImpl(final PropertiesImpl<TIME> parent,
             final String localKey) {
+        this(parent, localKey, null);
+    }
+
+    /** Constructs a PropertiesImpl. */
+    public PropertiesImpl(final PropertiesImpl<TIME> parent,
+            final String localKey, final TIME when) {
         this.parent = parent;
         if (parent == null) {
             // Must be root!
@@ -164,7 +201,7 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
                         "Local key of root (parent == null) must be empty, but was: '"
                                 + localKey + "'");
             }
-            if (!(this instanceof Root<?>)) {
+            if (!(this instanceof RootImpl<?>)) {
                 throw new IllegalArgumentException(
                         "root (parent == null) must be an Root<?>");
             }
@@ -173,9 +210,7 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
             checkLocalKey(localKey, "localKey", localKey);
             this.localKey = localKey;
             globalKey = parent.globalKey() + SEPATATOR + this.localKey;
-            parent.setLocalProperty(this, this.localKey, this, null, true);
-            // null/null/null means "created"
-            root().onChange(this, this, null, null, null);
+            parent.set(this, this.localKey, this, when, true);
         }
     }
 
@@ -374,10 +409,9 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
      * Only the parent of Properties can directly reference it, so we have to
      * convert reference to Properties into links (or generated Properties).
      */
-    @SuppressWarnings("unchecked")
-    private static Object unresolve(final Properties<?> setter,
-            final Object value, final PropertiesImpl<?> parent,
-            final String localKey) {
+    private Object unresolve(final Properties<?> setter, final Object value,
+            final PropertiesImpl<?> parent, final String localKey,
+            final TIME when) {
         if (value instanceof Properties<?>) {
             // Direct reference: either direct child, or must become link
             final Properties<?> prop = (Properties<?>) value;
@@ -427,55 +461,33 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
             }
         }
         if ((value instanceof Iterable<?>) && !(value instanceof Properties<?>)) {
-            // Some kind of collection
-            int values = 0;
-            int properties = 0;
             for (final Object content : (Iterable<?>) value) {
-                values++;
                 if (content instanceof Properties) {
-                    properties++;
+                    throw new IllegalArgumentException(
+                            "Collections cannot contain Properties: Use ListProperties instead");
                 }
-            }
-            if (properties > 0) {
-                if (properties == values) {
-                    // Properties collection: replace with generated Properties
-                    @SuppressWarnings("rawtypes")
-                    final PropertiesImpl tmp = new PropertiesImpl(parent,
-                            localKey);
-                    int index = 0;
-                    for (final Properties<?> prop : (Iterable<Properties<?>>) value) {
-                        tmp.set(setter, String.valueOf(index++), prop);
-                    }
-                    return tmp;
-                }
-                throw new IllegalArgumentException(
-                        "Collections cannot mix Properties and data");
             }
         } else if (value instanceof Object[]) {
             // object array
-            int values = 0;
-            int properties = 0;
             for (final Object content : (Object[]) value) {
-                values++;
                 if (content instanceof Properties) {
-                    properties++;
+                    throw new IllegalArgumentException(
+                            "Arrays cannot contain Properties: Use ListProperties instead");
                 }
             }
-            if (properties > 0) {
-                if (properties == values) {
-                    // Properties array: replace with generated Properties
-                    @SuppressWarnings("rawtypes")
-                    final PropertiesImpl tmp = new PropertiesImpl<>(parent,
-                            localKey);
-                    int index = 0;
-                    for (final Object content : (Object[]) value) {
-                        final Properties<?> prop = (Properties<?>) content;
-                        tmp.set(setter, String.valueOf(index++), prop);
-                    }
-                    return tmp;
+        } else if (value instanceof Map<?, ?>) {
+            final Map<?, ?> map = (Map<?, ?>) value;
+            for (final Object key : map.keySet()) {
+                if (key instanceof Properties) {
+                    throw new IllegalArgumentException(
+                            "Map keyes cannot contain Properties");
                 }
-                throw new IllegalArgumentException(
-                        "Object arrays cannot mix Properties and data");
+            }
+            for (final Object key : map.values()) {
+                if (key instanceof Properties) {
+                    throw new IllegalArgumentException(
+                            "Map values cannot contain Properties");
+                }
             }
         }
         return value;
@@ -489,7 +501,8 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
         if (isLocalKey(path, "path", path)) {
             // direct property. Must only unresolve
             setLocalProperty(setter, path,
-                    unresolve(setter, value, this, path), when, forceWrite);
+                    unresolve(setter, value, this, path, when), when,
+                    forceWrite);
         } else {
             // must first find target, then unresolve
             final int index = path.lastIndexOf(SEPATATOR);
@@ -499,7 +512,7 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
             final PropertiesImpl<TIME> ancestor = get(ancestorPath,
                     PropertiesImpl.class);
             ancestor.setLocalProperty(setter, localKey,
-                    unresolve(setter, value, ancestor, localKey), when,
+                    unresolve(setter, value, ancestor, localKey, when), when,
                     forceWrite);
         }
     }
@@ -511,6 +524,93 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
     public final void set(final Properties<TIME> setter, final String path,
             final Object value) {
         set(setter, path, value, null, false);
+    }
+
+    /* (non-Javadoc)
+     * @see com.blockwithme.properties.Properties#isEmptyList()
+     */
+    @Override
+    public final boolean isEmptyList() {
+        return "0".equals(nextIndex());
+    }
+
+    /* (non-Javadoc)
+     * @see com.blockwithme.properties.Properties#contains(java.lang.Object)
+     */
+    @Override
+    public final boolean contains(final Object value) {
+        return !keysOf(value).isEmpty();
+    }
+
+    /* (non-Javadoc)
+     * @see com.blockwithme.properties.Properties#keysOf(java.lang.Object)
+     */
+    @Override
+    public final List<String> keysOf(final Object value) {
+        return query(new Filter() {
+            @Override
+            public boolean accept(final String key, final Object obj) {
+                return Objects.equals(value, obj);
+            }
+        });
+    }
+
+    /* (non-Javadoc)
+     * @see com.blockwithme.properties.Properties#nextIndex()
+     */
+    @Override
+    public final String nextIndex() {
+        int last = -1;
+        for (final String key : this) {
+            try {
+                final int i = Integer.parseInt(key, 10);
+                if (i > last) {
+                    final Object value = findRaw(key, true);
+                    if (value != null) {
+                        last = i;
+                    }
+                }
+            } catch (final Exception e) {
+                // NOP
+            }
+        }
+        return String.valueOf(last + 1);
+    }
+
+    /* (non-Javadoc)
+     * @see com.blockwithme.properties.Properties#query(com.blockwithme.properties.Filter)
+     */
+    @Override
+    public final List<String> query(final Filter query) {
+        List<String> result = null;
+        for (final String key : this) {
+            if (query.accept(key, findRaw(key, true))) {
+                if (result == null) {
+                    result = new ArrayList<>();
+                }
+                result.add(key);
+            }
+        }
+        if (result == null) {
+            result = Collections.emptyList();
+        }
+        return result;
+    }
+
+    /* (non-Javadoc)
+     * @see com.blockwithme.properties.Properties#clear(com.blockwithme.properties.Properties, com.blockwithme.properties.Filter)
+     */
+    @Override
+    public final void clear(final Properties<TIME> setter, final Filter query) {
+        if (query == null) {
+            for (final String key : this) {
+                set(setter, key, null);
+            }
+        } else {
+            for (final String key : query(query)) {
+                set(setter, key, null);
+            }
+        }
     }
 
     /**
@@ -548,7 +648,7 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
         final RootImpl<TIME> root = root();
         if (when != null) {
             // Future property (when past/preset, then Root will re-set using null)
-            root.onFutureChange(setter, this, localKey, value, when, forceWrite);
+            root.onFutureChange(setter, this, localKey, value, forceWrite, when);
         } else {
             // We never remove values, because we need to keep track of the
             // setter priority, even if the value is null.

@@ -5,6 +5,7 @@ import java.util.TreeSet;
 
 import junit.framework.TestCase;
 
+import com.blockwithme.properties.Filter;
 import com.blockwithme.properties.Properties;
 import com.blockwithme.properties.impl.LazyGen;
 import com.blockwithme.properties.impl.PropertiesImpl;
@@ -199,6 +200,31 @@ public class PropertiesImplTest extends TestCase {
         // Change ignored because of priority
         root.set(child, "rootProp", true);
         assertEquals(Boolean.FALSE, root.find("rootProp", Boolean.class));
+    }
+
+    public void testList() {
+        final RootImpl<Long> root = new RootImpl<Long>(0L);
+        final PropertiesImpl<Long> list = new PropertiesImpl<Long>(root, "list");
+        final PropertiesImpl<Long> child1 = new PropertiesImpl<Long>(list,
+                list.nextIndex());
+        final PropertiesImpl<Long> child2 = new PropertiesImpl<Long>(list,
+                list.nextIndex());
+        assertEquals("0", child1.localKey());
+        assertEquals("1", child2.localKey());
+        assertEquals("[0]", list.keysOf(child1).toString());
+        assertEquals("[1]", list.keysOf(child2).toString());
+        assertTrue(list.contains(child1));
+        assertFalse(root.contains(child1));
+        assertFalse(list.isEmptyList());
+        assertTrue(root.isEmptyList());
+        assertEquals("[1]", list.query(new Filter() {
+            @Override
+            public boolean accept(final String key, final Object value) {
+                return value == child2;
+            }
+        }).toString());
+        list.clear(list, null);
+        assertTrue(list.isEmptyList());
     }
 }
 

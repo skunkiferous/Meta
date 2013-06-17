@@ -33,15 +33,6 @@ import com.blockwithme.properties.Root;
 public class RootImpl<TIME extends Comparable<TIME>> extends
         PropertiesImpl<TIME> implements Root<TIME> {
 
-    /** Represents a future change. */
-    private static final class Change<TIME extends Comparable<TIME>> {
-        public Properties<TIME> properties;
-        public String localKey;
-        public Object newValue;
-        public Properties<TIME> setter;
-        public boolean forceWrite;
-    }
-
     /** The current time. */
     private TIME now;
 
@@ -52,7 +43,7 @@ public class RootImpl<TIME extends Comparable<TIME>> extends
      * @param now
      */
     public RootImpl(final TIME now) {
-        super(null, "");
+        super(null, "", now);
         this.now = Objects.requireNonNull(now, "now");
     }
 
@@ -80,8 +71,7 @@ public class RootImpl<TIME extends Comparable<TIME>> extends
             for (final TIME when : new ArrayList<>(changes.keySet())) {
                 if (newTime.compareTo(when) >= 0) {
                     for (final Change<TIME> change : changes.remove(when)) {
-                        change.properties.set(change.setter, change.localKey,
-                                change.newValue, null, change.forceWrite);
+                        change.perform();
                     }
                 }
             }
@@ -89,10 +79,20 @@ public class RootImpl<TIME extends Comparable<TIME>> extends
         }
     }
 
+    /** Records a future change. */
+    private void recordChange(final Change<TIME> change) {
+        List<Change<TIME>> changeList = changes.get(change.when);
+        if (changeList == null) {
+            changeList = new ArrayList<>();
+            changes.put(change.when, changeList);
+        }
+        changeList.add(change);
+    }
+
     /** Receives changes that will only be applied in the future. */
     public final void onFutureChange(final Properties<TIME> setter,
             final Properties<TIME> properties, final String localKey,
-            final Object newValue, final TIME when, final boolean forceWrite) {
+            final Object newValue, final boolean forceWrite, final TIME when) {
         if (now.compareTo(when) >= 0) {
             // OK time was past/present, so perform now
             properties.set(setter, localKey, newValue, null, forceWrite);
@@ -104,12 +104,19 @@ public class RootImpl<TIME extends Comparable<TIME>> extends
             change.newValue = newValue;
             change.setter = setter;
             change.forceWrite = forceWrite;
-            List<Change<TIME>> changeList = changes.get(when);
-            if (changeList == null) {
-                changeList = new ArrayList<>();
-                changes.put(when, changeList);
-            }
-            changeList.add(change);
+            change.when = when;
+            recordChange(change);
+        }
+    }
+
+    /** Receives changes that will only be applied in the future. */
+    public final void onFutureChange(final Change<TIME> change) {
+        if (now.compareTo(change.when) >= 0) {
+            // OK time was past/present, so perform now
+            change.perform();
+        } else {
+            // Save for later
+            recordChange(change);
         }
     }
 

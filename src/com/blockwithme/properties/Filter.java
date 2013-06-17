@@ -16,18 +16,11 @@
 package com.blockwithme.properties;
 
 /**
- * Root of a Properties tree.
- *
- * It manages a the tree-global notion of current time.
+ * Used to query a Properties instance.
  *
  * @author monster
  */
-public interface Root<TIME extends Comparable<TIME>> extends Properties<TIME> {
-
-    /** Returns the current time, delegating to the root. */
-    TIME getTime();
-
-    /** Sets the current time, delegating to the root. */
-    void setTime(final TIME now);
-
+public interface Filter {
+    /** Returns true, if the key/value is accepted. */
+    boolean accept(final String key, final Object value);
 }
