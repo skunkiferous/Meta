@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta.infrastructure;
+package com.blockwithme.meta.types;
 
 import com.blockwithme.meta.Configurable;
 
@@ -24,7 +24,7 @@ import com.blockwithme.meta.Configurable;
  *
  * @author monster
  */
-public interface ActorRef extends Configurable<ActorRef> {
+public interface ActorRef extends Configurable {
     /** The actor's globally unique ID. */
     long id();
 }

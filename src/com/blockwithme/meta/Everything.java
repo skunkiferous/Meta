@@ -18,6 +18,7 @@ package com.blockwithme.meta;
 import com.blockwithme.meta.infrastructure.HostingProvider;
 import com.blockwithme.meta.infrastructure.Process;
 import com.blockwithme.meta.meta.Concept;
+import com.blockwithme.properties.Root;
 
 /**
  * Life, the Universe and Everything!
@@ -29,7 +30,7 @@ import com.blockwithme.meta.meta.Concept;
  *
  * @author monster
  */
-public interface Everything extends Configurable<Everything> {
+public interface Everything extends Configurable, Root<Long> {
     /** The process in which the code is currently executing ...*/
     Process currentProcess();
 

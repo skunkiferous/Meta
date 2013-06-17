@@ -23,8 +23,7 @@ import com.blockwithme.meta.Definition;
  * @author monster
  */
 public interface PersistenceAPI<SERIALIZER> extends
-        Definition<PersistenceAPI<SERIALIZER>>,
-        Bundled<PersistenceAPI<SERIALIZER>> {
+        Definition<PersistenceAPI<SERIALIZER>>, Bundled {
 
     /**
      * Returns the serializer to use for the given type.

@@ -27,34 +27,30 @@ import com.blockwithme.meta.types.Dependency;
 public class DependencyImpl extends BundledDefinition<Dependency> implements
         Dependency {
 
+    /**
+     * @param parent
+     * @param localKey
+     * @param when
+     */
+    protected DependencyImpl(final Bundle parent, final String localKey,
+            final Long when) {
+        super(parent, localKey, when);
+    }
+
     /** Actually using that dependency? */
     private final AtomicBoolean actual = new AtomicBoolean();
-
-    /**
-     * @param theApp
-     * @param theName
-     */
-    protected DependencyImpl(final Bundle theBundle, final String theName) {
-        super(theBundle, theName);
-    }
-
-    /** Returns the "unique key" to this definition. */
-    @Override
-    public String key() {
-        return bundle().key() + "|Dependency|" + name();
-    }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Dependency#minimumVersion()
      */
     @Override
     public int minimumVersion() {
-        return (Integer) getProperty(null, "minimumVersion");
+        return get("minimumVersion", Integer.class);
     }
 
     public DependencyImpl minimumVersion(final int newMinimumVersion) {
-        return (DependencyImpl) setProperty(bundle(), Long.MIN_VALUE,
-                "minimumVersion", newMinimumVersion);
+        set(bundle(), "minimumVersion", newMinimumVersion);
+        return this;
     }
 
     /* (non-Javadoc)
@@ -62,12 +58,12 @@ public class DependencyImpl extends BundledDefinition<Dependency> implements
      */
     @Override
     public int maximumVersion() {
-        return (Integer) getProperty(null, "maximumVersion");
+        return get("maximumVersion", Integer.class);
     }
 
     public DependencyImpl maximumVersion(final int newMaximumVersion) {
-        return (DependencyImpl) setProperty(bundle(), Long.MIN_VALUE,
-                "maximumVersion", newMaximumVersion);
+        set(bundle(), "maximumVersion", newMaximumVersion);
+        return this;
     }
 
     /* (non-Javadoc)
@@ -75,12 +71,12 @@ public class DependencyImpl extends BundledDefinition<Dependency> implements
      */
     @Override
     public boolean optional() {
-        return (Boolean) getProperty(null, "optional");
+        return get("optional", Boolean.class);
     }
 
     public DependencyImpl optional(final boolean newOptional) {
-        return (DependencyImpl) setProperty(bundle(), Long.MIN_VALUE,
-                "optional", newOptional);
+        set(bundle(), "optional", newOptional);
+        return this;
     }
 
     /** (Mutable) Is this dependency currently use? */
@@ -98,7 +94,7 @@ public class DependencyImpl extends BundledDefinition<Dependency> implements
     /** Called, after the initial values have been set. */
     @Override
     protected void _postInit() {
-        setProperty(bundle(), Long.MIN_VALUE, "actual", actual);
+        set(bundle(), "actual", actual);
         checkProp("minimumVersion", Integer.class);
         checkProp("maximumVersion", Integer.class);
         checkProp("optional", Boolean.class);

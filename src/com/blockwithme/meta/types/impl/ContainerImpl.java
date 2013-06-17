@@ -24,14 +24,16 @@ import com.blockwithme.meta.types.Type;
  * @author monster
  *
  */
-public class ContainerImpl extends BundledConfigurable<Container> implements
-        Container {
+public class ContainerImpl extends BundledConfigurable implements Container {
 
     /**
-     * @param theApp
+     * @param parent
+     * @param localKey
+     * @param when
      */
-    protected ContainerImpl(final Bundle theBundle) {
-        super(theBundle);
+    protected ContainerImpl(final Type parent, final String localKey,
+            final Long when) {
+        super(parent, localKey, when);
     }
 
     /* (non-Javadoc)
@@ -39,13 +41,13 @@ public class ContainerImpl extends BundledConfigurable<Container> implements
      */
     @Override
     public Type container() {
-        return (Type) getProperty(null, "container");
+        return get("container", Type.class);
     }
 
     /** Sets the container */
     public ContainerImpl container(final Bundle bundle, final Type theContainer) {
-        return (ContainerImpl) setProperty(bundle, Long.MIN_VALUE, "container",
-                theContainer);
+        set(bundle, "container", theContainer);
+        return this;
     }
 
     /* (non-Javadoc)
@@ -53,13 +55,13 @@ public class ContainerImpl extends BundledConfigurable<Container> implements
      */
     @Override
     public Property property() {
-        return (Property) getProperty(null, "property");
+        return get("property", Property.class);
     }
 
     /** Sets the property */
     public ContainerImpl property(final Bundle bundle, final Type theProperty) {
-        return (ContainerImpl) setProperty(bundle, Long.MIN_VALUE, "property",
-                theProperty);
+        set(bundle, "property", theProperty);
+        return this;
     }
 
     /** Called, after the initial values have been set. */

@@ -15,7 +15,8 @@
  */
 package com.blockwithme.meta;
 
-import com.blockwithme.meta.infrastructure.Application;
+import com.blockwithme.meta.types.Application;
+import com.blockwithme.properties.Properties;
 
 /**
  * A Configurable can have any number of generic properties, in addition to
@@ -23,16 +24,7 @@ import com.blockwithme.meta.infrastructure.Application;
  *
  * @author monster
  */
-public interface Configurable<C extends Configurable<C>> {
+public interface Configurable extends Properties<Long> {
     /** Returns the application owning this Configurable. */
     Application app();
-
-    /** Returns the list of property names. */
-    String[] properties();
-
-    /**
-     * Returns the value of a property. Use null as time to get the value for
-     * the current application time.
-     */
-    Object getProperty(final Long time, final String name);
 }

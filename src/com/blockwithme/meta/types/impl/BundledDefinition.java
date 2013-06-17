@@ -15,6 +15,7 @@
  */
 package com.blockwithme.meta.types.impl;
 
+import com.blockwithme.meta.Configurable;
 import com.blockwithme.meta.Definition;
 import com.blockwithme.meta.impl.BaseDefinition;
 import com.blockwithme.meta.types.Bundle;
@@ -24,24 +25,22 @@ import com.blockwithme.meta.types.Bundled;
  * @author monster
  *
  */
-public abstract class BundledDefinition<C extends Definition<C> & Bundled<C>>
-        extends BaseDefinition<C> implements Bundled<C> {
-    /**  */
-    private final Bundle bundle;
+public abstract class BundledDefinition<C extends Definition<C> & Bundled>
+        extends BaseDefinition<C> implements Bundled {
+
+    /**
+     * @param parent
+     * @param localKey
+     * @param when
+     */
+    protected BundledDefinition(final Configurable parent,
+            final String localKey, final Long when) {
+        super(parent, localKey, when);
+    }
 
     /** The bundle. */
     @Override
     public Bundle bundle() {
-        return bundle;
-    }
-
-    /**
-     * @param theApp
-     * @param theName
-     */
-    protected BundledDefinition(final Bundle theBundle, final String theName) {
-        super(theBundle.app(), theName);
-        // theBundle cannot be null here, because it would have failed when getting app
-        bundle = theBundle;
+        return ancestor(Bundle.class);
     }
 }

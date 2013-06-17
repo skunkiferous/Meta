@@ -22,7 +22,7 @@ import com.blockwithme.meta.Configurable;
  *
  * @author monster
  */
-public interface Bundled<B extends Bundled<B>> extends Configurable<B> {
+public interface Bundled extends Configurable {
     /** The bundle. */
     Bundle bundle();
 }

@@ -20,7 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-import com.blockwithme.meta.infrastructure.Application;
+import com.blockwithme.meta.types.Application;
 
 /**
  * Create the implementations of the types package.
@@ -70,7 +70,7 @@ public class Factory {
     public BundleImpl bundle(final String name, final String version) {
         BundleImpl result = bundles.get(name);
         if (result == null) {
-            result = new BundleImpl(app, name, version);
+            result = new BundleImpl(app, name, version, null);
             bundles.put(name, result);
         }
         return result;
@@ -81,7 +81,7 @@ public class Factory {
         final Map<BundleImpl, String> key = pair(bundle, name);
         DependencyImpl result = dependencies.get(key);
         if (result == null) {
-            result = new DependencyImpl(bundle, name);
+            result = new DependencyImpl(bundle, name, null);
             dependencies.put(key, result);
         }
         return result;
@@ -92,7 +92,7 @@ public class Factory {
         final Map<TypeImpl, String> key = pair(type, name);
         PropertyImpl result = properties.get(key);
         if (result == null) {
-            result = new PropertyImpl(type.bundle(), name);
+            result = new PropertyImpl(type, name, null);
             properties.put(key, result);
         }
         return result;
@@ -103,7 +103,7 @@ public class Factory {
         final Map<BundleImpl, String> key = pair(bundle, name);
         ServiceImpl result = services.get(key);
         if (result == null) {
-            result = new ServiceImpl(bundle, name);
+            result = new ServiceImpl(bundle, name, null);
             services.put(key, result);
         }
         return result;
@@ -114,20 +114,20 @@ public class Factory {
         final Map<BundleImpl, String> key = pair(bundle, name);
         TypeImpl result = types.get(key);
         if (result == null) {
-            result = new TypeImpl(bundle, name);
+            result = new TypeImpl(bundle, name, null);
             types.put(key, result);
         }
         return result;
     }
 
     /** Creates a typeRange. */
-    public TypeRangeImpl typeRange(final BundleImpl bundle) {
-        return new TypeRangeImpl(bundle);
+    public TypeRangeImpl typeRange(final PropertyImpl prop, final String name) {
+        return new TypeRangeImpl(prop, name, null);
     }
 
     /** Creates a Container. */
-    public ContainerImpl container(final BundleImpl bundle) {
-        return new ContainerImpl(bundle);
+    public ContainerImpl container(final TypeImpl type, final String name) {
+        return new ContainerImpl(type, name, null);
     }
 
     /** Builds a type. */

@@ -15,6 +15,7 @@
  */
 package com.blockwithme.properties.impl;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -26,6 +27,7 @@ import java.util.TreeMap;
 import com.blockwithme.properties.Filter;
 import com.blockwithme.properties.Generator;
 import com.blockwithme.properties.Properties;
+import com.blockwithme.properties.Root;
 
 /**
  * Base class for Properties.
@@ -54,7 +56,7 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
     private final String globalKey;
 
     /** The parent. */
-    private final PropertiesImpl<TIME> parent;
+    private final Properties<TIME> parent;
 
     /** All the own properties. */
     private final TreeMap<String, SetterValue<TIME>> properties = new TreeMap<>(
@@ -185,14 +187,13 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
     }
 
     /** Constructs a PropertiesImpl. */
-    public PropertiesImpl(final PropertiesImpl<TIME> parent,
-            final String localKey) {
+    public PropertiesImpl(final Properties<TIME> parent, final String localKey) {
         this(parent, localKey, null);
     }
 
     /** Constructs a PropertiesImpl. */
-    public PropertiesImpl(final PropertiesImpl<TIME> parent,
-            final String localKey, final TIME when) {
+    public PropertiesImpl(final Properties<TIME> parent, final String localKey,
+            final TIME when) {
         this.parent = parent;
         if (parent == null) {
             // Must be root!
@@ -253,7 +254,7 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
      * @see com.blockwithme.properties.Properties#parent()
      */
     @Override
-    public final Properties<TIME> parent() {
+    public Properties<TIME> parent() {
         return parent;
     }
 
@@ -261,14 +262,12 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
      * @see com.blockwithme.properties.Properties#root()
      */
     @Override
-    public final RootImpl<TIME> root() {
-        Properties<TIME> previous = this;
-        Properties<TIME> next = parent;
-        while (next != null) {
-            previous = next;
+    public Root<TIME> root() {
+        Properties<TIME> next = this;
+        while (!(next instanceof Root<?>)) {
             next = next.parent();
         }
-        return (RootImpl<TIME>) previous;
+        return (Root<TIME>) next;
     }
 
     /* (non-Javadoc)
@@ -347,7 +346,7 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
         String relPath = path;
         if (path.charAt(0) == SEPATATOR) {
             // Absolute path ...
-            prop = root();
+            prop = (PropertiesImpl<TIME>) root();
             relPath = path.substring(1);
             if (relPath.isEmpty()) {
                 return prop;
@@ -613,6 +612,75 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
         }
     }
 
+    /* (non-Javadoc)
+     * @see com.blockwithme.properties.Properties#listValues(java.lang.Class)
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public final <E> E[] listValues(final Class<E> expectedType,
+            final boolean onlyIndexed) {
+        final ArrayList<E> result = new ArrayList<>();
+        if (onlyIndexed) {
+            for (final String key : this) {
+                try {
+                    final int index = Integer.parseInt(key, 10);
+                    final E obj = find(key, expectedType);
+                    if (obj != null) {
+                        // ArrayList doesn't have set size, so we need to grow it
+                        while (result.size() <= index) {
+                            result.add(null);
+                        }
+                        result.set(index, obj);
+                    }
+                } catch (final NumberFormatException e) {
+                    // NOP
+                }
+            }
+            // Drop all null
+            while (result.remove(null)) {
+                // NOP
+            }
+        } else {
+            // By default, we get string order of properties, so result is sorted.
+            for (final String key : this) {
+                try {
+                    result.add(get(key, expectedType));
+                } catch (final Exception e) {
+                    // NOP
+                }
+            }
+        }
+        return result.toArray((E[]) Array.newInstance(expectedType,
+                result.size()));
+    }
+
+    /* (non-Javadoc)
+     * @see com.blockwithme.properties.Properties#listChildValues(java.lang.String, java.lang.Class)
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public final <E> E[] listChildValues(final String proerpty,
+            final Class<E> expectedType, final boolean onlyIndexed) {
+        final Properties<TIME> prop = find(proerpty, Properties.class);
+        if (prop != null) {
+            return prop.listValues(expectedType, onlyIndexed);
+        }
+        return (E[]) Array.newInstance(expectedType, 0);
+    }
+
+    /* (non-Javadoc)
+     * @see com.blockwithme.properties.Properties#ancestor(java.lang.Class)
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public final <E extends Properties<TIME>> E ancestor(final Class<E> type) {
+        Properties<TIME> p = parent;
+        while ((p != null) && !type.isInstance(p)) {
+            p = p.parent();
+        }
+        return (E) p;
+    }
+
     /**
      * Returns the property value, if any. Null if absent.
      */
@@ -645,7 +713,7 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
             throw new UnsupportedOperationException(
                     "Cannot remove a built-in property: " + localKey);
         }
-        final RootImpl<TIME> root = root();
+        final RootImpl<TIME> root = (RootImpl<TIME>) root();
         if (when != null) {
             // Future property (when past/preset, then Root will re-set using null)
             root.onFutureChange(setter, this, localKey, value, forceWrite, when);

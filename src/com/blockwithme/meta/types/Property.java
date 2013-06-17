@@ -22,15 +22,15 @@ import com.blockwithme.meta.Definition;
  *
  * @author monster
  */
-public interface Property extends Definition<Property>, Bundled<Property> {
+public interface Property extends Definition<Property>, Bundled {
 
     /** The property type range. */
-    TypeRange typeRange(final Long time);
+    TypeRange typeRange();
 
     // TODO: We should have access control specifications
 
     /** The kinds of persistence supported by this property. */
-    String[] persistence(final Long time);
+    String[] persistence();
 
     // TODO ...
 }

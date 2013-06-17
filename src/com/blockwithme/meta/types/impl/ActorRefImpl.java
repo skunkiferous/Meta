@@ -13,25 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta.infrastructure.impl;
+package com.blockwithme.meta.types.impl;
 
 import com.blockwithme.meta.impl.BaseConfigurable;
-import com.blockwithme.meta.infrastructure.ActorRef;
-import com.blockwithme.meta.infrastructure.Application;
+import com.blockwithme.meta.types.ActorRef;
+import com.blockwithme.meta.types.Application;
 import com.blockwithme.meta.types.Bundle;
 
 /**
  * @author monster
  *
  */
-public class ActorRefImpl extends BaseConfigurable<ActorRef> implements
-        ActorRef {
+public class ActorRefImpl extends BaseConfigurable implements ActorRef {
 
     /**
-     * @param theApp
+     * @param parent
+     * @param localKey
+     * @param when
      */
-    protected ActorRefImpl(final Application theApp) {
-        super(theApp);
+    protected ActorRefImpl(final Application parent, final String localKey,
+            final Long when) {
+        super(parent, localKey, when);
     }
 
     /* (non-Javadoc)
@@ -39,12 +41,13 @@ public class ActorRefImpl extends BaseConfigurable<ActorRef> implements
      */
     @Override
     public long id() {
-        return (Long) getProperty(null, "id");
+        return find("id", Long.class);
     }
 
     /** Sets the ID */
     public ActorRefImpl id(final Bundle bundle, final long theID) {
-        return (ActorRefImpl) setProperty(bundle, Long.MIN_VALUE, "id", theID);
+        set(bundle, "id", theID);
+        return this;
     }
 
     /** Called, after the initial values have been set. */

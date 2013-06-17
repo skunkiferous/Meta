@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta.infrastructure.impl;
+package com.blockwithme.meta.types.impl;
 
 import java.util.Comparator;
 import java.util.Objects;
 
-import com.blockwithme.meta.infrastructure.Application;
+import com.blockwithme.meta.types.Application;
 import com.blockwithme.meta.types.Bundle;
 
 /**

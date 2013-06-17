@@ -31,18 +31,15 @@ import com.blockwithme.meta.types.Type;
  * @author monster
  */
 public class TypeImpl extends BundledDefinition<Type> implements Type {
-    /**
-     * @param theApp
-     * @param theName
-     */
-    protected TypeImpl(final Bundle theBundle, final String theName) {
-        super(theBundle, theName);
-    }
 
-    /** Returns the "unique key" to this definition. */
-    @Override
-    public String key() {
-        return bundle().key() + "|Type|" + name();
+    /**
+     * @param parent
+     * @param localKey
+     * @param when
+     */
+    protected TypeImpl(final Bundle parent, final String localKey,
+            final Long when) {
+        super(parent, localKey, when);
     }
 
     /* (non-Javadoc)
@@ -50,12 +47,13 @@ public class TypeImpl extends BundledDefinition<Type> implements Type {
      */
     @Override
     public Class<?> type() {
-        return (Class<?>) getProperty(null, "type");
+        return get("type", Class.class);
     }
 
     /** Sets the type. */
     public TypeImpl type(final Class<?> value) {
-        return (TypeImpl) setProperty(bundle(), Long.MIN_VALUE, "type", value);
+        set(bundle(), "type", value);
+        return this;
     }
 
     /* (non-Javadoc)
@@ -63,12 +61,13 @@ public class TypeImpl extends BundledDefinition<Type> implements Type {
      */
     @Override
     public boolean isData() {
-        return (Boolean) getProperty(null, "isData");
+        return get("isData", Boolean.class);
     }
 
     /** Sets the type. */
     public TypeImpl isData(final boolean value) {
-        return (TypeImpl) setProperty(bundle(), Long.MIN_VALUE, "isData", value);
+        set(bundle(), "isData", value);
+        return this;
     }
 
     /* (non-Javadoc)
@@ -76,13 +75,13 @@ public class TypeImpl extends BundledDefinition<Type> implements Type {
      */
     @Override
     public boolean isArray() {
-        return (Boolean) getProperty(null, "isArray");
+        return get("isArray", Boolean.class);
     }
 
     /** Sets the type. */
     public TypeImpl isArray(final boolean value) {
-        return (TypeImpl) setProperty(bundle(), Long.MIN_VALUE, "isArray",
-                value);
+        set(bundle(), "isArray", value);
+        return this;
     }
 
     /* (non-Javadoc)
@@ -90,12 +89,13 @@ public class TypeImpl extends BundledDefinition<Type> implements Type {
      */
     @Override
     public boolean isRoot() {
-        return (Boolean) getProperty(null, "isRoot");
+        return get("isRoot", Boolean.class);
     }
 
     /** Sets the type. */
     public TypeImpl isRoot(final boolean value) {
-        return (TypeImpl) setProperty(bundle(), Long.MIN_VALUE, "isRoot", value);
+        set(bundle(), "isRoot", value);
+        return this;
     }
 
     /* (non-Javadoc)
@@ -103,13 +103,13 @@ public class TypeImpl extends BundledDefinition<Type> implements Type {
      */
     @Override
     public boolean isTrait() {
-        return (Boolean) getProperty(null, "isTrait");
+        return get("isTrait", Boolean.class);
     }
 
     /** Sets the type. */
     public TypeImpl isTrait(final boolean value) {
-        return (TypeImpl) setProperty(bundle(), Long.MIN_VALUE, "isTrait",
-                value);
+        set(bundle(), "isTrait", value);
+        return this;
     }
 
     /* (non-Javadoc)
@@ -117,13 +117,13 @@ public class TypeImpl extends BundledDefinition<Type> implements Type {
      */
     @Override
     public boolean isImplementation() {
-        return (Boolean) getProperty(null, "isImplementation");
+        return get("isImplementation", Boolean.class);
     }
 
     /** Sets the type. */
     public TypeImpl isImplementation(final boolean value) {
-        return (TypeImpl) setProperty(bundle(), Long.MIN_VALUE,
-                "isImplementation", value);
+        set(bundle(), "isImplementation", value);
+        return this;
     }
 
     /* (non-Javadoc)
@@ -131,13 +131,13 @@ public class TypeImpl extends BundledDefinition<Type> implements Type {
      */
     @Override
     public boolean isFinal() {
-        return (Boolean) getProperty(null, "isFinal");
+        return get("isFinal", Boolean.class);
     }
 
     /** Sets the type. */
     public TypeImpl isFinal(final boolean value) {
-        return (TypeImpl) setProperty(bundle(), Long.MIN_VALUE, "isFinal",
-                value);
+        set(bundle(), "isFinal", value);
+        return this;
     }
 
     /* (non-Javadoc)
@@ -145,12 +145,13 @@ public class TypeImpl extends BundledDefinition<Type> implements Type {
      */
     @Override
     public Kind kind() {
-        return (Kind) getProperty(null, "kind");
+        return get("kind", Kind.class);
     }
 
     /** Sets the type. */
     public TypeImpl kind(final Kind value) {
-        return (TypeImpl) setProperty(bundle(), Long.MIN_VALUE, "kind", value);
+        set(bundle(), "kind", value);
+        return this;
     }
 
     /* (non-Javadoc)
@@ -158,213 +159,222 @@ public class TypeImpl extends BundledDefinition<Type> implements Type {
      */
     @Override
     public Access access() {
-        return (Access) getProperty(null, "access");
+        return get("access", Access.class);
     }
 
     /** Sets the type. */
     public TypeImpl access(final Access value) {
-        return (TypeImpl) setProperty(bundle(), Long.MIN_VALUE, "access", value);
+        set(bundle(), "access", value);
+        return this;
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Type#biggerThanParents()
      */
     @Override
-    public boolean biggerThanParents(final Long time) {
-        return (Boolean) getProperty(time, "biggerThanParents");
+    public boolean biggerThanParents() {
+        return get("biggerThanParents", Boolean.class);
     }
 
     /** Sets the type. */
     public TypeImpl biggerThanParents(final Bundle bundle, final long time,
             final boolean value) {
-        return (TypeImpl) setProperty(bundle, time, "biggerThanParents", value);
+        set(bundle, "biggerThanParents", value, time, false);
+        return this;
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Type#allProperties()
      */
     @Override
-    public Property[] allProperties(final Long time) {
-        return (Property[]) getProperty(time, "allProperties");
+    public Property[] allProperties() {
+        return listChildValues("allProperties", Property.class, false);
     }
 
     /** Sets the type. */
     public TypeImpl allProperties(final Bundle bundle, final long time,
             final Property[] value) {
-        return (TypeImpl) setProperty(bundle, time, "allProperties", value);
+        set(bundle, "allProperties", value, time, false);
+        return this;
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Type#directProperties()
      */
     @Override
-    public Property[] directProperties(final Long time) {
-        return (Property[]) getProperty(time, "directProperties");
+    public Property[] directProperties() {
+        return listChildValues("directProperties", Property.class, false);
     }
 
     /** Sets the directProperties. */
     public TypeImpl directProperties(final Bundle bundle, final long time,
             final Property[] value) {
-        return (TypeImpl) setProperty(bundle, time, "directProperties", value);
+        set(bundle, "directProperties", value, time, false);
+        return this;
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Type#findProperty(java.lang.String)
      */
     @Override
-    public Property findProperty(final Long time, final String name) {
-        return findDefinition(time, "allProperties", name);
+    public Property findProperty(final String name) {
+        return findDefinition("allProperties", name, Property.class);
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Type#findDirectProperty(java.lang.String)
      */
     @Override
-    public Property findDirectProperty(final Long time, final String name) {
-        return findDefinition(time, "directProperties", name);
+    public Property findDirectProperty(final String name) {
+        return findDefinition("directProperties", name, Property.class);
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Type#parents()
      */
     @Override
-    public Type[] parents(final Long time) {
-        return (Type[]) getProperty(time, "parents");
+    public Type[] parents() {
+        return listChildValues("parents", Type.class, false);
     }
 
     /** Sets the type. */
     public TypeImpl parents(final Bundle bundle, final long time,
             final Type[] value) {
-        return (TypeImpl) setProperty(bundle, time, "parents", value);
+        set(bundle, "parents", value, time, false);
+        return this;
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Type#findParent(java.lang.String)
      */
     @Override
-    public Type findParent(final Long time, final String name) {
-        return findDefinition(time, "parents", name);
+    public Type findParent(final String name) {
+        return findDefinition("parents", name, Type.class);
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Type#directParents()
      */
     @Override
-    public Type[] directParents(final Long time) {
-        return (Type[]) getProperty(time, "directParents");
+    public Type[] directParents() {
+        return listChildValues("directParents", Type.class, false);
     }
 
     /** Sets the type. */
     public TypeImpl directParents(final Bundle bundle, final long time,
             final Type[] value) {
-        return (TypeImpl) setProperty(bundle, time, "directParents", value);
+        set(bundle, "directParents", value, time, false);
+        return this;
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Type#findDirectParent(java.lang.String)
      */
     @Override
-    public Type findDirectParent(final Long time, final String name) {
-        return findDefinition(time, "directParents", name);
+    public Type findDirectParent(final String name) {
+        return findDefinition("directParents", name, Type.class);
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Type#isParent(com.blockwithme.meta.types.Type)
      */
     @Override
-    public boolean isParent(final Long time, final Type otherType) {
-        return ArrayUtils.contains(parents(time), otherType);
+    public boolean isParent(final Type otherType) {
+        return ArrayUtils.contains(parents(), otherType);
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Type#isDirectParent(com.blockwithme.meta.types.Type)
      */
     @Override
-    public boolean isDirectParent(final Long time, final Type otherType) {
-        return ArrayUtils.contains(directParents(time), otherType);
+    public boolean isDirectParent(final Type otherType) {
+        return ArrayUtils.contains(directParents(), otherType);
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Type#children()
      */
     @Override
-    public Type[] children(final Long time) {
-        return (Type[]) getProperty(time, "children");
+    public Type[] children() {
+        return listChildValues("children", Type.class, false);
     }
 
     /** Sets the type. */
     public TypeImpl children(final Bundle bundle, final long time,
             final Type[] value) {
-        return (TypeImpl) setProperty(bundle, time, "children", value);
+        set(bundle, "children", value, time, false);
+        return this;
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Type#findChild(java.lang.String)
      */
     @Override
-    public Type findChild(final Long time, final String name) {
-        return findDefinition(time, "children", name);
+    public Type findChild(final String name) {
+        return findDefinition("children", name, Type.class);
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Type#directChildren()
      */
     @Override
-    public Type[] directChildren(final Long time) {
-        return (Type[]) getProperty(time, "directChildren");
+    public Type[] directChildren() {
+        return listChildValues("directChildren", Type.class, false);
     }
 
     /** Sets the type. */
     public TypeImpl directChildren(final Bundle bundle, final long time,
             final Type[] value) {
-        return (TypeImpl) setProperty(bundle, time, "directChildren", value);
+        set(bundle, "directChildren", value, time, false);
+        return this;
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Type#findDirectChild(java.lang.String)
      */
     @Override
-    public Type findDirectChild(final Long time, final String name) {
-        return findDefinition(time, "directChildren", name);
+    public Type findDirectChild(final String name) {
+        return findDefinition("directChildren", name, Type.class);
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Type#isChild(com.blockwithme.meta.types.Type)
      */
     @Override
-    public boolean isChild(final Long time, final Type otherType) {
-        return ArrayUtils.contains(children(time), otherType);
+    public boolean isChild(final Type otherType) {
+        return ArrayUtils.contains(children(), otherType);
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Type#isDirectChild(com.blockwithme.meta.types.Type)
      */
     @Override
-    public boolean isDirectChild(final Long time, final Type otherType) {
-        return ArrayUtils.contains(directChildren(time), otherType);
+    public boolean isDirectChild(final Type otherType) {
+        return ArrayUtils.contains(directChildren(), otherType);
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Type#containers()
      */
     @Override
-    public Container[] containers(final Long time) {
-        return (Container[]) getProperty(time, "containers");
+    public Container[] containers() {
+        return listChildValues("containers", Container.class, false);
     }
 
     /** Sets the type. */
     public TypeImpl containers(final Bundle bundle, final long time,
             final Container[] value) {
-        return (TypeImpl) setProperty(bundle, time, "containers", value);
+        set(bundle, "containers", value, time, false);
+        return this;
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Type#findContainer(com.blockwithme.meta.types.Type)
      */
     @Override
-    public Container[] findContainer(final Long time, final Type otherType) {
+    public Container[] findContainer(final Type otherType) {
         List<Container> result = null;
-        for (final Container c : containers(time)) {
+        for (final Container c : containers()) {
             if (c.container() == otherType) {
                 if (result == null) {
                     result = new ArrayList<>();
@@ -381,26 +391,28 @@ public class TypeImpl extends BundledDefinition<Type> implements Type {
      */
     @Override
     public Type domain() {
-        return (Type) getProperty(null, "domain");
+        return get("domain", Type.class);
     }
 
     /** Sets the type. */
     public TypeImpl domain(final Type value) {
-        return (TypeImpl) setProperty(bundle(), Long.MIN_VALUE, "domain", value);
+        set(bundle(), "domain", value);
+        return this;
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.types.Type#persistence()
      */
     @Override
-    public String[] persistence(final Long time) {
-        return (String[]) getProperty(time, "persistence");
+    public String[] persistence() {
+        return get("persistence", String[].class);
     }
 
     /** Sets the type. */
     public TypeImpl persistence(final Bundle bundle, final long time,
             final String[] value) {
-        return (TypeImpl) setProperty(bundle, time, "persistence", value);
+        set(bundle, "persistence", value, time, false);
+        return this;
     }
 
     /** Called, after the initial values have been set. */
@@ -426,10 +438,10 @@ public class TypeImpl extends BundledDefinition<Type> implements Type {
         checkProp("domain", Type.class);
         checkProp("persistence", String[].class);
         super._postInit();
-        postInit(allProperties(null));
-        postInit(parents(null));
-        postInit(children(null));
-        postInit(containers(null));
+        postInit(allProperties());
+        postInit(parents());
+        postInit(children());
+        postInit(containers());
         postInit(domain());
     }
 }

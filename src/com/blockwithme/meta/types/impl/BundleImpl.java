@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import com.blockwithme.meta.Dynamic;
 import com.blockwithme.meta.impl.BaseDefinition;
-import com.blockwithme.meta.infrastructure.Application;
+import com.blockwithme.meta.types.Application;
 import com.blockwithme.meta.types.Bundle;
 import com.blockwithme.meta.types.BundleLifecycle;
 import com.blockwithme.meta.types.Dependency;
@@ -33,18 +33,19 @@ import com.blockwithme.meta.types.Type;
  */
 public class BundleImpl extends BaseDefinition<Bundle> implements Bundle {
 
-    /** The version */
-    private final String version;
-
     /** The Bundle Lifecycle */
     private final AtomicReference<BundleLifecycle> lifecycle = new AtomicReference<BundleLifecycle>();
 
-    /** Constructor */
-    public BundleImpl(final Application theApp, final String theName,
-            final String theVersion) {
-        super(theApp, theName);
-        version = Objects.requireNonNull(theVersion, "theVersion");
-        setProperty(this, Long.MIN_VALUE, "lifecycle", lifecycle);
+    /**
+     * @param parent
+     * @param localKey
+     * @param when
+     */
+    protected BundleImpl(final Application parent, final String localKey,
+            final String theVersion, final Long when) {
+        super(parent, localKey, when);
+        set(this, "version", Objects.requireNonNull(theVersion, "theVersion"));
+        set(this, "lifecycle", lifecycle);
     }
 
     /* (non-Javadoc)
@@ -52,7 +53,7 @@ public class BundleImpl extends BaseDefinition<Bundle> implements Bundle {
      */
     @Override
     public String version() {
-        return version;
+        return get("version", String.class);
     }
 
     /* (non-Javadoc)
@@ -69,12 +70,7 @@ public class BundleImpl extends BaseDefinition<Bundle> implements Bundle {
      */
     @Override
     public Type[] types() {
-        return (Type[]) getProperty(null, "types");
-    }
-
-    /** Sets the types */
-    public BundleImpl types(final Type[] theTypes) {
-        return (BundleImpl) setProperty(this, Long.MIN_VALUE, "types", theTypes);
+        return listChildValues("types", Type.class, false);
     }
 
     /* (non-Javadoc)
@@ -82,12 +78,7 @@ public class BundleImpl extends BaseDefinition<Bundle> implements Bundle {
      */
     @Override
     public Type findType(final String name) {
-        for (final Type type : types()) {
-            if (name.equals(type.name())) {
-                return type;
-            }
-        }
-        return null;
+        return findDefinition("types", name, Type.class);
     }
 
     /* (non-Javadoc)
@@ -95,13 +86,7 @@ public class BundleImpl extends BaseDefinition<Bundle> implements Bundle {
      */
     @Override
     public Dependency[] dependencies() {
-        return (Dependency[]) getProperty(null, "dependencies");
-    }
-
-    /** Sets the dependencies */
-    public BundleImpl dependencies(final Dependency[] theDependencies) {
-        return (BundleImpl) setProperty(this, Long.MIN_VALUE, "dependencies",
-                theDependencies);
+        return listChildValues("dependencies", Dependency.class, false);
     }
 
     /* (non-Javadoc)
@@ -109,12 +94,7 @@ public class BundleImpl extends BaseDefinition<Bundle> implements Bundle {
      */
     @Override
     public Dependency findDependency(final String name) {
-        for (final Dependency dep : dependencies()) {
-            if (name.equals(dep.name())) {
-                return dep;
-            }
-        }
-        return null;
+        return findDefinition("dependencies", name, Dependency.class);
     }
 
     /* (non-Javadoc)
@@ -122,7 +102,7 @@ public class BundleImpl extends BaseDefinition<Bundle> implements Bundle {
      */
     @Override
     public Service[] services() {
-        return (Service[]) getProperty(null, "services");
+        return listChildValues("services", Service.class, false);
     }
 
     /* (non-Javadoc)
@@ -130,7 +110,7 @@ public class BundleImpl extends BaseDefinition<Bundle> implements Bundle {
      */
     @Override
     public Service findService(final String name) {
-        return findDefinition(Long.MIN_VALUE, "services", name);
+        return findDefinition("services", name, Service.class);
     }
 
     /* (non-Javadoc)
@@ -146,12 +126,6 @@ public class BundleImpl extends BaseDefinition<Bundle> implements Bundle {
     public BundleImpl lifecycle(final BundleLifecycle value) {
         lifecycle.set(Objects.requireNonNull(value));
         return this;
-    }
-
-    /** Returns the "unique key" to this definition. */
-    @Override
-    public String key() {
-        return name() + "|" + version();
     }
 
     /** Called, after the initial values have been set. */

@@ -24,7 +24,7 @@ import com.blockwithme.meta.Definition;
  *
  * @author monster
  */
-public interface Type extends Definition<Type>, Bundled<Type> {
+public interface Type extends Definition<Type>, Bundled {
     /** The Java class representing this type. */
     Class<?> type();
 
@@ -86,65 +86,65 @@ public interface Type extends Definition<Type>, Bundled<Type> {
      * footprint), when it defines new *properties*, in addition to the
      * existing properties of the parent types.
      */
-    boolean biggerThanParents(final Long time);
+    boolean biggerThanParents();
 
     /** List all the properties of this type. */
-    Property[] allProperties(final Long time);
+    Property[] allProperties();
 
     /** Returns the property with the given name, if any. */
-    Property findProperty(final Long time, final String name);
+    Property findProperty(final String name);
 
     /** List all direct properties of this type. */
-    Property[] directProperties(final Long time);
+    Property[] directProperties();
 
     /** Returns the direct property with the given name, if any. */
-    Property findDirectProperty(final Long time, final String name);
+    Property findDirectProperty(final String name);
 
     /** All the parents of this type. */
-    Type[] parents(final Long time);
+    Type[] parents();
 
     /** Search for a parent with the given name, if any. */
-    Type findParent(final Long time, final String name);
+    Type findParent(final String name);
 
     /** All the direct parents of this type. */
-    Type[] directParents(final Long time);
+    Type[] directParents();
 
     /** Search for a direct parent with the given name, if any. */
-    Type findDirectParent(final Long time, final String name);
+    Type findDirectParent(final String name);
 
     /** Is the given other type a parent of this type? */
-    boolean isParent(final Long time, final Type otherType);
+    boolean isParent(final Type otherType);
 
     /** Is the given other type a direct parent of this type? */
-    boolean isDirectParent(final Long time, final Type otherType);
+    boolean isDirectParent(final Type otherType);
 
     /** All the children of this type. */
-    Type[] children(final Long time);
+    Type[] children();
 
     /** Search for a child with the given name, if any. */
-    Type findChild(final Long time, final String name);
+    Type findChild(final String name);
 
     /** All the direct children of this type. */
-    Type[] directChildren(final Long time);
+    Type[] directChildren();
 
     /** Search for a direct child with the given name, if any. */
-    Type findDirectChild(final Long time, final String name);
+    Type findDirectChild(final String name);
 
     /** Is the given other type a child of this type? */
-    boolean isChild(final Long time, final Type otherType);
+    boolean isChild(final Type otherType);
 
     /** Is the given other type a direct child of this type? */
-    boolean isDirectChild(final Long time, final Type otherType);
+    boolean isDirectChild(final Type otherType);
 
     /** All the other types containing this type. */
-    Container[] containers(final Long time);
+    Container[] containers();
 
     /** Is the given other type a container of this type? */
-    Container[] findContainer(final Long time, final Type otherType);
+    Container[] findContainer(final Type otherType);
 
     /** The Domain of this type. Could be null for Data and Trait. */
     Type domain();
 
     /** The kinds of persistence supported by this type. */
-    String[] persistence(final Long time);
+    String[] persistence();
 }

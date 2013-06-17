@@ -15,7 +15,7 @@
  */
 package com.blockwithme.meta.types.impl;
 
-import com.blockwithme.meta.types.Bundle;
+import com.blockwithme.meta.Configurable;
 import com.blockwithme.meta.types.PersistenceAPI;
 import com.blockwithme.meta.types.Property;
 import com.blockwithme.meta.types.Type;
@@ -29,17 +29,13 @@ public class PersistenceAPIImpl<SERIALIZER> extends
         PersistenceAPI<SERIALIZER> {
 
     /**
-     * @param theApp
-     * @param theName
+     * @param parent
+     * @param localKey
+     * @param when
      */
-    protected PersistenceAPIImpl(final Bundle theBundle, final String theName) {
-        super(theBundle, theName);
-    }
-
-    /** Returns the "unique key" to this definition. */
-    @Override
-    public String key() {
-        return bundle().key() + "|PersistenceAPI|" + name();
+    protected PersistenceAPIImpl(final Configurable parent,
+            final String localKey, final Long when) {
+        super(parent, localKey, when);
     }
 
     /* (non-Javadoc)

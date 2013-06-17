@@ -13,14 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta.infrastructure;
+package com.blockwithme.meta.types;
 
 import java.util.Comparator;
 
-import com.blockwithme.meta.Configurable;
 import com.blockwithme.meta.Definition;
-import com.blockwithme.meta.types.Bundle;
-import com.blockwithme.meta.types.Bundled;
+import com.blockwithme.meta.Dynamic;
+import com.blockwithme.meta.infrastructure.Connection;
+import com.blockwithme.meta.infrastructure.Connector;
+import com.blockwithme.properties.Root;
 
 /**
  * An application is a specific *application configuration* of an application,
@@ -34,14 +35,20 @@ import com.blockwithme.meta.types.Bundled;
  *
  * @author monster
  */
-public interface Application extends Definition<Application>,
-        Bundled<Application> {
+public interface Application extends Definition<Application>, Bundled,
+        Root<Long> {
     /** The "root" application bundle, which can use any number of other bundles. */
     @Override
     Bundle bundle();
 
-    /** Returns the current application time. */
-    long time();
+    /** Returns all the currently available bundles within this application. */
+    @Dynamic
+    Bundle[] bundles();
+
+    /**
+     * Returns the bundles with the given name, if any.
+     */
+    Bundle findBundle(final String name);
 
     /**
      * Returns the shortest distance from the root bundle (0) through
@@ -58,22 +65,24 @@ public interface Application extends Definition<Application>,
     /** Is this a JVM-based application? */
     boolean javaApp();
 
-    /** Returns the application state. */
-    AppState appState();
+    /** Returns all the application connectors. */
+    Connector[] connectors();
 
-    /** Allows adding empty property names slots at the end of the array. */
-    String[] properties(final Configurable<?> cfg, final int freeslots);
+    /** Returns the connector with the given name, if any. */
+    Connector findConnector(final String name);
 
     /**
-     * @param cfg
-     * @param time
-     * @param name
-     * @return
+     * Returns all the application connections to other applications.
+     * Connections with "clients" are not included here.
      */
-    Object getProperty(final Configurable<?> cfg, final Long time,
-            final String name);
+    @Dynamic
+    Connection[] connections();
 
-    /** Sets a property. */
-    Application setProperty(final Configurable<?> cfg, final Bundle bundle,
-            final long time, final String name, final Object value);
+    /**
+     * Returns the actors belonging to a particular application.
+     *
+     * TODO: Not sure if that is the right thing to do; there could be very many ...
+     */
+    @Dynamic
+    ActorRef[] actors();
 }

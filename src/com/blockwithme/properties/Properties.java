@@ -108,6 +108,9 @@ public interface Properties<TIME extends Comparable<TIME>> extends
     /** Returns the parent of the Properties (null for root). */
     Properties<TIME> parent();
 
+    /** Goes up the hierarchy, and returns the first ancestor of the given type, or null if not found. */
+    <E extends Properties<TIME>> E ancestor(final Class<E> type);
+
     /** Returns the key of this Properties, within it's parent ("" for root) */
     String localKey();
 
@@ -188,4 +191,21 @@ public interface Properties<TIME extends Comparable<TIME>> extends
 
     /** Returns true if the list is nextIndex() == "0". */
     boolean isEmptyList();
+
+    /**
+     * Iterates over all *indexed* values, and fill them in an array.
+     * Fails if a value does not match the given type. All nulls are dropped.
+     * If onlyIndexed is true, only "indexed" properties are searched,
+     * otherwise all of them.
+     */
+    <E> E[] listValues(final Class<E> expectedType, final boolean onlyIndexed);
+
+    /**
+     * Calls listValues() on a child if present, otherwise returns empty array.
+     * All nulls are dropped.
+     * If onlyIndexed is true, only "indexed" properties are searched,
+     * otherwise all of them.
+     */
+    <E> E[] listChildValues(final String property, final Class<E> expectedType,
+            final boolean onlyIndexed);
 }

@@ -27,11 +27,13 @@ import com.blockwithme.meta.types.Type;
 public class ServiceImpl extends BundledDefinition<Service> implements Service {
 
     /**
-     * @param theApp
-     * @param theName
+     * @param parent
+     * @param localKey
+     * @param when
      */
-    protected ServiceImpl(final Bundle theBundle, final String theName) {
-        super(theBundle, theName);
+    protected ServiceImpl(final Bundle parent, final String localKey,
+            final Long when) {
+        super(parent, localKey, when);
     }
 
     /* (non-Javadoc)
@@ -39,19 +41,13 @@ public class ServiceImpl extends BundledDefinition<Service> implements Service {
      */
     @Override
     public ServiceType lifecycle() {
-        return (ServiceType) getProperty(null, "lifecycle");
-    }
-
-    /** Returns the "unique key" to this definition. */
-    @Override
-    public String key() {
-        return bundle().key() + "|Service|" + name();
+        return get("lifecycle", ServiceType.class);
     }
 
     /** Sets the lifecycle */
     public ServiceImpl lifecycle(final ServiceType value) {
-        return (ServiceImpl) setProperty(bundle(), Long.MIN_VALUE, "lifecycle",
-                value);
+        set(bundle(), "lifecycle", value);
+        return this;
     }
 
     /* (non-Javadoc)
@@ -59,12 +55,13 @@ public class ServiceImpl extends BundledDefinition<Service> implements Service {
      */
     @Override
     public Type api() {
-        return (Type) getProperty(null, "api");
+        return get("api", Type.class);
     }
 
     /** Sets the api */
     public ServiceImpl api(final Type value) {
-        return (ServiceImpl) setProperty(bundle(), Long.MIN_VALUE, "api", value);
+        set(bundle(), "api", value);
+        return this;
     }
 
     /** Called, after the initial values have been set. */

@@ -24,11 +24,8 @@ package com.blockwithme.meta;
  *
  * @author monster
  */
-public interface Definition<D extends Definition<D>> extends Configurable<D>,
+public interface Definition<D extends Definition<D>> extends Configurable,
         Comparable<D> {
-    /** The name of this definition. */
+    /** The name of this definition: it's just the "local key". */
     String name();
-
-    /** Returns the unique key to this definition. */
-    String key();
 }

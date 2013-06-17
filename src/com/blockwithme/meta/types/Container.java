@@ -15,13 +15,12 @@
  */
 package com.blockwithme.meta.types;
 
-
 /**
  * Describes the property of some type, which is a container for another type.
  *
  * @author monster
  */
-public interface Container extends Bundled<Container> {
+public interface Container extends Bundled {
     /** Container. */
     Type container();
 

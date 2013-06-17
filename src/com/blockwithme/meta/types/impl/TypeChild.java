@@ -15,38 +15,36 @@
  */
 package com.blockwithme.meta.types.impl;
 
+import com.blockwithme.meta.Configurable;
 import com.blockwithme.meta.Definition;
-import com.blockwithme.meta.types.Bundle;
 import com.blockwithme.meta.types.Bundled;
 
 /**
  * @author monster
  *
  */
-public abstract class TypeChild<C extends Definition<C> & Bundled<C>> extends
+public abstract class TypeChild<C extends Definition<C> & Bundled> extends
         BundledDefinition<C> {
 
     /**
-     * @param theApp
-     * @param theName
+     * @param parent
+     * @param localKey
+     * @param when
      */
-    protected TypeChild(final Bundle theBundle, final String theName) {
-        super(theBundle, theName);
+    protected TypeChild(final Configurable parent, final String localKey,
+            final Long when) {
+        super(parent, localKey, when);
     }
 
     public TypeImpl type() {
-        return (TypeImpl) getProperty(null, "type");
+        return find("type", TypeImpl.class);
     }
 
     /** Sets the type */
+    @SuppressWarnings("unchecked")
     public C type(final TypeImpl value) {
-        return setProperty(bundle(), Long.MIN_VALUE, "type", value);
-    }
-
-    /** Returns the "unique key" to this definition. */
-    @Override
-    public String key() {
-        return type().key() + "|" + name();
+        set(bundle(), "type", value);
+        return (C) this;
     }
 
     /** Called, after the initial values have been set. */

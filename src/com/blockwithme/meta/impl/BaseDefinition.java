@@ -15,10 +15,8 @@
  */
 package com.blockwithme.meta.impl;
 
-import java.util.Objects;
-
+import com.blockwithme.meta.Configurable;
 import com.blockwithme.meta.Definition;
-import com.blockwithme.meta.infrastructure.Application;
 
 /**
  * Base class for all definitions.
@@ -26,50 +24,45 @@ import com.blockwithme.meta.infrastructure.Application;
  * @author monster
  */
 public abstract class BaseDefinition<D extends Definition<D>> extends
-        BaseConfigurable<D> implements Definition<D> {
+        BaseConfigurable implements Definition<D> {
 
-    /** The name */
-    private final String name;
-
-    protected BaseDefinition(final Application theApp, final String theName) {
-        super(theApp);
-        name = Objects.requireNonNull(theName, "theName");
+    /**
+     * @param parent
+     * @param localKey
+     * @param when
+     */
+    protected BaseDefinition(final Configurable parent, final String localKey,
+            final Long when) {
+        super(parent, localKey, when);
     }
 
     @Override
-    public String[] properties() {
-        final String[] result = properties(1);
-        result[result.length - 1] = "name";
-        return result;
+    public final boolean equals(final Object obj) {
+        if ((obj != null) && (getClass() == obj.getClass())) {
+            return name().equals(((BaseDefinition<?>) obj).name());
+        }
+        return false;
+    }
+
+    /** */
+    @Override
+    public final int hashCode() {
+        return name().hashCode();
     }
 
     /* (non-Javadoc)
      * @see java.lang.Comparable#compareTo(java.lang.Object)
      */
     @Override
-    public int compareTo(final D o) {
-        return name.compareTo(o.name());
-    }
-
-    /** */
-    @Override
-    public int hashCode() {
-        return name.hashCode();
+    public final int compareTo(final D o) {
+        return name().compareTo(o.name());
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.meta.Definition#name()
      */
     @Override
-    public String name() {
-        return name;
+    public final String name() {
+        return localKey();
     }
-
-    @Override
-    public Object getProperty(final Long time, final String name) {
-        return "name".equals(name) ? this.name : super.getProperty(time, name);
-    }
-
-    /** Returns the "unique key" to this definition. */
-    public abstract String key();
 }

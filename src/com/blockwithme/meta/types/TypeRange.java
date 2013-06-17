@@ -15,7 +15,6 @@
  */
 package com.blockwithme.meta.types;
 
-
 /**
  * The type range defines the range of possible types accepted by a
  * non-primitive, non-Data, property.
@@ -27,26 +26,26 @@ package com.blockwithme.meta.types;
  *
  * @author monster
  */
-public interface TypeRange extends Bundled<TypeRange> {
+public interface TypeRange extends Bundled {
 
     /** Is the actual instance preserved, implying any child type is accepted? */
-    boolean actualInstance(final Long time);
+    boolean actualInstance();
 
     /**
      * Does the owner of this property contains/owns the content of the
      * property? Defaults to true.
      */
-    boolean contains(final Long time);
+    boolean contains();
 
     /**
      * Lists the explicitly accepted children type, of the declared type.
      * An empty list means an exact type match.
      */
-    Type[] children(final Long time);
+    Type[] children();
 
     /** Returns the explicitly accepted children type, if any. */
-    Type findChild(final Long time, final String name);
+    Type findChild(final String name);
 
     /** Is the given type an accepted child type? */
-    boolean accept(final Long time, final Type type);
+    boolean accept(final Type type);
 }
