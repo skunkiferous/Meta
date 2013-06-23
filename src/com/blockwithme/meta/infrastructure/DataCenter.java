@@ -24,7 +24,8 @@ import com.blockwithme.meta.Definition;
  *
  * @author monster
  */
-public interface DataCenter extends Definition<DataCenter> {
+public interface DataCenter extends
+        Definition<DataCenter, AvailabilityZone, Long> {
     /** Returns our clusters in this data-center. */
     Cluster clusters();
 

@@ -17,8 +17,8 @@ package com.blockwithme.meta.types.impl;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.blockwithme.meta.types.Bundle;
 import com.blockwithme.meta.types.Dependency;
+import com.blockwithme.properties.impl.ImplGraph;
 
 /**
  * @author monster
@@ -32,9 +32,9 @@ public class DependencyImpl extends BundledDefinition<Dependency> implements
      * @param localKey
      * @param when
      */
-    protected DependencyImpl(final Bundle parent, final String localKey,
-            final Long when) {
-        super(parent, localKey, when);
+    protected DependencyImpl(final ImplGraph<Long> graph,
+            final String localKey, final Long when) {
+        super(graph, localKey, when);
     }
 
     /** Actually using that dependency? */
@@ -89,15 +89,5 @@ public class DependencyImpl extends BundledDefinition<Dependency> implements
     public DependencyImpl actual(final boolean value) {
         actual.set(value);
         return this;
-    }
-
-    /** Called, after the initial values have been set. */
-    @Override
-    protected void _postInit() {
-        set(bundle(), "actual", actual);
-        checkProp("minimumVersion", Integer.class);
-        checkProp("maximumVersion", Integer.class);
-        checkProp("optional", Boolean.class);
-        super._postInit();
     }
 }

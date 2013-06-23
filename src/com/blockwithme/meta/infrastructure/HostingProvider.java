@@ -25,7 +25,8 @@ import com.blockwithme.meta.Definition;
  *
  * @author monster
  */
-public interface HostingProvider extends Definition<HostingProvider> {
+public interface HostingProvider extends
+        Definition<HostingProvider, Everything, Long> {
     /** Return the hosting provider's regions. */
     Region[] regions();
 

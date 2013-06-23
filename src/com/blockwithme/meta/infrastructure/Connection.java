@@ -18,13 +18,14 @@ package com.blockwithme.meta.infrastructure;
 import java.net.URL;
 
 import com.blockwithme.meta.Definition;
+import com.blockwithme.meta.types.Application;
 
 /**
  * Represents a network connection.
  *
  * @author monster
  */
-public interface Connection extends Definition<Connection> {
+public interface Connection extends Definition<Connection, Application, Long> {
     /** Returns an URL used to create this connection. */
     URL url();
 

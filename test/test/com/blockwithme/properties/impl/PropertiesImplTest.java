@@ -9,7 +9,7 @@ import com.blockwithme.properties.Filter;
 import com.blockwithme.properties.Properties;
 import com.blockwithme.properties.impl.LazyGen;
 import com.blockwithme.properties.impl.PropertiesImpl;
-import com.blockwithme.properties.impl.RootImpl;
+import com.blockwithme.properties.impl.GraphImpl;
 
 /**
  * The class <code>PropertiesImplTest</code> contains tests for the class
@@ -59,8 +59,8 @@ public class PropertiesImplTest extends TestCase {
     }
 
     public void testRoot() {
-        final RootImpl<Long> root = new RootImpl<Long>(0L);
-        assertSame(root, root.root());
+        final GraphImpl<Long> root = new GraphImpl<Long>(0L);
+        assertSame(root, root.graph());
         assertNull(root.parent());
         assertNull(root.findRaw("..", true));
         assertSame(root, root.findRaw("/", true));
@@ -69,12 +69,12 @@ public class PropertiesImplTest extends TestCase {
     }
 
     public void testDirectChild() {
-        final RootImpl<Long> root = new RootImpl<Long>(0L);
+        final GraphImpl<Long> root = new GraphImpl<Long>(0L);
         final PropertiesImpl<Long> child = new PropertiesImpl<Long>(root,
                 "child");
         doTestGlobalLocalKeyes(child, "/child", "child");
 
-        assertSame(root, child.root());
+        assertSame(root, child.graph());
         assertSame(root, child.parent());
         assertSame(root, child.findRaw("..", true));
         assertSame(root, child.findRaw("/", true));
@@ -90,14 +90,14 @@ public class PropertiesImplTest extends TestCase {
     }
 
     public void testGrandChild() {
-        final RootImpl<Long> root = new RootImpl<Long>(0L);
+        final GraphImpl<Long> root = new GraphImpl<Long>(0L);
         final PropertiesImpl<Long> child = new PropertiesImpl<Long>(root,
                 "child");
         final PropertiesImpl<Long> grandChild = new PropertiesImpl<Long>(child,
                 "grandChild");
         doTestGlobalLocalKeyes(grandChild, "/child/grandChild", "grandChild");
 
-        assertSame(root, grandChild.root());
+        assertSame(root, grandChild.graph());
         assertSame(child, grandChild.parent());
         assertSame(child, grandChild.findRaw("..", true));
         assertSame(root, grandChild.findRaw("/", true));
@@ -114,7 +114,7 @@ public class PropertiesImplTest extends TestCase {
     }
 
     public void testProperties() {
-        final RootImpl<Long> root = new RootImpl<Long>(0L);
+        final GraphImpl<Long> root = new GraphImpl<Long>(0L);
         final PropertiesImpl<Long> child = new PropertiesImpl<Long>(root,
                 "child");
         final PropertiesImpl<Long> grandChild = new PropertiesImpl<Long>(child,
@@ -150,7 +150,7 @@ public class PropertiesImplTest extends TestCase {
     }
 
     public void testGenerators() {
-        final RootImpl<Long> root = new RootImpl<Long>(0L);
+        final GraphImpl<Long> root = new GraphImpl<Long>(0L);
         final PropertiesImpl<Long> child = new PropertiesImpl<Long>(root,
                 "child");
         final PropertiesImpl<Long> grandChild = new PropertiesImpl<Long>(child,
@@ -177,7 +177,7 @@ public class PropertiesImplTest extends TestCase {
     }
 
     public void testSettersPriority() {
-        final RootImpl<Long> root = new RootImpl<Long>(0L) {
+        final GraphImpl<Long> root = new GraphImpl<Long>(0L) {
             @Override
             public boolean lowerPriority(final Properties<Long> setter1,
                     final Properties<Long> setter2) {
@@ -203,7 +203,7 @@ public class PropertiesImplTest extends TestCase {
     }
 
     public void testList() {
-        final RootImpl<Long> root = new RootImpl<Long>(0L);
+        final GraphImpl<Long> root = new GraphImpl<Long>(0L);
         final PropertiesImpl<Long> list = new PropertiesImpl<Long>(root, "list");
         final PropertiesImpl<Long> child1 = new PropertiesImpl<Long>(list,
                 list.nextIndex());

@@ -21,6 +21,6 @@ package com.blockwithme.meta.infrastructure;
  *
  * @author monster
  */
-public interface Cluster extends ExecutionEnvironment<Cluster> {
+public interface Cluster extends ExecutionEnvironment<Cluster,DataCenter> {
     // All information needed is in ExecutionEnvironment
 }

@@ -15,26 +15,26 @@
  */
 package com.blockwithme.meta.types.impl;
 
-import com.blockwithme.meta.Configurable;
-import com.blockwithme.meta.impl.BaseConfigurable;
 import com.blockwithme.meta.types.Bundle;
 import com.blockwithme.meta.types.Bundled;
+import com.blockwithme.properties.impl.ImplGraph;
+import com.blockwithme.properties.impl.PropertiesImpl;
 
 /**
  * @author monster
  *
  */
-public abstract class BundledConfigurable extends BaseConfigurable implements
-        Bundled {
+public abstract class BundledConfigurable extends PropertiesImpl<Long>
+        implements Bundled {
 
     /**
      * @param parent
      * @param localKey
      * @param when
      */
-    protected BundledConfigurable(final Configurable parent,
+    protected BundledConfigurable(final ImplGraph<Long> graph,
             final String localKey, final Long when) {
-        super(parent, localKey, when);
+        super(graph, localKey, when);
     }
 
     /** The bundle. */

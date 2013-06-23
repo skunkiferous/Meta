@@ -15,10 +15,10 @@
  */
 package com.blockwithme.meta.types.impl;
 
-import com.blockwithme.meta.Configurable;
 import com.blockwithme.meta.types.PersistenceAPI;
 import com.blockwithme.meta.types.Property;
 import com.blockwithme.meta.types.Type;
+import com.blockwithme.properties.impl.ImplGraph;
 
 /**
  * @author monster
@@ -33,9 +33,9 @@ public class PersistenceAPIImpl<SERIALIZER> extends
      * @param localKey
      * @param when
      */
-    protected PersistenceAPIImpl(final Configurable parent,
+    protected PersistenceAPIImpl(final ImplGraph<Long> graph,
             final String localKey, final Long when) {
-        super(parent, localKey, when);
+        super(graph, localKey, when);
     }
 
     /* (non-Javadoc)

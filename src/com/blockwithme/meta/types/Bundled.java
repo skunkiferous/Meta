@@ -15,14 +15,14 @@
  */
 package com.blockwithme.meta.types;
 
-import com.blockwithme.meta.Configurable;
+import com.blockwithme.properties.Properties;
 
 /**
  * Something that comes from a bundle.
  *
  * @author monster
  */
-public interface Bundled extends Configurable {
+public interface Bundled extends Properties<Long> {
     /** The bundle. */
     Bundle bundle();
 }

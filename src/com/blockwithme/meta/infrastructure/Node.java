@@ -26,20 +26,26 @@ import com.blockwithme.meta.Dynamic;
  *
  * @author monster
  */
-public interface Node extends ExecutionEnvironment<Node> {
+public interface Node<PARENT extends ExecutionEnvironment<PARENT, ?>> extends
+        ExecutionEnvironment<Node<PARENT>, PARENT> {
     /** The network names of this node, in the given network, if any. */
-    String[] networkNames(final Network network);
+    String[] networkNames(final Network<PARENT> network);
 
     /** Returns true if the node has the given name, in the given network. */
-    boolean hasNetworkName(final Network network, final String name);
+    boolean hasNetworkName(final Network<PARENT> network, final String name);
 
     /** The network addresses of this node, in the given network, if any. */
-    String[] networkAddresses(final Network network);
+    String[] networkAddresses(final Network<PARENT> network);
 
     /** Returns true if the node has the given address, in the given network. */
-    boolean hasNetworkAddress(final Network network, final String address);
+    boolean hasNetworkAddress(final Network<PARENT> network,
+            final String address);
 
     /** A node can be running any number of processes. */
     @Dynamic
     Process[] processes();
+
+    /** A node can have any number of storages. */
+    @Dynamic
+    Storage[] storages();
 }

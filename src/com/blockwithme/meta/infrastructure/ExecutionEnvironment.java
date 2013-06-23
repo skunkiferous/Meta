@@ -17,6 +17,7 @@ package com.blockwithme.meta.infrastructure;
 
 import com.blockwithme.meta.Definition;
 import com.blockwithme.meta.Dynamic;
+import com.blockwithme.properties.Properties;
 
 /**
  * An execution environment defines the context in which an application runs.
@@ -27,8 +28,8 @@ import com.blockwithme.meta.Dynamic;
  *
  * @author monster
  */
-public interface ExecutionEnvironment<EE extends ExecutionEnvironment<EE>>
-        extends Definition<EE> {
+public interface ExecutionEnvironment<EE extends ExecutionEnvironment<EE, PARENT>, PARENT extends Properties<Long>>
+        extends Definition<EE, PARENT, Long> {
     /**
      * Returns the networks (at least one) of this execution environment.
      *
@@ -36,18 +37,19 @@ public interface ExecutionEnvironment<EE extends ExecutionEnvironment<EE>>
      * environment. The network of the cluster that a node is on, should not
      * be returned by the node.
      */
-    Network[] networks();
+    Network<EE>[] networks();
 
     /** Returns the network with the given name, if any. */
-    Network findNetwork(final String name);
+    Network<EE> findNetwork(final String name);
 
     /** Returns the *current* list of nodes. */
     @Dynamic
     Node[] nodes();
 
     /** Returns the node with the give network name, in the given network, if any. */
-    Node findNodeByNetworkName(final Network network, final String name);
+    Node findNodeByNetworkName(final Network<EE> network, final String name);
 
     /** Returns the node with the give network addresses, in the given network, if any. */
-    Node findNodeByNetworkAddress(final Network network, final String address);
+    Node findNodeByNetworkAddress(final Network<EE> network,
+            final String address);
 }

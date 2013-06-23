@@ -17,8 +17,8 @@ package com.blockwithme.meta.types.impl;
 
 import com.blockwithme.meta.types.Bundle;
 import com.blockwithme.meta.types.Property;
-import com.blockwithme.meta.types.Type;
 import com.blockwithme.meta.types.TypeRange;
+import com.blockwithme.properties.impl.ImplGraph;
 
 /**
  * @author monster
@@ -31,9 +31,9 @@ public class PropertyImpl extends TypeChild<Property> implements Property {
      * @param localKey
      * @param when
      */
-    protected PropertyImpl(final Type parent, final String localKey,
+    protected PropertyImpl(final ImplGraph<Long> graph, final String localKey,
             final Long when) {
-        super(parent, localKey, when);
+        super(graph, localKey, when);
     }
 
     /* (non-Javadoc)
@@ -62,14 +62,5 @@ public class PropertyImpl extends TypeChild<Property> implements Property {
             final String[] newPersistence) {
         set(bundle, "persistence", newPersistence, time, false);
         return this;
-    }
-
-    /** Called, after the initial values have been set. */
-    @Override
-    protected void _postInit() {
-        checkProp("typeRange", TypeRange.class);
-        checkProp("persistence", String[].class);
-        super._postInit();
-        postInit(typeRange());
     }
 }

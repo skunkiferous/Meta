@@ -26,7 +26,8 @@ import com.blockwithme.meta.Dynamic;
  *
  * @author monster
  */
-public interface Process extends Definition<Process> {
+public interface Process<PARENT extends Node<?>> extends
+        Definition<Process<PARENT>, PARENT, Long> {
     /** Returns the process type. */
     ProcessType getProcessType();
 

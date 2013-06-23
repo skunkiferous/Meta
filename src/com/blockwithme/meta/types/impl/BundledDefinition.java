@@ -15,11 +15,11 @@
  */
 package com.blockwithme.meta.types.impl;
 
-import com.blockwithme.meta.Configurable;
 import com.blockwithme.meta.Definition;
 import com.blockwithme.meta.impl.BaseDefinition;
 import com.blockwithme.meta.types.Bundle;
 import com.blockwithme.meta.types.Bundled;
+import com.blockwithme.properties.impl.ImplGraph;
 
 /**
  * @author monster
@@ -33,9 +33,9 @@ public abstract class BundledDefinition<C extends Definition<C> & Bundled>
      * @param localKey
      * @param when
      */
-    protected BundledDefinition(final Configurable parent,
+    protected BundledDefinition(final ImplGraph<Long> graph,
             final String localKey, final Long when) {
-        super(parent, localKey, when);
+        super(graph, localKey, when);
     }
 
     /** The bundle. */

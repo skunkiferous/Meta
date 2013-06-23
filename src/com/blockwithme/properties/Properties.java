@@ -46,7 +46,7 @@ import java.util.List;
  * can just be implemented as a path.
  *
  * Keyes should be composed exclusively of the following characters:
- * [a-z|A-Z|0-9]
+ * [a-z|A-Z|0-9|_|$]
  *
  * The path separator is the Unix(tm) path separator: /
  * Relative path to parent is also as Unix(tm): ..
@@ -99,23 +99,11 @@ public interface Properties<TIME extends Comparable<TIME>> extends
     /** The path separator. */
     char SEPATATOR = '/';
 
-    /** The "parent path". */
-    String PARENT = "..";
-
-    /** Returns the root of the Properties. */
-    Root<TIME> root();
-
-    /** Returns the parent of the Properties (null for root). */
-    Properties<TIME> parent();
-
-    /** Goes up the hierarchy, and returns the first ancestor of the given type, or null if not found. */
-    <E extends Properties<TIME>> E ancestor(final Class<E> type);
+    /** Returns the graph of the Properties. */
+    Graph<TIME> graph();
 
     /** Returns the key of this Properties, within it's parent ("" for root) */
     String localKey();
-
-    /** Returns the global key of this Properties ("" for root) */
-    String globalKey();
 
     /** Returns the keys matching the given value, or empty list if not found. */
     List<String> query(final Filter query);

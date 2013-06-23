@@ -20,12 +20,12 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import com.blockwithme.meta.Dynamic;
 import com.blockwithme.meta.impl.BaseDefinition;
-import com.blockwithme.meta.types.Application;
 import com.blockwithme.meta.types.Bundle;
 import com.blockwithme.meta.types.BundleLifecycle;
 import com.blockwithme.meta.types.Dependency;
 import com.blockwithme.meta.types.Service;
 import com.blockwithme.meta.types.Type;
+import com.blockwithme.properties.impl.ImplGraph;
 
 /**
  * @author monster
@@ -41,9 +41,9 @@ public class BundleImpl extends BaseDefinition<Bundle> implements Bundle {
      * @param localKey
      * @param when
      */
-    protected BundleImpl(final Application parent, final String localKey,
+    protected BundleImpl(final ImplGraph<Long> graph, final String localKey,
             final String theVersion, final Long when) {
-        super(parent, localKey, when);
+        super(graph, localKey, when);
         set(this, "version", Objects.requireNonNull(theVersion, "theVersion"));
         set(this, "lifecycle", lifecycle);
     }
@@ -126,16 +126,5 @@ public class BundleImpl extends BaseDefinition<Bundle> implements Bundle {
     public BundleImpl lifecycle(final BundleLifecycle value) {
         lifecycle.set(Objects.requireNonNull(value));
         return this;
-    }
-
-    /** Called, after the initial values have been set. */
-    @Override
-    protected void _postInit() {
-        checkProp("dependencies", Dependency[].class);
-        checkProp("types", Type[].class);
-        checkProp("services", Service[].class);
-        super._postInit();
-        postInit(dependencies());
-        postInit(types());
     }
 }

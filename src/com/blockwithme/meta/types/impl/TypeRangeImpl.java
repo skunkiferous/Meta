@@ -16,10 +16,10 @@
 package com.blockwithme.meta.types.impl;
 
 import com.blockwithme.meta.types.Bundle;
-import com.blockwithme.meta.types.Property;
 import com.blockwithme.meta.types.Type;
 import com.blockwithme.meta.types.TypeFilter;
 import com.blockwithme.meta.types.TypeRange;
+import com.blockwithme.properties.impl.ImplGraph;
 
 /**
  * @author monster
@@ -32,9 +32,9 @@ public class TypeRangeImpl extends BundledConfigurable implements TypeRange {
      * @param localKey
      * @param when
      */
-    protected TypeRangeImpl(final Property parent, final String localKey,
+    protected TypeRangeImpl(final ImplGraph<Long> graph, final String localKey,
             final Long when) {
-        super(parent, localKey, when);
+        super(graph, localKey, when);
     }
 
     /* (non-Javadoc)
@@ -80,7 +80,7 @@ public class TypeRangeImpl extends BundledConfigurable implements TypeRange {
      */
     @Override
     public Type findChild(final String name) {
-        return findDefinition("children", name, Type.class);
+        return find("children" + SEPATATOR + name, Type.class);
     }
 
     /** Sets the ID */
@@ -143,16 +143,16 @@ public class TypeRangeImpl extends BundledConfigurable implements TypeRange {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("TODO");
     }
-
-    /** Called, after the initial values have been set. */
-    @Override
-    protected void _postInit() {
-        checkProp("actualInstance", Boolean.class);
-        checkProp("contains", Boolean.class);
-        checkProp("children", Type[].class);
-        checkProp("childrenFilters", Class[].class);
-        checkProp("excludes", Class[].class);
-        checkProp("excludeFilters", Class[].class);
-        super._postInit();
-    }
+//
+//    /** Called, after the initial values have been set. */
+//    @Override
+//    protected void _postInit() {
+//        checkProp("actualInstance", Boolean.class);
+//        checkProp("contains", Boolean.class);
+//        checkProp("children", Type[].class);
+//        checkProp("childrenFilters", Class[].class);
+//        checkProp("excludes", Class[].class);
+//        checkProp("excludeFilters", Class[].class);
+//        super._postInit();
+//    }
 }

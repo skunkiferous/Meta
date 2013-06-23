@@ -25,6 +25,7 @@ import com.blockwithme.meta.Definition;
  *
  * @author monster
  */
-public interface Network extends Definition<Network> {
+public interface Network<PARENT extends ExecutionEnvironment<PARENT, ?>>
+        extends Definition<Network<PARENT>, PARENT, Long> {
     // NOP
 }

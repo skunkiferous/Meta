@@ -15,6 +15,8 @@
  */
 package com.blockwithme.meta;
 
+import com.blockwithme.properties.Properties;
+
 /**
  * A definition has a name (the uniqueness scope of which depends on the
  * specific definition type), and can have any number of generic properties,
@@ -24,8 +26,8 @@ package com.blockwithme.meta;
  *
  * @author monster
  */
-public interface Definition<D extends Definition<D>> extends Configurable,
-        Comparable<D> {
+public interface Definition<D extends Definition<D, PARENT, TIME>, PARENT extends Properties<TIME>, TIME extends Comparable<TIME>>
+        extends Child<PARENT, TIME>, Comparable<D> {
     /** The name of this definition: it's just the "local key". */
     String name();
 }

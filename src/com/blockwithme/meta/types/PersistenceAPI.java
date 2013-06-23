@@ -15,15 +15,13 @@
  */
 package com.blockwithme.meta.types;
 
-import com.blockwithme.meta.Definition;
 
 /**
  * Represents some persistence API.
  *
  * @author monster
  */
-public interface PersistenceAPI<SERIALIZER> extends
-        Definition<PersistenceAPI<SERIALIZER>>, Bundled {
+public interface PersistenceAPI<SERIALIZER> extends Service {
 
     /**
      * Returns the serializer to use for the given type.

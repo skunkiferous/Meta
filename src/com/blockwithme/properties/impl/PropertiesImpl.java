@@ -26,8 +26,8 @@ import java.util.TreeMap;
 
 import com.blockwithme.properties.Filter;
 import com.blockwithme.properties.Generator;
+import com.blockwithme.properties.Graph;
 import com.blockwithme.properties.Properties;
-import com.blockwithme.properties.Root;
 
 /**
  * Base class for Properties.
@@ -46,17 +46,11 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
     /** The root path. */
     protected static final String ROOT_PATH = String.valueOf(SEPATATOR);
 
-    /** The parent path. */
-    protected static final String PARENT_PATH = PARENT + SEPATATOR;
-
     /** The local key. */
     private final String localKey;
 
-    /** The global key (only cached for efficiency). */
-    private final String globalKey;
-
-    /** The parent. */
-    private final Properties<TIME> parent;
+    /** The graph. */
+    private final ImplGraph<TIME> graph;
 
     /** All the own properties. */
     private final TreeMap<String, SetterValue<TIME>> properties = new TreeMap<>(
@@ -75,7 +69,8 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
             final boolean lower = (c >= 'a') && (c <= 'z');
             final boolean upper = (c >= 'A') && (c <= 'Z');
             final boolean digit = (c >= '0') && (c <= '9');
-            if (!(lower || upper || digit)) {
+            final boolean other = ((c == '_') || (c == '$'));
+            if (!(lower || upper || digit) || other) {
                 throw new IllegalArgumentException(designation + "(" + fullPath
                         + ") contains illegal character: '" + c + "'");
             }
@@ -97,9 +92,7 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
                 throw new IllegalArgumentException("component of "
                         + designation + " " + path + " is empty");
             }
-            if (!PARENT.equals(localKey)) {
-                checkLocalKey(localKey, designation, path);
-            }
+            checkLocalKey(localKey, designation, path);
             rest = rest.substring(index + 1);
             index = rest.indexOf(SEPATATOR);
         }
@@ -107,9 +100,7 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
             throw new IllegalArgumentException(designation
                     + " cannot end with " + ROOT_PATH);
         }
-        if (!PARENT.equals(rest)) {
-            checkLocalKey(rest, designation, path);
-        }
+        checkLocalKey(rest, designation, path);
     }
 
     /**
@@ -120,7 +111,7 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
     public static boolean isLocalKey(final String path,
             final String designation, final String fullPath) {
         final boolean local = (Objects.requireNonNull(path, designation)
-                .indexOf(SEPATATOR) < 0) && !PARENT.equals(path);
+                .indexOf(SEPATATOR) < 0);
         if (local) {
             checkLocalKey(path, designation, fullPath);
         }
@@ -187,40 +178,23 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
     }
 
     /** Constructs a PropertiesImpl. */
-    public PropertiesImpl(final Properties<TIME> parent, final String localKey) {
-        this(parent, localKey, null);
+    public PropertiesImpl(final ImplGraph<TIME> graph, final String localKey) {
+        this(graph, localKey, null);
     }
 
     /** Constructs a PropertiesImpl. */
-    public PropertiesImpl(final Properties<TIME> parent, final String localKey,
+    public PropertiesImpl(final ImplGraph<TIME> graph, final String localKey,
             final TIME when) {
-        this.parent = parent;
-        if (parent == null) {
-            // Must be root!
-            if ((localKey != null) && !localKey.isEmpty()) {
-                throw new IllegalArgumentException(
-                        "Local key of root (parent == null) must be empty, but was: '"
-                                + localKey + "'");
-            }
-            if (!(this instanceof RootImpl<?>)) {
-                throw new IllegalArgumentException(
-                        "root (parent == null) must be an Root<?>");
-            }
-            globalKey = this.localKey = "";
-        } else {
-            checkLocalKey(localKey, "localKey", localKey);
-            this.localKey = localKey;
-            globalKey = parent.globalKey() + SEPATATOR + this.localKey;
-            parent.set(this, this.localKey, this, when, true);
-        }
+        this.graph = Objects.requireNonNull(graph);
+        checkLocalKey(localKey, "localKey", localKey);
+        this.localKey = localKey;
     }
 
     /** toString */
     @Override
     public String toString() {
         final StringBuilder buf = new StringBuilder(256);
-        buf.append(getClass().getSimpleName()).append("(globalKey=")
-                .append(globalKey);
+        buf.append(getClass().getSimpleName());
         for (final String prop : this) {
             buf.append(", ").append(prop).append("=");
             final Object value = findLocalRaw(prop);
@@ -243,31 +217,11 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
     }
 
     /* (non-Javadoc)
-     * @see com.blockwithme.properties.Properties#globalKey()
-     */
-    @Override
-    public final String globalKey() {
-        return globalKey;
-    }
-
-    /* (non-Javadoc)
-     * @see com.blockwithme.properties.Properties#parent()
-     */
-    @Override
-    public Properties<TIME> parent() {
-        return parent;
-    }
-
-    /* (non-Javadoc)
      * @see com.blockwithme.properties.Properties#root()
      */
     @Override
-    public Root<TIME> root() {
-        Properties<TIME> next = this;
-        while (!(next instanceof Root<?>)) {
-            next = next.parent();
-        }
-        return (Root<TIME>) next;
+    public Graph<TIME> graph() {
+        return graph;
     }
 
     /* (non-Javadoc)
@@ -346,29 +300,13 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
         String relPath = path;
         if (path.charAt(0) == SEPATATOR) {
             // Absolute path ...
-            prop = (PropertiesImpl<TIME>) root();
+            prop = (PropertiesImpl<TIME>) graph();
             relPath = path.substring(1);
             if (relPath.isEmpty()) {
                 return prop;
             }
         }
         while (true) {
-            // Need to go back upward?
-            while (relPath.startsWith(PARENT_PATH)) {
-                relPath = relPath.substring(PARENT_PATH.length());
-                prop = (PropertiesImpl<TIME>) prop.parent();
-                if (relPath.isEmpty()) {
-                    // OK, we wanted a "parent" ...
-                    return prop;
-                }
-                if (prop == null) {
-                    throw new IllegalArgumentException("invalid path: " + path);
-                }
-            }
-            if (PARENT.equals(relPath)) {
-                // OK, we wanted a "parent" ...
-                return prop.parent;
-            }
             // Property from ancestor
             if (isLocalKey(relPath, "path component", path)) {
                 return resolve(prop.findLocalRaw(relPath), prop, relPath, type,
@@ -408,55 +346,16 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
      * Only the parent of Properties can directly reference it, so we have to
      * convert reference to Properties into links (or generated Properties).
      */
-    private Object unresolve(final Properties<?> setter, final Object value,
+    protected Object unresolve(final Properties<?> setter, final Object value,
             final PropertiesImpl<?> parent, final String localKey,
             final TIME when) {
         if (value instanceof Properties<?>) {
             // Direct reference: either direct child, or must become link
             final Properties<?> prop = (Properties<?>) value;
-            if (prop == parent) {
-                throw new IllegalArgumentException(
-                        "Currently no direct self-reference allowed");
-            }
-            if (parent.root() != prop.root()) {
+            if (parent.graph() != prop.graph()) {
                 throw new IllegalArgumentException("The "
                         + value.getClass().getName()
                         + " does not have a common ancestor!");
-            }
-            if (prop.parent() != parent) {
-                // must become link
-                final String globalKey = parent.globalKey();
-                final String propKey = prop.globalKey();
-                final String prefix = getCommonPrefix(globalKey, propKey);
-                final int len = prefix.length();
-                if (prefix.equals(globalKey)) {
-                    // a child (+1 because of the separator)
-                    return new Link(propKey.substring(len + 1));
-                }
-                if (propKey.equals(prefix)) {
-                    // a parent (+1 because of the separator)
-                    final String rest = globalKey.substring(len + 1);
-                    String link = PARENT;
-                    int next = rest.indexOf(SEPATATOR, 0);
-                    while (next > 0) {
-                        link = PARENT_PATH + link;
-                        next = rest.indexOf(SEPATATOR, next + 1);
-                    }
-                    return Link.cache(link);
-                }
-                // neither parent nor child
-                // First, go back to common parent.
-                final String myRest = globalKey.substring(len + 1);
-                String link = PARENT;
-                int next = myRest.indexOf(SEPATATOR, 0);
-                while (next > 0) {
-                    link = PARENT_PATH + link;
-                    next = myRest.indexOf(SEPATATOR, next + 1);
-                }
-                // Now go back down (starts with separator)
-                final String otherRest = propKey.substring(len);
-                link += otherRest;
-                return Link.cache(link);
             }
         }
         if ((value instanceof Iterable<?>) && !(value instanceof Properties<?>)) {
@@ -668,19 +567,6 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
         return (E[]) Array.newInstance(expectedType, 0);
     }
 
-    /* (non-Javadoc)
-     * @see com.blockwithme.properties.Properties#ancestor(java.lang.Class)
-     */
-    @SuppressWarnings("unchecked")
-    @Override
-    public final <E extends Properties<TIME>> E ancestor(final Class<E> type) {
-        Properties<TIME> p = parent;
-        while ((p != null) && !type.isInstance(p)) {
-            p = p.parent();
-        }
-        return (E) p;
-    }
-
     /**
      * Returns the property value, if any. Null if absent.
      */
@@ -713,7 +599,7 @@ public class PropertiesImpl<TIME extends Comparable<TIME>> implements
             throw new UnsupportedOperationException(
                     "Cannot remove a built-in property: " + localKey);
         }
-        final RootImpl<TIME> root = (RootImpl<TIME>) root();
+        final ImplGraph<TIME> root = (ImplGraph<TIME>) graph();
         if (when != null) {
             // Future property (when past/preset, then Root will re-set using null)
             root.onFutureChange(setter, this, localKey, value, forceWrite, when);

@@ -13,30 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta;
+package com.blockwithme.properties;
 
-import com.blockwithme.meta.infrastructure.HostingProvider;
-import com.blockwithme.meta.infrastructure.Process;
 import com.blockwithme.meta.meta.Concept;
-import com.blockwithme.properties.Root;
 
 /**
- * Life, the Universe and Everything!
+ * Represents a graph of Properties objects.
  *
- * Everything is the root of everything in "meta".
- * It gives access to both static and dynamic information.
- *
- * We assume HostingProviders are statically configured...
+ * It also manages the notion of "current time".
  *
  * @author monster
  */
-public interface Everything extends Configurable, Root<Long> {
-    /** The process in which the code is currently executing ...*/
-    Process currentProcess();
+public interface Graph<TIME extends Comparable<TIME>> {
 
-    /** The known HostingProviders; the root of the infrastructure. */
-    HostingProvider[] providers();
+    /** Returns the root of the Properties. */
+    Properties<TIME> root();
+
+    /** Returns the current time, delegating to the root. */
+    TIME getTime();
+
+    /** Sets the current time, delegating to the root. */
+    void setTime(final TIME now);
 
     /** Returns all the concepts part of the meta API. */
     Concept[] concepts();
+
 }

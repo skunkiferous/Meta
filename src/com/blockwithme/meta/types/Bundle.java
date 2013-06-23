@@ -25,7 +25,7 @@ import com.blockwithme.meta.Dynamic;
  *
  * @author monster
  */
-public interface Bundle extends Definition<Bundle> {
+public interface Bundle extends Definition<Bundle, Application, Long> {
     /** Returns the bundle version. */
     String version();
 

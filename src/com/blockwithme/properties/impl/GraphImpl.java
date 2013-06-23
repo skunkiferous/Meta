@@ -20,8 +20,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.TreeMap;
 
+import com.blockwithme.meta.meta.Concept;
+import com.blockwithme.properties.Graph;
 import com.blockwithme.properties.Properties;
-import com.blockwithme.properties.Root;
 
 /**
  * Default Root implementation.
@@ -30,25 +31,30 @@ import com.blockwithme.properties.Root;
  *
  * @author monster
  */
-public class RootImpl<TIME extends Comparable<TIME>> extends
-        PropertiesImpl<TIME> implements Root<TIME> {
-
-    /** The current time. */
-    private TIME now;
+public class GraphImpl<TIME extends Comparable<TIME>> implements Graph<TIME>,
+        ImplGraph<TIME> {
 
     /** Buffered future changes. */
     private final TreeMap<TIME, List<Change<TIME>>> changes = new TreeMap<>();
 
+    /** The graph root. */
+    private Properties<TIME> root;
+
+    /** The current time. */
+    private TIME now;
+
     /**
      * @param now
      */
-    public RootImpl(final TIME now) {
-        super(null, "", now);
+    public GraphImpl(final TIME now) {
         this.now = Objects.requireNonNull(now, "now");
     }
 
     /* (non-Javadoc)
      * @see com.blockwithme.properties.Root#getTime()
+     */
+    /* (non-Javadoc)
+     * @see com.blockwithme.properties.impl.Graph#getTime()
      */
     @Override
     public final TIME getTime() {
@@ -57,6 +63,9 @@ public class RootImpl<TIME extends Comparable<TIME>> extends
 
     /* (non-Javadoc)
      * @see com.blockwithme.properties.Root#setTime(java.lang.Object)
+     */
+    /* (non-Javadoc)
+     * @see com.blockwithme.properties.impl.Graph#setTime(TIME)
      */
     @Override
     public final void setTime(final TIME newTime) {
@@ -89,7 +98,10 @@ public class RootImpl<TIME extends Comparable<TIME>> extends
         changeList.add(change);
     }
 
-    /** Receives changes that will only be applied in the future. */
+    /* (non-Javadoc)
+     * @see com.blockwithme.properties.impl.Graph#onFutureChange(com.blockwithme.properties.Properties, com.blockwithme.properties.Properties, java.lang.String, java.lang.Object, boolean, TIME)
+     */
+    @Override
     public final void onFutureChange(final Properties<TIME> setter,
             final Properties<TIME> properties, final String localKey,
             final Object newValue, final boolean forceWrite, final TIME when) {
@@ -109,7 +121,10 @@ public class RootImpl<TIME extends Comparable<TIME>> extends
         }
     }
 
-    /** Receives changes that will only be applied in the future. */
+    /* (non-Javadoc)
+     * @see com.blockwithme.properties.impl.Graph#onFutureChange(com.blockwithme.properties.impl.Change)
+     */
+    @Override
     public final void onFutureChange(final Change<TIME> change) {
         if (now.compareTo(change.when) >= 0) {
             // OK time was past/present, so perform now
@@ -120,20 +135,47 @@ public class RootImpl<TIME extends Comparable<TIME>> extends
         }
     }
 
-    /** Informs the root of changes. */
+    /* (non-Javadoc)
+     * @see com.blockwithme.properties.impl.Graph#onChange(com.blockwithme.properties.Properties, com.blockwithme.properties.Properties, java.lang.String, java.lang.Object, java.lang.Object)
+     */
+    @Override
     public void onChange(final Properties<TIME> setter,
             final Properties<TIME> properties, final String localKey,
             final Object oldValue, final Object newValue) {
         // NOP
     }
 
-    /**
-     * Returns true, if the first instance has lower priority as the second
-     * instance. The default implementation always returns false, which results
-     * in the last-writer-wins semantic.
+    /* (non-Javadoc)
+     * @see com.blockwithme.properties.impl.Graph#lowerPriority(com.blockwithme.properties.Properties, com.blockwithme.properties.Properties)
      */
+    @Override
     public boolean lowerPriority(final Properties<TIME> setter1,
             final Properties<TIME> setter2) {
         return false;
+    }
+
+    /* (non-Javadoc)
+     * @see com.blockwithme.properties.Graph#root()
+     */
+    @Override
+    public Properties<TIME> root() {
+        return root;
+    }
+
+    /* (non-Javadoc)
+     * @see com.blockwithme.properties.impl.ImplGraph#root(com.blockwithme.properties.Properties)
+     */
+    @Override
+    public ImplGraph<TIME> root(final Properties<TIME> theRoot) {
+        root = theRoot;
+        return this;
+    }
+
+    /* (non-Javadoc)
+     * @see com.blockwithme.properties.Graph#concepts()
+     */
+    @Override
+    public Concept[] concepts() {
+        return root.listValues(Concept.class, false);
     }
 }

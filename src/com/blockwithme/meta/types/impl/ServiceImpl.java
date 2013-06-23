@@ -15,10 +15,10 @@
  */
 package com.blockwithme.meta.types.impl;
 
-import com.blockwithme.meta.types.Bundle;
 import com.blockwithme.meta.types.Service;
 import com.blockwithme.meta.types.ServiceType;
 import com.blockwithme.meta.types.Type;
+import com.blockwithme.properties.impl.ImplGraph;
 
 /**
  * @author monster
@@ -31,9 +31,9 @@ public class ServiceImpl extends BundledDefinition<Service> implements Service {
      * @param localKey
      * @param when
      */
-    protected ServiceImpl(final Bundle parent, final String localKey,
+    protected ServiceImpl(final ImplGraph<Long> graph, final String localKey,
             final Long when) {
-        super(parent, localKey, when);
+        super(graph, localKey, when);
     }
 
     /* (non-Javadoc)
@@ -62,14 +62,5 @@ public class ServiceImpl extends BundledDefinition<Service> implements Service {
     public ServiceImpl api(final Type value) {
         set(bundle(), "api", value);
         return this;
-    }
-
-    /** Called, after the initial values have been set. */
-    @Override
-    protected void _postInit() {
-        checkProp("lifecycle", ServiceType.class);
-        checkProp("api", Type.class);
-        super._postInit();
-        postInit(api());
     }
 }

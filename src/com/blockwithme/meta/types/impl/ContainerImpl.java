@@ -19,6 +19,7 @@ import com.blockwithme.meta.types.Bundle;
 import com.blockwithme.meta.types.Container;
 import com.blockwithme.meta.types.Property;
 import com.blockwithme.meta.types.Type;
+import com.blockwithme.properties.impl.ImplGraph;
 
 /**
  * @author monster
@@ -31,9 +32,9 @@ public class ContainerImpl extends BundledConfigurable implements Container {
      * @param localKey
      * @param when
      */
-    protected ContainerImpl(final Type parent, final String localKey,
+    protected ContainerImpl(final ImplGraph<Long> graph, final String localKey,
             final Long when) {
-        super(parent, localKey, when);
+        super(graph, localKey, when);
     }
 
     /* (non-Javadoc)
@@ -62,14 +63,5 @@ public class ContainerImpl extends BundledConfigurable implements Container {
     public ContainerImpl property(final Bundle bundle, final Type theProperty) {
         set(bundle, "property", theProperty);
         return this;
-    }
-
-    /** Called, after the initial values have been set. */
-    @Override
-    protected void _postInit() {
-        checkProp("container", Type.class);
-        checkProp("property", Property.class);
-        super._postInit();
-        postInit(container(), property());
     }
 }

@@ -26,6 +26,7 @@ import com.blockwithme.meta.types.Container;
 import com.blockwithme.meta.types.Kind;
 import com.blockwithme.meta.types.Property;
 import com.blockwithme.meta.types.Type;
+import com.blockwithme.properties.impl.ImplGraph;
 
 /**
  * @author monster
@@ -37,9 +38,9 @@ public class TypeImpl extends BundledDefinition<Type> implements Type {
      * @param localKey
      * @param when
      */
-    protected TypeImpl(final Bundle parent, final String localKey,
+    protected TypeImpl(final ImplGraph<Long> graph, final String localKey,
             final Long when) {
-        super(parent, localKey, when);
+        super(graph, localKey, when);
     }
 
     /* (non-Javadoc)
@@ -414,34 +415,34 @@ public class TypeImpl extends BundledDefinition<Type> implements Type {
         set(bundle, "persistence", value, time, false);
         return this;
     }
-
-    /** Called, after the initial values have been set. */
-    @Override
-    protected void _postInit() {
-        checkProp("type", Class.class);
-        checkProp("isData", Boolean.class);
-        checkProp("isArray", Boolean.class);
-        checkProp("isRoot", Boolean.class);
-        checkProp("isTrait", Boolean.class);
-        checkProp("isImplementation", Boolean.class);
-        checkProp("isFinal", Boolean.class);
-        checkProp("kind", Kind.class);
-        checkProp("access", Access.class);
-        checkProp("biggerThanParents", Boolean.class);
-        checkProp("allProperties", Property[].class);
-        checkProp("directProperties", Property[].class);
-        checkProp("parents", Type[].class);
-        checkProp("directParents", Type[].class);
-        checkProp("children", Type[].class);
-        checkProp("directChildren", Type[].class);
-        checkProp("containers", Container[].class);
-        checkProp("domain", Type.class);
-        checkProp("persistence", String[].class);
-        super._postInit();
-        postInit(allProperties());
-        postInit(parents());
-        postInit(children());
-        postInit(containers());
-        postInit(domain());
-    }
+//
+//    /** Called, after the initial values have been set. */
+//    @Override
+//    protected void _postInit() {
+//        checkProp("type", Class.class);
+//        checkProp("isData", Boolean.class);
+//        checkProp("isArray", Boolean.class);
+//        checkProp("isRoot", Boolean.class);
+//        checkProp("isTrait", Boolean.class);
+//        checkProp("isImplementation", Boolean.class);
+//        checkProp("isFinal", Boolean.class);
+//        checkProp("kind", Kind.class);
+//        checkProp("access", Access.class);
+//        checkProp("biggerThanParents", Boolean.class);
+//        checkProp("allProperties", Property[].class);
+//        checkProp("directProperties", Property[].class);
+//        checkProp("parents", Type[].class);
+//        checkProp("directParents", Type[].class);
+//        checkProp("children", Type[].class);
+//        checkProp("directChildren", Type[].class);
+//        checkProp("containers", Container[].class);
+//        checkProp("domain", Type.class);
+//        checkProp("persistence", String[].class);
+//        super._postInit();
+//        postInit(allProperties());
+//        postInit(parents());
+//        postInit(children());
+//        postInit(containers());
+//        postInit(domain());
+//    }
 }

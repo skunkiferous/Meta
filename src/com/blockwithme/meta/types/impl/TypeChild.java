@@ -15,9 +15,9 @@
  */
 package com.blockwithme.meta.types.impl;
 
-import com.blockwithme.meta.Configurable;
 import com.blockwithme.meta.Definition;
 import com.blockwithme.meta.types.Bundled;
+import com.blockwithme.properties.impl.ImplGraph;
 
 /**
  * @author monster
@@ -31,9 +31,9 @@ public abstract class TypeChild<C extends Definition<C> & Bundled> extends
      * @param localKey
      * @param when
      */
-    protected TypeChild(final Configurable parent, final String localKey,
+    protected TypeChild(final ImplGraph<Long> graph, final String localKey,
             final Long when) {
-        super(parent, localKey, when);
+        super(graph, localKey, when);
     }
 
     public TypeImpl type() {
@@ -45,13 +45,5 @@ public abstract class TypeChild<C extends Definition<C> & Bundled> extends
     public C type(final TypeImpl value) {
         set(bundle(), "type", value);
         return (C) this;
-    }
-
-    /** Called, after the initial values have been set. */
-    @Override
-    protected void _postInit() {
-        checkProp("type", TypeImpl.class);
-        super._postInit();
-        postInit(type());
     }
 }

@@ -15,20 +15,26 @@
  */
 package com.blockwithme.meta.meta;
 
-import com.blockwithme.meta.Definition;
+import com.blockwithme.properties.Properties;
 
 /**
  * Represents a relationship between concepts.
  *
  * @author monster
  */
-public interface Relationship extends Definition<Relationship> {
-    /** All relationships have a reciprocal, which could be itself. */
+public interface Relationship extends Properties<Long> {
+    /** The relationship name. */
+    String name();
+
+    /** Relationships can have a reciprocal, which could be itself. */
     Relationship reciprocal();
 
-    /** The relationship participants. */
-    Participant[] participants();
+    /** The concept that is the target of the relationship. */
+    Concept target();
 
-    /** Returns the Participant with the given name, if any. */
-    Participant findParticipant(final String name);
+    /** The minimum arity. */
+    int minArity();
+
+    /** The maximum arity. */
+    int maxArity();
 }

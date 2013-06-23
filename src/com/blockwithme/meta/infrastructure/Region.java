@@ -25,7 +25,7 @@ import com.blockwithme.meta.Definition;
  *
  * @author monster
  */
-public interface Region extends Definition<Region> {
+public interface Region extends Definition<Region, HostingProvider, Long> {
     /** Returns the availability zones in this region. */
     AvailabilityZone[] availabilityZones();
 

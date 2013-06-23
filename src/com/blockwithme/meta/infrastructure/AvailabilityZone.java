@@ -25,7 +25,8 @@ import com.blockwithme.meta.Definition;
  *
  * @author monster
  */
-public interface AvailabilityZone extends Definition<AvailabilityZone> {
+public interface AvailabilityZone extends
+        Definition<AvailabilityZone, Region, Long> {
     /** Returns the data-centers in this availability zone. */
     DataCenter[] dataCenters();
 

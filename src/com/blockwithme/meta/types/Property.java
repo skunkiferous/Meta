@@ -22,7 +22,7 @@ import com.blockwithme.meta.Definition;
  *
  * @author monster
  */
-public interface Property extends Definition<Property>, Bundled {
+public interface Property extends Definition<Property, Type, Long>, Bundled {
 
     /** The property type range. */
     TypeRange typeRange();

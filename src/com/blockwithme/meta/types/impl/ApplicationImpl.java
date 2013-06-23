@@ -24,13 +24,15 @@ import com.blockwithme.meta.infrastructure.Connector;
 import com.blockwithme.meta.types.ActorRef;
 import com.blockwithme.meta.types.Application;
 import com.blockwithme.meta.types.Bundle;
-import com.blockwithme.properties.impl.RootImpl;
+import com.blockwithme.properties.impl.ImplGraph;
+import com.blockwithme.properties.impl.PropertiesImpl;
 
 /**
  * @author monster
  *
  */
-public class ApplicationImpl extends RootImpl<Long> implements Application {
+public class ApplicationImpl extends PropertiesImpl<Long> implements
+        Application {
 
     private final boolean javaApp;
 
@@ -60,19 +62,11 @@ public class ApplicationImpl extends RootImpl<Long> implements Application {
      * @param localKey
      * @param when
      */
-    protected ApplicationImpl(final boolean javaApp, final boolean distributed,
-            final Long when) {
-        super(when);
+    protected ApplicationImpl(final ImplGraph<Long> graph,
+            final boolean javaApp, final boolean distributed, final Long when) {
+        super(graph, null);
         this.javaApp = javaApp;
         this.distributed = distributed;
-    }
-
-    /* (non-Javadoc)
-     * @see com.blockwithme.meta.Configurable#app()
-     */
-    @Override
-    public Application app() {
-        return this;
     }
 
     /* (non-Javadoc)

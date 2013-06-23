@@ -15,7 +15,7 @@
  */
 package com.blockwithme.meta.meta;
 
-import com.blockwithme.meta.Definition;
+import com.blockwithme.properties.Properties;
 
 /**
  * The meta-meta-level!
@@ -30,7 +30,10 @@ import com.blockwithme.meta.Definition;
  *
  * @author monster
  */
-public interface Concept extends Definition<Concept> {
+public interface Concept extends Properties<Long> {
+    /** The concept name. */
+    String name();
+
     /**
      * A concept has some relationship to other concepts (and possibly to
      * itself).

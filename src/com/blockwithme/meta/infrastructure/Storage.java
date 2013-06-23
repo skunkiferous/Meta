@@ -22,6 +22,7 @@ import com.blockwithme.meta.Definition;
  *
  * @author monster
  */
-public interface Storage extends Definition<Storage> {
+public interface Storage<PARENT extends Node<?>> extends
+        Definition<Storage<PARENT>, PARENT, Long> {
     // TODO
 }

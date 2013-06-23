@@ -15,25 +15,25 @@
  */
 package com.blockwithme.meta.types.impl;
 
-import com.blockwithme.meta.impl.BaseConfigurable;
 import com.blockwithme.meta.types.ActorRef;
-import com.blockwithme.meta.types.Application;
 import com.blockwithme.meta.types.Bundle;
+import com.blockwithme.properties.impl.ImplGraph;
+import com.blockwithme.properties.impl.PropertiesImpl;
 
 /**
  * @author monster
  *
  */
-public class ActorRefImpl extends BaseConfigurable implements ActorRef {
+public class ActorRefImpl extends PropertiesImpl<Long> implements ActorRef {
 
     /**
      * @param parent
      * @param localKey
      * @param when
      */
-    protected ActorRefImpl(final Application parent, final String localKey,
+    protected ActorRefImpl(final ImplGraph<Long> graph, final String localKey,
             final Long when) {
-        super(parent, localKey, when);
+        super(graph, localKey, when);
     }
 
     /* (non-Javadoc)
@@ -48,12 +48,5 @@ public class ActorRefImpl extends BaseConfigurable implements ActorRef {
     public ActorRefImpl id(final Bundle bundle, final long theID) {
         set(bundle, "id", theID);
         return this;
-    }
-
-    /** Called, after the initial values have been set. */
-    @Override
-    protected void _postInit() {
-        checkProp("id", Long.class);
-        super._postInit();
     }
 }

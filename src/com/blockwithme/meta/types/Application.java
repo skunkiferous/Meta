@@ -17,11 +17,10 @@ package com.blockwithme.meta.types;
 
 import java.util.Comparator;
 
-import com.blockwithme.meta.Definition;
 import com.blockwithme.meta.Dynamic;
 import com.blockwithme.meta.infrastructure.Connection;
 import com.blockwithme.meta.infrastructure.Connector;
-import com.blockwithme.properties.Root;
+import com.blockwithme.properties.Properties;
 
 /**
  * An application is a specific *application configuration* of an application,
@@ -35,8 +34,10 @@ import com.blockwithme.properties.Root;
  *
  * @author monster
  */
-public interface Application extends Definition<Application>, Bundled,
-        Root<Long> {
+public interface Application extends Properties<Long>, Bundled {
+    /** The application name. */
+    String name();
+
     /** The "root" application bundle, which can use any number of other bundles. */
     @Override
     Bundle bundle();

@@ -13,21 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.properties;
+package com.blockwithme.meta;
+
+import com.blockwithme.properties.Properties;
 
 /**
- * Root of a Properties tree.
- *
- * It manages a the tree-global notion of current time.
+ * Represents a Properties which is the child of some other Properties.
  *
  * @author monster
  */
-public interface Root<TIME extends Comparable<TIME>> extends Properties<TIME> {
-
-    /** Returns the current time, delegating to the root. */
-    TIME getTime();
-
-    /** Sets the current time, delegating to the root. */
-    void setTime(final TIME now);
-
+public interface Child<PARENT extends Properties<TIME>, TIME extends Comparable<TIME>>
+        extends Properties<TIME> {
+    /** Returns the parent. */
+    PARENT parent();
 }

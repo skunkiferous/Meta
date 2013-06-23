@@ -13,18 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta;
+package com.blockwithme.meta.infrastructure;
 
-import com.blockwithme.meta.types.Application;
 import com.blockwithme.properties.Properties;
 
 /**
- * A Configurable can have any number of generic properties, in addition to
- * the properties provided over it's interface.
+ * Life, the Universe and Everything!
+ *
+ * Everything is the root of everything in "meta".
+ * It gives access to both static and dynamic information.
+ *
+ * We assume HostingProviders are statically configured...
  *
  * @author monster
  */
-public interface Configurable extends Properties<Long> {
-    /** Returns the application owning this Configurable. */
-    Application app();
+public interface Everything extends Properties<Long> {
+    /** The process in which the code is currently executing ...*/
+    Process currentProcess();
+
+    /** The known HostingProviders; the root of the infrastructure. */
+    HostingProvider[] providers();
 }

@@ -15,39 +15,38 @@
  */
 package com.blockwithme.meta.impl;
 
-import com.blockwithme.meta.Configurable;
 import com.blockwithme.meta.Definition;
+import com.blockwithme.properties.Properties;
+import com.blockwithme.properties.impl.ImplGraph;
+import com.blockwithme.properties.impl.PropertiesImpl;
 
 /**
  * Base class for all definitions.
  *
  * @author monster
  */
-public abstract class BaseDefinition<D extends Definition<D>> extends
-        BaseConfigurable implements Definition<D> {
+public abstract class BaseDefinition<D extends Definition<D, PARENT, TIME>, PARENT extends Properties<TIME>, TIME extends Comparable<TIME>>
+        extends PropertiesImpl<TIME> implements Definition<D, PARENT, TIME> {
+
+    /** Finds and return the definition with the given name, if any, for a property. */
+    protected <E extends Definition<E, ?, TIME>> E findDefinition(
+            final String property, final String name, final Class<E> type) {
+        return find(property + SEPATATOR + name, type);
+    }
+
+    /** Checks that the property is set. */
+    protected void checkProp(final String name, final Class<?> type) {
+        get(name, type);
+    }
 
     /**
      * @param parent
      * @param localKey
      * @param when
      */
-    protected BaseDefinition(final Configurable parent, final String localKey,
-            final Long when) {
-        super(parent, localKey, when);
-    }
-
-    @Override
-    public final boolean equals(final Object obj) {
-        if ((obj != null) && (getClass() == obj.getClass())) {
-            return name().equals(((BaseDefinition<?>) obj).name());
-        }
-        return false;
-    }
-
-    /** */
-    @Override
-    public final int hashCode() {
-        return name().hashCode();
+    protected BaseDefinition(final ImplGraph<TIME> graph,
+            final String localKey, final TIME when) {
+        super(graph, localKey, when);
     }
 
     /* (non-Javadoc)
