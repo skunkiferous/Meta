@@ -13,28 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta.meta;
+package com.blockwithme.meta.types;
 
-import com.blockwithme.properties.Properties;
+import com.blockwithme.meta.TypedVertex;
+import com.tinkerpop.frames.Property;
+import com.tinkerpop.frames.typed.TypeValue;
 
 /**
- * Represents a relationship between concepts.
+ * Something that has a name.
  *
  * @author monster
  */
-public interface Relationship extends Properties<Long> {
-    /** The relationship name. */
-    String name();
+@TypeValue("Named")
+public interface Named extends TypedVertex {
+    /** The name. */
+    @Property("name")
+    String getName();
 
-    /** Relationships can have a reciprocal, which could be itself. */
-    Relationship reciprocal();
-
-    /** The concept that is the target of the relationship. */
-    Concept target();
-
-    /** The minimum arity. */
-    int minArity();
-
-    /** The maximum arity. */
-    int maxArity();
+    /** The name. */
+    @Property("name")
+    void setName(final String name);
 }

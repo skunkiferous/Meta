@@ -15,8 +15,9 @@
  */
 package com.blockwithme.meta.infrastructure;
 
-import com.blockwithme.meta.Definition;
-import com.blockwithme.meta.Dynamic;
+import com.blockwithme.meta.types.Named;
+import com.tinkerpop.frames.Property;
+import com.tinkerpop.frames.typed.TypeValue;
 
 /**
  * A process. It could be a Java Virtual Machine.
@@ -26,12 +27,25 @@ import com.blockwithme.meta.Dynamic;
  *
  * @author monster
  */
-public interface Process<PARENT extends Node<?>> extends
-        Definition<Process<PARENT>, PARENT, Long> {
+@TypeValue("Process")
+public interface Process extends Named {
     /** Returns the process type. */
+    @Property("processType")
     ProcessType getProcessType();
 
+    /** Sets the process type. */
+    @Property("processType")
+    void setProcessType(final ProcessType processType);
+
     /** The applications *currently* running in this process. */
-    @Dynamic
-    String[] applications();
+    @Property("hosts")
+    String[] getApplications();
+
+    /** Adds an application *currently* running in this process. */
+    @Property("hosts")
+    void addApplication(final String app);
+
+    /** Removes an application *currently* running in this process. */
+    @Property("hosts")
+    void removeApplication(final String app);
 }

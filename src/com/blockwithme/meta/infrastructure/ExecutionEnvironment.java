@@ -15,9 +15,11 @@
  */
 package com.blockwithme.meta.infrastructure;
 
-import com.blockwithme.meta.Definition;
-import com.blockwithme.meta.Dynamic;
-import com.blockwithme.properties.Properties;
+import com.blockwithme.meta.types.Named;
+import com.tinkerpop.frames.Adjacency;
+import com.tinkerpop.frames.annotations.gremlin.GremlinGroovy;
+import com.tinkerpop.frames.annotations.gremlin.GremlinParam;
+import com.tinkerpop.frames.typed.TypeValue;
 
 /**
  * An execution environment defines the context in which an application runs.
@@ -28,8 +30,8 @@ import com.blockwithme.properties.Properties;
  *
  * @author monster
  */
-public interface ExecutionEnvironment<EE extends ExecutionEnvironment<EE, PARENT>, PARENT extends Properties<Long>>
-        extends Definition<EE, PARENT, Long> {
+@TypeValue("ExecutionEnvironment")
+public interface ExecutionEnvironment extends Named {
     /**
      * Returns the networks (at least one) of this execution environment.
      *
@@ -37,19 +39,38 @@ public interface ExecutionEnvironment<EE extends ExecutionEnvironment<EE, PARENT
      * environment. The network of the cluster that a node is on, should not
      * be returned by the node.
      */
-    Network<EE>[] networks();
+    @Adjacency(label = "linkedTo")
+    Network[] getNetworks();
+
+    /** Adds a network. */
+    @Adjacency(label = "listensTo")
+    void addNetwork(final Network network);
+
+    /** Removes a network. */
+    @Adjacency(label = "listensTo")
+    void removeNetwork(final Network network);
 
     /** Returns the network with the given name, if any. */
-    Network<EE> findNetwork(final String name);
+    @GremlinGroovy("it.out('listensTo').has('name',name)")
+    Network findNetwork(@GremlinParam("name") final String name);
 
     /** Returns the *current* list of nodes. */
-    @Dynamic
-    Node[] nodes();
+    @Adjacency(label = "contains")
+    Node[] getNodes();
+
+    /** Adds a node. */
+    @Adjacency(label = "contains")
+    void addNode(final Node node);
+
+    /** Removes a node. */
+    @Adjacency(label = "contains")
+    void removeNode(final Node node);
 
     /** Returns the node with the give network name, in the given network, if any. */
-    Node findNodeByNetworkName(final Network<EE> network, final String name);
+    // TODO
+//    Node findNodeByNetworkName(final Network network, final String name);
 
     /** Returns the node with the give network addresses, in the given network, if any. */
-    Node findNodeByNetworkAddress(final Network<EE> network,
-            final String address);
+    // TODO
+//    Node findNodeByNetworkAddress(final Network network, final String address);
 }

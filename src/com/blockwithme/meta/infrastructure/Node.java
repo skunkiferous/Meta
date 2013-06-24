@@ -15,7 +15,10 @@
  */
 package com.blockwithme.meta.infrastructure;
 
-import com.blockwithme.meta.Dynamic;
+import com.tinkerpop.frames.Adjacency;
+import com.tinkerpop.frames.annotations.gremlin.GremlinGroovy;
+import com.tinkerpop.frames.annotations.gremlin.GremlinParam;
+import com.tinkerpop.frames.typed.TypeValue;
 
 /**
  * A node can be either a hardware node, or a virtual node.
@@ -26,26 +29,53 @@ import com.blockwithme.meta.Dynamic;
  *
  * @author monster
  */
-public interface Node<PARENT extends ExecutionEnvironment<PARENT, ?>> extends
-        ExecutionEnvironment<Node<PARENT>, PARENT> {
+@TypeValue("Node")
+public interface Node extends ExecutionEnvironment {
     /** The network names of this node, in the given network, if any. */
-    String[] networkNames(final Network<PARENT> network);
+    // TODO
+//    String[] networkNames(final Network network);
 
     /** Returns true if the node has the given name, in the given network. */
-    boolean hasNetworkName(final Network<PARENT> network, final String name);
+    // TODO
+//    boolean hasNetworkName(final Network network, final String name);
 
     /** The network addresses of this node, in the given network, if any. */
-    String[] networkAddresses(final Network<PARENT> network);
+    // TODO
+//    String[] networkAddresses(final Network network);
 
     /** Returns true if the node has the given address, in the given network. */
-    boolean hasNetworkAddress(final Network<PARENT> network,
-            final String address);
+    // TODO
+//    boolean hasNetworkAddress(final Network network, final String address);
 
     /** A node can be running any number of processes. */
-    @Dynamic
-    Process[] processes();
+    @Adjacency(label = "runs")
+    Process[] getProcesses();
+
+    /** Adds a process. */
+    @Adjacency(label = "runs")
+    void addProcess(final Process process);
+
+    /** Removes a process. */
+    @Adjacency(label = "runs")
+    void removeProcess(final Process process);
+
+    /** Returns the process with the given name, if any. */
+    @GremlinGroovy("it.out('runs').has('name',name)")
+    Process findProcess(@GremlinParam("name") final String name);
 
     /** A node can have any number of storages. */
-    @Dynamic
-    Storage[] storages();
+    @Adjacency(label = "hosts")
+    Storage[] getStorages();
+
+    /** Adds a storage. */
+    @Adjacency(label = "hosts")
+    void addStorage(final Storage storage);
+
+    /** Removes a storage. */
+    @Adjacency(label = "hosts")
+    void removeStorage(final Storage storage);
+
+    /** Returns the storage with the given name, if any. */
+    @GremlinGroovy("it.out('hosts').has('name',name)")
+    Storage findStorage(@GremlinParam("name") final String name);
 }

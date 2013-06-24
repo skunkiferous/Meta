@@ -15,7 +15,9 @@
  */
 package com.blockwithme.meta.types;
 
-import com.blockwithme.properties.Properties;
+import com.blockwithme.meta.TypedVertex;
+import com.tinkerpop.frames.Property;
+import com.tinkerpop.frames.typed.TypeValue;
 
 /**
  * An actor is an active component, that can send and receive messages, and
@@ -24,7 +26,13 @@ import com.blockwithme.properties.Properties;
  *
  * @author monster
  */
-public interface ActorRef extends Properties<Long> {
+@TypeValue("ActorRef")
+public interface ActorRef extends TypedVertex {
     /** The actor's globally unique ID. */
-    long id();
+    @Property("actorId")
+    long getActorId();
+
+    /** Sets the actor's globally unique ID. */
+    @Property("actorId")
+    void setActorId(final long id);
 }

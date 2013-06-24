@@ -17,12 +17,21 @@ package com.blockwithme.meta.infrastructure;
 
 import java.net.InetAddress;
 
+import com.tinkerpop.frames.Property;
+import com.tinkerpop.frames.typed.TypeValue;
+
 /**
  * Represents a TCP/IP network, within a cluster.
  *
  * @author monster
  */
+@TypeValue("TcpipNetwork")
 public interface TcpipNetwork extends Network {
     /** Returns the subnet of this tcpip network. */
-    InetAddress subnet();
+    @Property("subnet")
+    InetAddress getSubnet();
+
+    /** Sets the subnet of this tcpip network. */
+    @Property("subnet")
+    void setSubnet(final InetAddress subnet);
 }

@@ -17,7 +17,7 @@ package com.blockwithme.meta.types.impl;
 
 import com.blockwithme.meta.impl.AbstractBuilder;
 import com.blockwithme.meta.types.Kind;
-import com.blockwithme.meta.types.TypeDef;
+import com.blockwithme.meta.types.annotations.TypeDef;
 
 /**
  * @author monster

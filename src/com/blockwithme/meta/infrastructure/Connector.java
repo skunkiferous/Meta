@@ -17,17 +17,24 @@ package com.blockwithme.meta.infrastructure;
 
 import java.net.URL;
 
-import com.blockwithme.meta.Definition;
-import com.blockwithme.meta.types.Application;
+import com.blockwithme.meta.types.Named;
+import com.tinkerpop.frames.Property;
+import com.tinkerpop.frames.typed.TypeValue;
 
 /**
  * Represents a "receiving" network connection (server socket, ...)
  *
  * @author monster
  */
-public interface Connector extends Definition<Connector, Application, Long> {
+@TypeValue("Connector")
+public interface Connector extends Named {
     /** Returns an URL defining how to connect to this connector. */
-    URL url();
+    @Property("url")
+    URL getUrl();
+
+    /** Sets an URL defining how to connect to this connector. */
+    @Property("url")
+    void setUrl(final URL url);
 
     // TODO
 }

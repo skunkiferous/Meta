@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta.types;
+package com.blockwithme.meta.types.annotations;
+
+import com.blockwithme.meta.types.TypeFilter;
 
 /**
  * The type range defines the range of possible types accepted by a

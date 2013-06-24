@@ -15,12 +15,14 @@
  */
 package com.blockwithme.meta.types;
 
+import com.tinkerpop.frames.typed.TypeValue;
 
 /**
  * Represents some persistence API.
  *
  * @author monster
  */
+@TypeValue("PersistenceAPI")
 public interface PersistenceAPI<SERIALIZER> extends Service {
 
     /**
@@ -28,13 +30,14 @@ public interface PersistenceAPI<SERIALIZER> extends Service {
      *
      * Returns null if serialization is not supported (for this type).
      */
-    SERIALIZER serializerFor(final Type type);
+    // TODO
+//    SERIALIZER getSerializerFor(final Type type);
 
     /**
      * Returns the serializer to use for the given property.
      *
      * Returns null if serialization is not supported (for this property).
      */
-    SERIALIZER serializerFor(final Property property);
     // TODO
+//    SERIALIZER serializerFor(final Property property);
 }

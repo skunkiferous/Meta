@@ -15,7 +15,11 @@
  */
 package com.blockwithme.meta.infrastructure;
 
-import com.blockwithme.meta.Definition;
+import com.blockwithme.meta.types.Named;
+import com.tinkerpop.frames.Adjacency;
+import com.tinkerpop.frames.annotations.gremlin.GremlinGroovy;
+import com.tinkerpop.frames.annotations.gremlin.GremlinParam;
+import com.tinkerpop.frames.typed.TypeValue;
 
 /**
  * A data-center contains one or more computer clusters.
@@ -24,11 +28,21 @@ import com.blockwithme.meta.Definition;
  *
  * @author monster
  */
-public interface DataCenter extends
-        Definition<DataCenter, AvailabilityZone, Long> {
+@TypeValue("DataCenter")
+public interface DataCenter extends Named {
     /** Returns our clusters in this data-center. */
-    Cluster clusters();
+    @Adjacency(label = "contains")
+    Cluster[] getClusters();
+
+    /** Adds a Cluster. */
+    @Adjacency(label = "contains")
+    void addCluster(final Cluster cluster);
+
+    /** Removes a Cluster. */
+    @Adjacency(label = "contains")
+    void removeCluster(final Cluster cluster);
 
     /** Returns the cluster with the given name, if any. */
-    Cluster findCluster(final String name);
+    @GremlinGroovy("it.out('contains').has('name',name)")
+    Cluster findCluster(@GremlinParam("name") final String name);
 }

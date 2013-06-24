@@ -15,7 +15,9 @@
  */
 package com.blockwithme.meta.types;
 
-import com.blockwithme.meta.Definition;
+import com.tinkerpop.frames.Adjacency;
+import com.tinkerpop.frames.Property;
+import com.tinkerpop.frames.typed.TypeValue;
 
 /**
  * This describes a service *type*, not a service instance.
@@ -24,10 +26,21 @@ import com.blockwithme.meta.Definition;
  *
  * @author monster
  */
-public interface Service extends Definition<Service, Bundle, Long>, Bundled {
+@TypeValue("Service")
+public interface Service extends Bundled {
     /** What kind of service is it? */
-    ServiceType lifecycle();
+    @Property("lifecycle")
+    ServiceType getLifecycle();
+
+    /** What kind of service is it? */
+    @Property("lifecycle")
+    void setLifecycle(final ServiceType lifecycle);
 
     /** What type defines the service interface? */
-    Type api();
+    @Adjacency(label = "implements")
+    Type getApi();
+
+    /** What type defines the service interface? */
+    @Adjacency(label = "implements")
+    void setApi(final Type api);
 }

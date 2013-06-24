@@ -15,8 +15,11 @@
  */
 package com.blockwithme.meta.types;
 
-import com.blockwithme.meta.Definition;
-import com.blockwithme.meta.Dynamic;
+import com.tinkerpop.frames.Adjacency;
+import com.tinkerpop.frames.Property;
+import com.tinkerpop.frames.annotations.gremlin.GremlinGroovy;
+import com.tinkerpop.frames.annotations.gremlin.GremlinParam;
+import com.tinkerpop.frames.typed.TypeValue;
 
 /**
  * A bundle is a grouping of resources. Typically types, but also media-files.
@@ -25,32 +28,81 @@ import com.blockwithme.meta.Dynamic;
  *
  * @author monster
  */
-public interface Bundle extends Definition<Bundle, Application, Long> {
+@TypeValue("Bundle")
+public interface Bundle extends Named {
+    /** Returns the owning Application. */
+    @Adjacency(label = "usedBy")
+    Application getApp();
+
+    /** Sets the owning Application. */
+    @Adjacency(label = "usedBy")
+    void setApp(final Application app);
+
     /** Returns the bundle version. */
-    String version();
+    @Property("version")
+    String getVersion();
+
+    /** Sets the bundle version. */
+    @Property("version")
+    void setVersion(final String version);
 
     /** Returns the bundle version, as a comparable int. */
-    int versionAsInt();
+    @GremlinGroovy(value = "com.blockwithme.meta.types.Statics.versionToInt(it.version)", frame = false)
+    int getVersionAsInt();
 
-    /** List the types defined in this bundle. */
-    Type[] types();
+    /** List the exported types defined in this bundle. */
+    @Adjacency(label = "exports")
+    Type[] getExports();
 
-    /** Returns the type by the given name, if any. */
-    Type findType(final String name);
+    /** Adds a new export. */
+    @Adjacency(label = "exports")
+    void addExport(final Type type);
+
+    /** Removes an export. */
+    @Adjacency(label = "exports")
+    void removeExport(final Type type);
+
+    /** Returns the exported type with the given name, if any. */
+    @GremlinGroovy("it.out('exports').has('name',name)")
+    Type findExport(@GremlinParam("name") final String name);
 
     /** List the bundle's dependencies. */
-    Dependency[] dependencies();
+    @Adjacency(label = "dependsOn")
+    Dependency[] getDependencies();
 
-    /** Returns the dependency with the given name, if any. */
-    Dependency findDependency(final String name);
+    /** Adds a new Dependency. */
+    @Adjacency(label = "dependsOn")
+    void addDependency(final Dependency dependency);
+
+    /** Removes a Dependency. */
+    @Adjacency(label = "dependsOn")
+    void removeDependency(final Dependency dependency);
+
+    /** Returns the Dependency with the given name, if any. */
+    @GremlinGroovy("it.out('dependsOn').has('name',name)")
+    Dependency findDependency(@GremlinParam("name") final String name);
 
     /** All the services offered by this bundle. */
-    Service[] services();
+    @Adjacency(label = "offers")
+    Service[] getServices();
+
+    /** Adds a new service. */
+    @Adjacency(label = "offers")
+    void addService(final Service service);
+
+    /** Removes a service. */
+    @Adjacency(label = "offers")
+    void removeService(final Service service);
 
     /** Returns the Service with the given name, if any. */
-    Service findService(final String name);
+    @GremlinGroovy("it.out('offers').has('name',name)")
+    Service findService(@GremlinParam("name") final String name);
 
     /** Returns the current lifecycle of the bundle. */
-    @Dynamic
-    BundleLifecycle lifecycle();
+    @Property("lifecycle")
+    BundleLifecycle getLifecycle();
+
+    /** Sets the current lifecycle of the bundle. */
+    @Property("lifecycle")
+    void setLifecycle(final BundleLifecycle lifecycle);
 }

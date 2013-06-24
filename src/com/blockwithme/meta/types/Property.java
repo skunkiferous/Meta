@@ -15,22 +15,45 @@
  */
 package com.blockwithme.meta.types;
 
-import com.blockwithme.meta.Definition;
+import com.tinkerpop.frames.Adjacency;
+import com.tinkerpop.frames.typed.TypeValue;
 
 /**
  * Describes a property of some type.
  *
  * @author monster
  */
-public interface Property extends Definition<Property, Type, Long>, Bundled {
+@TypeValue("Property")
+public interface Property extends Bundled {
+    /** The property's owner type. */
+    @Adjacency(label = "type")
+    Type getType();
+
+    /** The property's owner type. */
+    @Adjacency(label = "type")
+    void setType(final Type type);
 
     /** The property type range. */
-    TypeRange typeRange();
+    @Adjacency(label = "typeRange")
+    TypeRange getTypeRange();
+
+    /** The property type range. */
+    @Adjacency(label = "typeRange")
+    void setTypeRange(final TypeRange typeRange);
 
     // TODO: We should have access control specifications
 
     /** The kinds of persistence supported by this property. */
-    String[] persistence();
+    @com.tinkerpop.frames.Property("persistence")
+    String[] getPersistence();
+
+    /** Adds a kind of persistence supported by this property. */
+    @com.tinkerpop.frames.Property("persistence")
+    void addPersistence(final String persistence);
+
+    /** Removes a kind of persistence supported by this property. */
+    @com.tinkerpop.frames.Property("persistence")
+    void removePersistence(final String persistence);
 
     // TODO ...
 }

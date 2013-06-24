@@ -15,12 +15,15 @@
  */
 package com.blockwithme.meta.infrastructure;
 
+import com.tinkerpop.frames.typed.TypeValue;
+
 /**
  * A cluster is a group of nodes; either hardware, or virtual,
  * connected together by one (or more) networks.
  *
  * @author monster
  */
-public interface Cluster extends ExecutionEnvironment<Cluster,DataCenter> {
+@TypeValue("Cluster")
+public interface Cluster extends ExecutionEnvironment {
     // All information needed is in ExecutionEnvironment
 }

@@ -15,14 +15,22 @@
  */
 package com.blockwithme.meta.types;
 
-import com.blockwithme.properties.Properties;
+import com.blockwithme.meta.TypedVertex;
+import com.tinkerpop.frames.Adjacency;
+import com.tinkerpop.frames.typed.TypeValue;
 
 /**
  * Something that comes from a bundle.
  *
  * @author monster
  */
-public interface Bundled extends Properties<Long> {
+@TypeValue("Bundled")
+public interface Bundled extends TypedVertex {
     /** The bundle. */
-    Bundle bundle();
+    @Adjacency(label = "belongsTo")
+    Bundle getBundle();
+
+    /** The bundle. */
+    @Adjacency(label = "belongsTo")
+    void setBundle(final Bundle bundle);
 }

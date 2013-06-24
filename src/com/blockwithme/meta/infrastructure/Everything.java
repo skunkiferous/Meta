@@ -15,7 +15,11 @@
  */
 package com.blockwithme.meta.infrastructure;
 
-import com.blockwithme.properties.Properties;
+import com.blockwithme.meta.TypedVertex;
+import com.tinkerpop.frames.Adjacency;
+import com.tinkerpop.frames.annotations.gremlin.GremlinGroovy;
+import com.tinkerpop.frames.annotations.gremlin.GremlinParam;
+import com.tinkerpop.frames.typed.TypeValue;
 
 /**
  * Life, the Universe and Everything!
@@ -27,10 +31,29 @@ import com.blockwithme.properties.Properties;
  *
  * @author monster
  */
-public interface Everything extends Properties<Long> {
+@TypeValue("Everything")
+public interface Everything extends TypedVertex {
     /** The process in which the code is currently executing ...*/
-    Process currentProcess();
+    @Adjacency(label = "currentProcess")
+    Process getCurrentProcess();
+
+    /** Sets the process in which the code is currently executing ...*/
+    @Adjacency(label = "currentProcess")
+    void setCurrentProcess(final Process currentProcess);
 
     /** The known HostingProviders; the root of the infrastructure. */
-    HostingProvider[] providers();
+    @Adjacency(label = "knows")
+    HostingProvider[] getProviders();
+
+    /** Adds a HostingProvider. */
+    @Adjacency(label = "knows")
+    void addHostingProvider(final HostingProvider region);
+
+    /** Removes a HostingProvider. */
+    @Adjacency(label = "knows")
+    void removeHostingProvider(final HostingProvider region);
+
+    /** Returns the HostingProvider with the given name, if any. */
+    @GremlinGroovy("it.out('knows').has('name',name)")
+    HostingProvider findRegion(@GremlinParam("name") final String name);
 }

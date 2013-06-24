@@ -15,19 +15,22 @@
  */
 package com.blockwithme.meta;
 
-import com.blockwithme.properties.Properties;
+import com.tinkerpop.blueprints.Vertex;
+import com.tinkerpop.frames.annotations.gremlin.GremlinGroovy;
+import com.tinkerpop.frames.typed.TypeField;
 
 /**
- * A definition has a name (the uniqueness scope of which depends on the
- * specific definition type), and can have any number of generic properties,
- * in addition to the properties provided over it's interface.
- *
- * Definitions can be sorted by name.
+ * TypedVertex is the base class of all vertex.
+ * It allows the type information to be preserved when converting the proxy
+ * instances to/from pure vertex.
  *
  * @author monster
  */
-public interface Definition<D extends Definition<D, PARENT, TIME>, PARENT extends Properties<TIME>, TIME extends Comparable<TIME>>
-        extends Child<PARENT, TIME>, Comparable<D> {
-    /** The name of this definition: it's just the "local key". */
-    String name();
+@TypeField("class")
+public interface TypedVertex extends Vertex {
+
+    /** Returns the description of this vertex. */
+    @GremlinGroovy(value = "com.blockwithme.meta.types.Statics.toString(it)", frame = false)
+    String getString();
+
 }

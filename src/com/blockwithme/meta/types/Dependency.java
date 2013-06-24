@@ -3,7 +3,8 @@
  */
 package com.blockwithme.meta.types;
 
-import com.blockwithme.meta.Definition;
+import com.tinkerpop.frames.Property;
+import com.tinkerpop.frames.typed.TypeValue;
 
 /**
  * A dependency defines the requirement that a bundle as about the presence of
@@ -14,17 +15,37 @@ import com.blockwithme.meta.Definition;
  *
  * @author monster
  */
-public interface Dependency extends Definition<Dependency, Bundle, Long>,
-        Bundled {
+@TypeValue("Dependency")
+public interface Dependency extends Bundled {
     /** The minimum version of the required bundle. */
-    int minimumVersion();
+    @Property("minimumVersion")
+    int getMinimumVersion();
+
+    /** The minimum version of the required bundle. */
+    @Property("minimumVersion")
+    void setMinimumVersion(final int minimumVersion);
 
     /** The maximum version of the required bundle. */
-    int maximumVersion();
+    @Property("maximumVersion")
+    int getMaximumVersion();
+
+    /** The maximum version of the required bundle. */
+    @Property("maximumVersion")
+    void setMaximumVersion(final int maximumVersion);
 
     /** Is this dependency optional? */
-    boolean optional();
+    @Property("optional")
+    boolean isOptional();
+
+    /** Is this dependency optional? */
+    @Property("optional")
+    void setOptional(final boolean optional);
 
     /** (Mutable) Is this dependency currently use? */
-    boolean actual();
+    @Property("actual")
+    boolean isActual();
+
+    /** (Mutable) Is this dependency currently use? */
+    @Property("actual")
+    void setActual(final boolean actual);
 }

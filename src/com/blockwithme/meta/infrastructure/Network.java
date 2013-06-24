@@ -15,7 +15,8 @@
  */
 package com.blockwithme.meta.infrastructure;
 
-import com.blockwithme.meta.Definition;
+import com.blockwithme.meta.types.Named;
+import com.tinkerpop.frames.typed.TypeValue;
 
 /**
  * Represents a network, within a cluster.
@@ -25,7 +26,7 @@ import com.blockwithme.meta.Definition;
  *
  * @author monster
  */
-public interface Network<PARENT extends ExecutionEnvironment<PARENT, ?>>
-        extends Definition<Network<PARENT>, PARENT, Long> {
+@TypeValue("Network")
+public interface Network extends Named {
     // NOP
 }

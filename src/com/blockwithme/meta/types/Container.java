@@ -15,15 +15,29 @@
  */
 package com.blockwithme.meta.types;
 
+import com.tinkerpop.frames.Adjacency;
+import com.tinkerpop.frames.typed.TypeValue;
+
 /**
  * Describes the property of some type, which is a container for another type.
  *
  * @author monster
  */
+@TypeValue("Container")
 public interface Container extends Bundled {
-    /** Container. */
-    Type container();
+    /** The container. */
+    @Adjacency(label = "container")
+    Type getContainer();
+
+    /** The container. */
+    @Adjacency(label = "container")
+    void setContainer(final Type container);
 
     /** The property. */
-    Property property();
+    @Adjacency(label = "property")
+    Property getProperty();
+
+    /** The property. */
+    @Adjacency(label = "property")
+    void setProperty(final Property property);
 }

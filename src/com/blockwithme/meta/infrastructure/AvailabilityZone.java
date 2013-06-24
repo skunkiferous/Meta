@@ -15,7 +15,11 @@
  */
 package com.blockwithme.meta.infrastructure;
 
-import com.blockwithme.meta.Definition;
+import com.blockwithme.meta.types.Named;
+import com.tinkerpop.frames.Adjacency;
+import com.tinkerpop.frames.annotations.gremlin.GremlinGroovy;
+import com.tinkerpop.frames.annotations.gremlin.GremlinParam;
+import com.tinkerpop.frames.typed.TypeValue;
 
 /**
  * An availability zone is a geographically distinct area on the globe, where
@@ -25,11 +29,21 @@ import com.blockwithme.meta.Definition;
  *
  * @author monster
  */
-public interface AvailabilityZone extends
-        Definition<AvailabilityZone, Region, Long> {
+@TypeValue("AvailabilityZone")
+public interface AvailabilityZone extends Named {
     /** Returns the data-centers in this availability zone. */
-    DataCenter[] dataCenters();
+    @Adjacency(label = "contains")
+    DataCenter[] getDataCenters();
+
+    /** Adds an data-center. */
+    @Adjacency(label = "contains")
+    void addDataCenter(final DataCenter dataCenter);
+
+    /** Removes an data-center. */
+    @Adjacency(label = "contains")
+    void removeDataCenter(final DataCenter dataCenter);
 
     /** Returns the data-center with the given name, if any. */
-    DataCenter findDataCenter(final String name);
+    @GremlinGroovy("it.out('contains').has('name',name)")
+    DataCenter findDataCenter(@GremlinParam("name") final String name);
 }

@@ -15,7 +15,11 @@
  */
 package com.blockwithme.meta.infrastructure;
 
-import com.blockwithme.meta.Definition;
+import com.blockwithme.meta.types.Named;
+import com.tinkerpop.frames.Adjacency;
+import com.tinkerpop.frames.annotations.gremlin.GremlinGroovy;
+import com.tinkerpop.frames.annotations.gremlin.GremlinParam;
+import com.tinkerpop.frames.typed.TypeValue;
 
 /**
  * An hosting provider provides hardware and/or virtual nodes, that we can
@@ -25,11 +29,21 @@ import com.blockwithme.meta.Definition;
  *
  * @author monster
  */
-public interface HostingProvider extends
-        Definition<HostingProvider, Everything, Long> {
+@TypeValue("HostingProvider")
+public interface HostingProvider extends Named {
     /** Return the hosting provider's regions. */
-    Region[] regions();
+    @Adjacency(label = "offers")
+    Region[] getRegions();
+
+    /** Adds a region. */
+    @Adjacency(label = "offers")
+    void addRegion(final Region region);
+
+    /** Removes a region. */
+    @Adjacency(label = "offers")
+    void removeRegion(final Region region);
 
     /** Returns the Region with the given name, if any. */
-    Region findRegion(final String name);
+    @GremlinGroovy("it.out('offers').has('name',name)")
+    Region findRegion(@GremlinParam("name") final String name);
 }

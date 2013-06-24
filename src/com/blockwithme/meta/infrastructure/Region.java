@@ -15,7 +15,11 @@
  */
 package com.blockwithme.meta.infrastructure;
 
-import com.blockwithme.meta.Definition;
+import com.blockwithme.meta.types.Named;
+import com.tinkerpop.frames.Adjacency;
+import com.tinkerpop.frames.annotations.gremlin.GremlinGroovy;
+import com.tinkerpop.frames.annotations.gremlin.GremlinParam;
+import com.tinkerpop.frames.typed.TypeValue;
 
 /**
  * An region is a geographically distinct area on the globe, where
@@ -25,10 +29,22 @@ import com.blockwithme.meta.Definition;
  *
  * @author monster
  */
-public interface Region extends Definition<Region, HostingProvider, Long> {
+@TypeValue("Region")
+public interface Region extends Named {
     /** Returns the availability zones in this region. */
-    AvailabilityZone[] availabilityZones();
+    @Adjacency(label = "contains")
+    AvailabilityZone[] getAvailabilityZones();
+
+    /** Adds an availability Zone. */
+    @Adjacency(label = "contains")
+    void addAvailabilityZone(final AvailabilityZone availabilityZone);
+
+    /** Removes an availability Zone. */
+    @Adjacency(label = "contains")
+    void removeAvailabilityZone(final AvailabilityZone availabilityZone);
 
     /** Returns the availability zone with the given name, if any. */
-    AvailabilityZone findAvailabilityZone(final String name);
+    @GremlinGroovy("it.out('contains').has('name',name)")
+    AvailabilityZone findAvailabilityZone(
+            @GremlinParam("name") final String name);
 }

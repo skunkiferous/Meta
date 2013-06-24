@@ -15,14 +15,15 @@
  */
 package com.blockwithme.meta.infrastructure;
 
-import com.blockwithme.meta.Definition;
+import com.blockwithme.meta.types.Named;
+import com.tinkerpop.frames.typed.TypeValue;
 
 /**
  * Represents some storage. This include file systems and databases.
  *
  * @author monster
  */
-public interface Storage<PARENT extends Node<?>> extends
-        Definition<Storage<PARENT>, PARENT, Long> {
+@TypeValue("Storage")
+public interface Storage extends Named {
     // TODO
 }
