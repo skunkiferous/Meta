@@ -18,7 +18,7 @@ package com.blockwithme.meta.types.impl;
 import java.util.Comparator;
 import java.util.Objects;
 
-import com.blockwithme.meta.types.Application;
+import com.blockwithme.meta.types.Feature;
 import com.blockwithme.meta.types.Bundle;
 
 /**
@@ -29,10 +29,10 @@ import com.blockwithme.meta.types.Bundle;
  */
 public class BundleComparator implements Comparator<Bundle> {
     /** The application. */
-    private final Application app;
+    private final Feature app;
 
     /** Creates a BundleComparator */
-    public BundleComparator(final Application app) {
+    public BundleComparator(final Feature app) {
         this.app = Objects.requireNonNull(app);
     }
 

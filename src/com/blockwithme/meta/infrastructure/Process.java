@@ -16,7 +16,10 @@
 package com.blockwithme.meta.infrastructure;
 
 import com.blockwithme.meta.types.Named;
+import com.tinkerpop.frames.Adjacency;
 import com.tinkerpop.frames.Property;
+import com.tinkerpop.frames.annotations.gremlin.GremlinGroovy;
+import com.tinkerpop.frames.annotations.gremlin.GremlinParam;
 import com.tinkerpop.frames.typed.TypeValue;
 
 /**
@@ -38,14 +41,18 @@ public interface Process extends Named {
     void setProcessType(final ProcessType processType);
 
     /** The applications *currently* running in this process. */
-    @Property("hosts")
-    String[] getApplications();
+    @Adjacency(label = "hosts")
+    Application[] getApplications();
 
     /** Adds an application *currently* running in this process. */
-    @Property("hosts")
-    void addApplication(final String app);
+    @Adjacency(label = "hosts")
+    void addApplication(final Application app);
 
     /** Removes an application *currently* running in this process. */
-    @Property("hosts")
-    void removeApplication(final String app);
+    @Adjacency(label = "hosts")
+    void removeApplication(final Application app);
+
+    /** Returns the application with the given name, if any. */
+    @GremlinGroovy("it.out('hosts').has('name',name)")
+    Application findApplication(@GremlinParam("name") final String name);
 }

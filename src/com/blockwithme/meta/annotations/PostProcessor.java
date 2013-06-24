@@ -13,26 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta.types;
-
-import com.blockwithme.meta.TypedVertex;
-import com.tinkerpop.frames.Property;
-import com.tinkerpop.frames.typed.TypeValue;
+package com.blockwithme.meta.annotations;
 
 /**
- * An actor is an active component, that can send and receive messages, and
- * runs within a JVM. Some actors can migrate from one JVM to another, within
- * the same Application.
+ * Post-processes an AnnotatedType.
  *
  * @author monster
  */
-@TypeValue("ActorRef")
-public interface ActorRef extends TypedVertex {
-    /** The actor's globally unique ID. */
-    @Property("actorId")
-    long getActorId();
-
-    /** Sets the actor's globally unique ID. */
-    @Property("actorId")
-    void setActorId(final long id);
+public interface PostProcessor {
+    /** Post-processes an AnnotatedType. */
+    void process(final AnnotatedType annotatedType);
 }

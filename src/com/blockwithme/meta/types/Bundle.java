@@ -32,11 +32,11 @@ import com.tinkerpop.frames.typed.TypeValue;
 public interface Bundle extends Named {
     /** Returns the owning Application. */
     @Adjacency(label = "usedBy")
-    Application getApp();
+    Feature getFeature();
 
     /** Sets the owning Application. */
     @Adjacency(label = "usedBy")
-    void setApp(final Application app);
+    void setFeature(final Feature feature);
 
     /** Returns the bundle version. */
     @Property("version")

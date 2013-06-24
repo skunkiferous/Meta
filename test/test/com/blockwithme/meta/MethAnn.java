@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta;
+package test.com.blockwithme.meta;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -21,16 +21,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Used to denote a dynamic property.
- *
- * A dynamic property is one that can change "at any time".
- * Therefore, the getter, even if thread-safe, can only return a "snapshot"
- * of the current state.
- *
  * @author monster
+ *
  */
-@Target(ElementType.METHOD)
+@Target(value = ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Dynamic {
-    // NOP
+public @interface MethAnn {
+    MethType value() default MethType.GETTER;
 }

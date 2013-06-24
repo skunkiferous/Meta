@@ -96,9 +96,9 @@ public class Statics {
         if ((minor < 0) || (minor >= 1024)) {
             throw new IllegalArgumentException(version);
         }
-        if ((incremental < 0) || (incremental >= 1024)) {
+        if ((incremental < 0) || (incremental >= 2048)) {
             throw new IllegalArgumentException(version);
         }
-        return major * 1024 * 1024 + minor * 1024 + incremental;
+        return major * 1024 * 2048 + minor * 2048 + incremental;
     }
 }

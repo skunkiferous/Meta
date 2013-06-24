@@ -13,12 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta.types;
+package com.blockwithme.meta.infrastructure;
 
-import java.util.Comparator;
-
-import com.blockwithme.meta.infrastructure.Connection;
-import com.blockwithme.meta.infrastructure.Connector;
+import com.blockwithme.meta.types.Named;
 import com.tinkerpop.frames.Adjacency;
 import com.tinkerpop.frames.Property;
 import com.tinkerpop.frames.annotations.gremlin.GremlinGroovy;
@@ -38,32 +35,7 @@ import com.tinkerpop.frames.typed.TypeValue;
  * @author monster
  */
 @TypeValue("Application")
-public interface Application extends Bundled, Named {
-    /** Returns all the currently available bundles within this application. */
-    // TODO Use Gremlin to find all dependencies
-//    Bundle[] bundles();
-
-    /**
-     * Returns the bundles with the given name, if any.
-     */
-    // TODO
-//    Bundle findBundle(final String name);
-
-    /**
-     * Returns the shortest distance from the root bundle (0) through
-     * dependencies. Returns Integer.MAX_VALUE when unknown/not found.
-     */
-    // TODO
-    @GremlinGroovy(value = "0", frame = false)
-    int distanceFromRoot(final Bundle bundle);
-
-    /** Returns a Bundle Comparator. */
-    @Property("bundleComparator")
-    Comparator<Bundle> getBundleComparator();
-
-    /** Returns a Bundle Comparator. */
-    @Property("bundleComparator")
-    void setBundleComparator(final Comparator<Bundle> bundleComparator);
+public interface Application extends Named {
 
     /** Is this a distributed application? */
     @Property("distributed")
