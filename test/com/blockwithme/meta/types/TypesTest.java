@@ -17,6 +17,7 @@ package com.blockwithme.meta.types;
 
 import junit.framework.TestCase;
 
+import com.blockwithme.meta.Statics;
 import com.blockwithme.meta.infrastructure.Connector;
 import com.tinkerpop.blueprints.impls.tg.TinkerGraph;
 import com.tinkerpop.frames.FramedGraph;

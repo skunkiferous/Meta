@@ -30,7 +30,7 @@ import com.tinkerpop.frames.typed.TypeField;
 public interface TypedVertex extends Vertex {
 
     /** Returns the description of this vertex. */
-    @GremlinGroovy(value = "com.blockwithme.meta.types.Statics.toString(it)", frame = false)
+    @GremlinGroovy(value = "com.blockwithme.meta.Statics.toString(it)", frame = false)
     String getString();
 
 }

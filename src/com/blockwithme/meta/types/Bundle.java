@@ -47,7 +47,7 @@ public interface Bundle extends Named {
     void setVersion(final String version);
 
     /** Returns the bundle version, as a comparable int. */
-    @GremlinGroovy(value = "com.blockwithme.meta.types.Statics.versionToInt(it.version)", frame = false)
+    @GremlinGroovy(value = "com.blockwithme.meta.Statics.versionToInt(it.version)", frame = false)
     int getVersionAsInt();
 
     /** List the exported types defined in this bundle. */
