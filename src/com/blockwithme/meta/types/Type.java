@@ -39,6 +39,14 @@ public interface Type extends Bundled {
     @com.tinkerpop.frames.Property("implements")
     void setType(final Class<?> type);
 
+    /** The kind of type, that this class/interface is. */
+    @com.tinkerpop.frames.Property("kind")
+    Kind getKind();
+
+    /** Sets the kind of type, that this class/interface is. */
+    @com.tinkerpop.frames.Property("kind")
+    void setKind(final Kind kind);
+
     /**
      * Data is for technical types without domain meaning, like Strings,
      * arrays, ... It cannot inherit, directly or indirectly, from a Root type.
@@ -106,6 +114,18 @@ public interface Type extends Bundled {
     void setImplementation(final boolean isImplementation);
 
     /**
+     * A specialization is a sub-type of a Root type. It can only inherit,
+     * directly or indirectly, from exactly one Root type. It cannot
+     * inherit from a Data type.
+     */
+    @com.tinkerpop.frames.Property("specialization")
+    boolean isSpecialization();
+
+    /** Sets the specialization flag */
+    @com.tinkerpop.frames.Property("specialization")
+    void setSpecialization(final boolean isSpecialization);
+
+    /**
      * A final type cannot have children outside it's bundle, and can only
      * have Implementations as child inside it's bundle.
      */
@@ -116,14 +136,6 @@ public interface Type extends Bundled {
     @com.tinkerpop.frames.Property("final")
     void setFinal(final boolean isFinal);
 
-    /** The kind of type, that this class/interface is. */
-    @com.tinkerpop.frames.Property("kind")
-    Kind getKind();
-
-    /** Sets the kind of type, that this class/interface is. */
-    @com.tinkerpop.frames.Property("kind")
-    void setKind(final Kind kind);
-
     /** The access-level to this type. */
     @com.tinkerpop.frames.Property("access")
     Access getAccess();
@@ -131,24 +143,6 @@ public interface Type extends Bundled {
     /** Sets the access-level to this type. */
     @com.tinkerpop.frames.Property("access")
     void setAccess(final Access access);
-
-    /**
-     * A child type is said to be <i>bigger</i> (in the sense of memory
-     * footprint), when it defines new *properties*, in addition to the
-     * existing properties of the parent types.
-     */
-    @com.tinkerpop.frames.Property("biggerThanParents")
-    boolean isBiggerThanParents();
-
-    /** Sets the final flag */
-    @com.tinkerpop.frames.Property("biggerThanParents")
-    void setBiggerThanParents(final boolean biggerThanParents);
-
-//    /** List all the properties of this type. */
-//    Property[] allProperties();
-//
-//    /** Returns the property with the given name, if any. */
-//    Property findProperty(final String name);
 
     /** List all direct properties of this type. */
     @Adjacency(label = "hasProperty")
@@ -166,14 +160,17 @@ public interface Type extends Bundled {
     @GremlinGroovy("it.out('hasProperty').has('name',name)")
     Property findDirectProperty(@GremlinParam("name") final String name);
 
-//    /** All the parents of this type. */
-//    Type[] parents();
-//
-//    /** Search for a parent with the given name, if any. */
-//    Type findParent(final String name);
-//
-//    /** Is the given other type a parent of this type? */
-//    boolean isParent(final Type otherType);
+    /**
+     * A child type is said to be <i>bigger</i> (in the sense of memory
+     * footprint), when it defines new *properties*, in addition to the
+     * existing properties of the parent types.
+     */
+    @com.tinkerpop.frames.Property("biggerThanParents")
+    boolean isBiggerThanParents();
+
+    /** Sets the final flag */
+    @com.tinkerpop.frames.Property("biggerThanParents")
+    void setBiggerThanParents(final boolean biggerThanParents);
 
     /** All the direct parents of this type. */
     @Adjacency(label = "extends")
@@ -194,15 +191,6 @@ public interface Type extends Bundled {
     /** Is the given other type a direct parent of this type? */
     @GremlinGroovy(value = "it.out('extends').count(otherType)==0", frame = false)
     boolean isDirectParent(@GremlinParam("otherType") final Type otherType);
-
-//    /** All the children of this type. */
-//    Type[] children();
-//
-//    /** Search for a child with the given name, if any. */
-//    Type findChild(final String name);
-//
-//    /** Is the given other type a child of this type? */
-//    boolean isChild(final Type otherType);
 
     /** All the direct children of this type. */
     @Adjacency(label = "extends", direction = Direction.IN)
@@ -252,4 +240,30 @@ public interface Type extends Bundled {
     /** Removes a kind of persistence supported by this type. */
     @com.tinkerpop.frames.Property("persistence")
     void removePersistence(final String persistence);
+
+    // TODO
+
+//  /** List all the properties of this type. */
+//  Property[] allProperties();
+//
+//  /** Returns the property with the given name, if any. */
+//  Property findProperty(final String name);
+
+//  /** All the parents of this type. */
+//  Type[] parents();
+//
+//  /** Search for a parent with the given name, if any. */
+//  Type findParent(final String name);
+//
+//  /** Is the given other type a parent of this type? */
+//  boolean isParent(final Type otherType);
+
+//  /** All the children of this type. */
+//  Type[] children();
+//
+//  /** Search for a child with the given name, if any. */
+//  Type findChild(final String name);
+//
+//  /** Is the given other type a child of this type? */
+//  boolean isChild(final Type otherType);
 }

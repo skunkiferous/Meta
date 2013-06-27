@@ -15,14 +15,14 @@
  */
 package com.blockwithme.meta.annotations;
 
+import java.util.Map;
+
 /**
- * Converts values read from an annotation, to whatever other type is desired.
+ * A map of anything that retunrs the disired type, or fail.
  *
  * @author monster
  */
-public interface Converter<VALUE, ANNOTATION, OUTPUT> {
-    /** Converts an annotation parameter. */
-    OUTPUT convert(final PropMap context, final AnnotatedType annotatedType,
-            final ANNOTATION annotatedTypeAnnotation, final String property,
-            final VALUE value);
+public interface PropMap extends Map<String, Object> {
+    /** Make sure the property is null, or has the right type. */
+    <E> E get(final String property, final Class<E> type);
 }

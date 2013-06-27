@@ -15,14 +15,13 @@
  */
 package com.blockwithme.meta.annotations;
 
+
 /**
- * Converts values read from an annotation, to whatever other type is desired.
+ * Post-processes an AnnotatedType.
  *
  * @author monster
  */
-public interface Converter<VALUE, ANNOTATION, OUTPUT> {
-    /** Converts an annotation parameter. */
-    OUTPUT convert(final PropMap context, final AnnotatedType annotatedType,
-            final ANNOTATION annotatedTypeAnnotation, final String property,
-            final VALUE value);
+public interface TypeProcessor {
+    /** Post-processes an AnnotatedType. */
+    void process(final PropMap context, final AnnotatedType annotatedType);
 }

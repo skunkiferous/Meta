@@ -15,6 +15,7 @@
  */
 package com.blockwithme.meta.types.annotations;
 
+import com.blockwithme.meta.annotations.Instantiate;
 import com.blockwithme.meta.types.TypeFilter;
 
 /**
@@ -28,7 +29,7 @@ import com.blockwithme.meta.types.TypeFilter;
  *
  * @author monster
  */
-public @interface TypeRangeDef {
+public @interface TypeRange {
 
     /** Is the actual instance preserved, implying any child type is accepted? */
     boolean actualInstance() default false;
@@ -53,6 +54,7 @@ public @interface TypeRangeDef {
      * through custom filters.
      * An empty list does not imply an exact type match.
      */
+    @Instantiate
     Class<? extends TypeFilter>[] childrenFilters() default {};
 
     /**
@@ -62,5 +64,6 @@ public @interface TypeRangeDef {
     Class<?>[] excludes() default {};
 
     /** Implicit type exclusion, through custom filters. */
+    @Instantiate
     Class<? extends TypeFilter>[] excludeFilters() default {};
 }

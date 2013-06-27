@@ -17,8 +17,8 @@ package com.blockwithme.meta.types;
 
 import java.util.Comparator;
 
-import com.tinkerpop.frames.Property;
 import com.tinkerpop.frames.annotations.gremlin.GremlinGroovy;
+import com.tinkerpop.frames.annotations.gremlin.GremlinParam;
 import com.tinkerpop.frames.typed.TypeValue;
 
 /**
@@ -29,35 +29,28 @@ import com.tinkerpop.frames.typed.TypeValue;
  * Application instances with the same name, refer to the same logical
  * application.
  *
- * We assume Connectors are unchangeable, once created...
- *
  * @author monster
  */
 @TypeValue("Feature")
 public interface Feature extends Bundled, Named {
     /** Returns all the currently available bundles within this application. */
-    // TODO Use Gremlin to find all dependencies
-//    Bundle[] bundles();
+    @GremlinGroovy("com.blockwithme.meta.Statics.allBundles(it)")
+    Bundle[] bundles();
 
     /**
      * Returns the bundles with the given name, if any.
      */
-    // TODO
-//    Bundle findBundle(final String name);
+    @GremlinGroovy("com.blockwithme.meta.Statics.findBundleByName(it,name)")
+    Bundle findBundle(@GremlinParam("name") final String name);
 
     /**
      * Returns the shortest distance from the root bundle (0) through
      * dependencies. Returns Integer.MAX_VALUE when unknown/not found.
      */
-    // TODO
-    @GremlinGroovy(value = "0", frame = false)
-    int distanceFromRoot(final Bundle bundle);
+    @GremlinGroovy(value = "com.blockwithme.meta.Statics.distanceFromRoot(it,bundle)", frame = false)
+    int distanceFromRoot(@GremlinParam("bundle") final Bundle bundle);
 
     /** Returns a Bundle Comparator. */
-    @Property("bundleComparator")
+    @GremlinGroovy(value = "com.blockwithme.meta.types.impl.BundleComparator(it)", frame = false)
     Comparator<Bundle> getBundleComparator();
-
-    /** Returns a Bundle Comparator. */
-    @Property("bundleComparator")
-    void setBundleComparator(final Comparator<Bundle> bundleComparator);
 }

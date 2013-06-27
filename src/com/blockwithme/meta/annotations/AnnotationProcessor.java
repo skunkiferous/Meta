@@ -15,12 +15,16 @@
  */
 package com.blockwithme.meta.annotations;
 
+import java.lang.reflect.AnnotatedElement;
+
 /**
- * Post-processes an AnnotatedType.
+ * Post-processes an annotation data.
  *
  * @author monster
  */
-public interface PostProcessor {
-    /** Post-processes an AnnotatedType. */
-    void process(final AnnotatedType annotatedType);
+public interface AnnotationProcessor<ANNOTATION, ELEMENT extends AnnotatedElement> {
+    /** Post-processes an annotation data. */
+    void process(final PropMap context, final AnnotatedType annotatedType,
+            final ANNOTATION annotatedTypeAnnotation,
+            final ELEMENT annotatedElement, final PropMap annotationData);
 }

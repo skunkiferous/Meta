@@ -20,6 +20,7 @@ import java.util.Map;
 
 import com.blockwithme.meta.annotations.AnnotatedType;
 import com.blockwithme.meta.annotations.Converter;
+import com.blockwithme.meta.annotations.PropMap;
 
 /**
  * Instantiates objects from a class or a class name.
@@ -68,7 +69,7 @@ public class Instantiator<VALUE, ANNOTATION, OUTPUT> implements
      */
     @SuppressWarnings("unchecked")
     @Override
-    public OUTPUT convert(final Map<String, Object> context,
+    public OUTPUT convert(final PropMap context,
             final AnnotatedType annotatedType,
             final ANNOTATION annotatedTypeAnnotation, final String property,
             final VALUE value) {

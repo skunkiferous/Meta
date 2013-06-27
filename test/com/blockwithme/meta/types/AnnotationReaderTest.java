@@ -19,8 +19,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -36,7 +34,9 @@ import test.com.blockwithme.meta.TypeAnn;
 
 import com.blockwithme.meta.annotations.AnnotatedType;
 import com.blockwithme.meta.annotations.AnnotationReader;
+import com.blockwithme.meta.annotations.PropMap;
 import com.blockwithme.meta.annotations.impl.AnnotationReaderImpl;
+import com.blockwithme.meta.annotations.impl.PropMapImpl;
 
 /**
  * @author monster
@@ -52,43 +52,41 @@ public class AnnotationReaderTest extends TestCase {
     }
 
     public void testAR() {
-        final AnnotationReader ar = new AnnotationReaderImpl(
-                new HashMap<String, Object>());
-        final List<AnnotatedType> result = ar.read(new Reflections(
+        final AnnotationReader ar = new AnnotationReaderImpl(new PropMapImpl());
+        @SuppressWarnings("unchecked")
+        final Map<String, AnnotatedType> result = ar.read(new Reflections(
                 "test.com.blockwithme.meta"), TypeAnn.class, FieldAnn.class,
                 MethAnn.class);
         assertEquals(1, result.size());
-        final AnnotatedType at = result.get(0);
-        assertEquals(at.type, A.class);
-        assertTrue(at.constructorAnnotations.isEmpty());
+        final AnnotatedType at = result.values().iterator().next();
+        assertEquals(at.getType(), A.class);
+        assertEquals(0, at.getConstructors().length);
 
-        assertEquals(1, at.typeAnnotations.size());
-        final Entry<Class<?>, Map<String, Object>> tae = at.typeAnnotations
-                .entrySet().iterator().next();
+        assertEquals(1, at.getTypeData().size());
+        final Entry<Class<?>, PropMap> tae = at.getTypeData().entrySet()
+                .iterator().next();
         assertEquals(TypeAnn.class, tae.getKey());
         assertEquals(Collections.singletonMap("filter", new ArrayList()),
                 tae.getValue());
 
-        assertEquals(1, at.fieldAnnotations.size());
-        final Entry<Field, Map<Class<?>, Map<String, Object>>> fae = at.fieldAnnotations
-                .entrySet().iterator().next();
-        assertEquals("CONSTANT", fae.getKey().getName());
-        final Map<Class<?>, Map<String, Object>> faev = fae.getValue();
+        final Field[] fields = at.getFields();
+        assertEquals(1, fields.length);
+        assertEquals("CONSTANT", fields[0].getName());
+        final Map<Class<?>, PropMap> faev = at.getFieldData(fields[0]);
         assertEquals(1, faev.size());
-        final Entry<Class<?>, Map<String, Object>> faeve = faev.entrySet()
-                .iterator().next();
+        final Entry<Class<?>, PropMap> faeve = faev.entrySet().iterator()
+                .next();
         assertEquals(FieldAnn.class, faeve.getKey());
         assertEquals(Collections.singletonMap("readOnly", Boolean.TRUE),
                 faeve.getValue());
 
-        assertEquals(1, at.methodAnnotations.size());
-        final Entry<Method, Map<Class<?>, Map<String, Object>>> mae = at.methodAnnotations
-                .entrySet().iterator().next();
-        assertEquals("setName", mae.getKey().getName());
-        final Map<Class<?>, Map<String, Object>> maev = mae.getValue();
+        final Method[] methods = at.getMethods();
+        assertEquals(1, methods.length);
+        assertEquals("setName", methods[0].getName());
+        final Map<Class<?>, PropMap> maev = at.getMethodData(methods[0]);
         assertEquals(1, maev.size());
-        final Entry<Class<?>, Map<String, Object>> maeve = maev.entrySet()
-                .iterator().next();
+        final Entry<Class<?>, PropMap> maeve = maev.entrySet().iterator()
+                .next();
         assertEquals(MethAnn.class, maeve.getKey());
         assertEquals(Collections.singletonMap("value", MethType.SETTER),
                 maeve.getValue());

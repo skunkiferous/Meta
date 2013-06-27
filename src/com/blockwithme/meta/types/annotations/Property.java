@@ -13,16 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta.annotations;
+package com.blockwithme.meta.types.annotations;
+
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
- * Converts values read from an annotation, to whatever other type is desired.
- *
  * @author monster
+ *
  */
-public interface Converter<VALUE, ANNOTATION, OUTPUT> {
-    /** Converts an annotation parameter. */
-    OUTPUT convert(final PropMap context, final AnnotatedType annotatedType,
-            final ANNOTATION annotatedTypeAnnotation, final String property,
-            final VALUE value);
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+public @interface Property {
+
+    /** The property type range. */
+    TypeRange typeRange();
+
+    /** The kinds of persistence supported by this property. */
+    String[] persistence();
+
 }

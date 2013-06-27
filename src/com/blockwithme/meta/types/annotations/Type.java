@@ -21,6 +21,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.blockwithme.meta.annotations.Instantiate;
 import com.blockwithme.meta.types.Access;
 import com.blockwithme.meta.types.Kind;
 import com.blockwithme.meta.types.TypeFilter;
@@ -62,7 +63,7 @@ import com.blockwithme.meta.types.TypeFilter;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-public @interface TypeDef {
+public @interface Type {
     /** The kind of type, that this class/interface/enum is. */
     Kind kind() default Kind.Specialization;
 
@@ -78,6 +79,7 @@ public @interface TypeDef {
     Class<?>[] parents() default {};
 
     /** Implicit parents definition, through custom filters. */
+    @Instantiate
     Class<? extends TypeFilter>[] parentFilters() default {};
 
     /**
@@ -88,6 +90,7 @@ public @interface TypeDef {
     Class<?>[] children() default {};
 
     /** Implicit children definition, through custom filters. */
+    @Instantiate
     Class<? extends TypeFilter>[] childrenFilters() default {};
 
     /**
@@ -98,6 +101,7 @@ public @interface TypeDef {
     Class<?>[] excludes() default {};
 
     /** Implicit type exclusion, through custom filters. */
+    @Instantiate
     Class<? extends TypeFilter>[] excludeFilters() default {};
 
     /**

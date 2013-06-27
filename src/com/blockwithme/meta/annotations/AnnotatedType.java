@@ -18,72 +18,55 @@ package com.blockwithme.meta.annotations;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 /**
- * Represents an annotated type.
- *
  * @author monster
+ *
  */
-public class AnnotatedType {
-    /** The annotated type itself. */
-    public final Class<?> type;
+public interface AnnotatedType {
 
-    /**
-     * The type annotations.
-     *
-     * The map key is the annotation type, and the value is a map of (possibly
-     * converted) properties.
-     */
-    public final Map<Class<?>, Map<String, Object>> typeAnnotations = new HashMap<>();
+    /** Returns the annotated type itself. */
+    public Class<?> getType();
 
-    /**
-     * The method annotations.
-     *
-     * Maps methods (key) to their annotations (map).
-     *
-     * The map key is the annotation type, and the value is a map of (possibly
-     * converted) properties.
-     */
-    public final Map<Method, Map<Class<?>, Map<String, Object>>> methodAnnotations = new HashMap<>();
+    /** Returns the type annotation data. */
+    public Map<Class<?>, PropMap> getTypeData();
 
-    /**
-     * The constructor annotations.
-     *
-     * Maps constructor (key) to their annotations (map).
-     *
-     * The map key is the annotation type, and the value is a map of (possibly
-     * converted) properties.
-     */
-    public final Map<Constructor<?>, Map<Class<?>, Map<String, Object>>> constructorAnnotations = new HashMap<>();
+    /** Adds a type annotation. */
+    public AnnotatedType addTypeAnnotation(final Class<?> annotation,
+            final PropMap data);
 
-    /**
-     * The field annotations.
-     *
-     * Maps methods (key) to their annotations (map).
-     *
-     * The map key is the annotation type, and the value is a map of (possibly
-     * converted) properties.
-     */
-    public final Map<Field, Map<Class<?>, Map<String, Object>>> fieldAnnotations = new HashMap<>();
+    /** Returns all the registered methods. */
+    public Method[] getMethods();
 
-    /** Creates an AnnotatedType. */
-    public AnnotatedType(final Class<?> theType) {
-        type = Objects.requireNonNull(theType);
-    }
+    /** Returns the Method annotation data. */
+    public Map<Class<?>, PropMap> getMethodData(final Method method);
 
-    /** Dumps all the recorded data. */
-    @Override
-    public String toString() {
-        final StringBuilder buf = new StringBuilder();
-        buf.append("AnnotatedType(type=").append(type.getName());
-        buf.append(",\ntypeAnnotations=").append(typeAnnotations);
-        buf.append(",\nconstructorAnnotations=").append(constructorAnnotations);
-        buf.append(",\nmethodAnnotations=").append(methodAnnotations);
-        buf.append(",\nfieldAnnotations=").append(fieldAnnotations);
-        buf.append(")");
-        return buf.toString();
-    }
+    /** Adds a Method annotation. */
+    public AnnotatedType addMethodAnnotation(final Method method,
+            final Class<?> annotation, final PropMap data);
+
+    /** Returns all the registered Constructors. */
+    @SuppressWarnings("rawtypes")
+    public Constructor[] getConstructors();
+
+    /** Returns the Constructor annotation data. */
+    public Map<Class<?>, PropMap> getConstructorData(
+            @SuppressWarnings("rawtypes") final Constructor constructor);
+
+    /** Adds a Constructor annotation. */
+    public AnnotatedType addConstructorAnnotation(
+            @SuppressWarnings("rawtypes") final Constructor constructor,
+            final Class<?> annotation, final PropMap data);
+
+    /** Returns all the registered Fields. */
+    public Field[] getFields();
+
+    /** Returns the Field annotation data. */
+    public Map<Class<?>, PropMap> getFieldData(final Field field);
+
+    /** Adds a Field annotation. */
+    public AnnotatedType addFieldAnnotation(final Field field,
+            final Class<?> annotation, final PropMap data);
+
 }

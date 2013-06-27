@@ -15,11 +15,16 @@
  */
 package com.blockwithme.meta;
 
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 
 import org.reflections.Reflections;
 
+import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.frames.Module;
 import com.tinkerpop.frames.typed.TypeValue;
@@ -100,5 +105,114 @@ public class Statics {
             throw new IllegalArgumentException(version);
         }
         return major * 1024 * 2048 + minor * 2048 + incremental;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <E> E convert(final Object value, final Class<E> type) {
+        if ((value == null) || type.isInstance(value) || (type == Object.class)) {
+            return (E) value;
+        }
+        if (type == String.class) {
+            if (value instanceof Class) {
+                return (E) ((Class<?>) value).getName();
+            }
+            return (E) value.toString();
+        }
+        if (value instanceof String) {
+            final String str = (String) value;
+            if (type.isInstance(Class.class)) {
+                try {
+                    return (E) Class.forName(str);
+                } catch (final ClassNotFoundException e) {
+                    throw new IllegalStateException(e);
+                }
+            }
+            if (type == Boolean.class) {
+                return (E) new Boolean(str);
+            }
+            if (type == Byte.class) {
+                return (E) new Byte(str);
+            }
+            if (type == Short.class) {
+                return (E) new Short(str);
+            }
+            if (type == Character.class) {
+                return (E) (Character) str.charAt(0);
+            }
+            if (type == Integer.class) {
+                return (E) new Integer(str);
+            }
+            if (type == Long.class) {
+                return (E) new Long(str);
+            }
+            if (type == Float.class) {
+                return (E) new Float(str);
+            }
+            if (type == Double.class) {
+                return (E) new Double(str);
+            }
+        }
+        if (value.getClass().isArray() && type.isArray()) {
+            final int len = Array.getLength(value);
+            final Class<?> componentType = type.getComponentType();
+            final Object result = Array.newInstance(componentType, len);
+            for (int i = 0; i < len; i++) {
+                final Object o = Array.get(value, i);
+                Array.set(result, i, convert(o, componentType));
+            }
+            return (E) result;
+        }
+        throw new IllegalStateException("Cannot convert " + value.getClass()
+                + " to " + type);
+    }
+
+    /**
+     * Returns all the bundles depended on, by this "feature".
+     */
+    public static Vertex[] allBundles(final Vertex appFeature) {
+        final Vertex rootBundle = Objects.requireNonNull(appFeature)
+                .getVertices(Direction.OUT, "bundle").iterator().next();
+        final List<Vertex> todo = new ArrayList<>();
+        final List<Vertex> done = new ArrayList<>();
+        todo.add(rootBundle);
+        while (!todo.isEmpty()) {
+            final Vertex bundle = todo.remove(todo.size() - 1);
+            done.add(bundle);
+            for (final Vertex dep : bundle.getVertices(Direction.OUT,
+                    "dependsOn")) {
+                final Vertex otherBundle = dep
+                        .getVertices(Direction.OUT, "bundle").iterator().next();
+                if (!todo.contains(otherBundle) && !done.contains(otherBundle)) {
+                    todo.add(otherBundle);
+                }
+            }
+        }
+        return done.toArray(new Vertex[done.size()]);
+    }
+
+    /**
+     * Returns all the bundles depended on, by this "feature".
+     */
+    public static Vertex findBundleByName(final Vertex appFeature,
+            final String name) {
+        for (final Vertex bundle : allBundles(appFeature)) {
+            if (name.equals(bundle.getProperty("name"))) {
+                return bundle;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Returns the shortest distance from the root bundle (0) through
+     * dependencies. Returns Integer.MAX_VALUE when unknown/not found.
+     */
+    public static int distanceFromRoot(final Vertex appFeature,
+            final Vertex otherBundle) {
+        final Vertex rootBundle = Objects.requireNonNull(appFeature)
+                .getVertices(Direction.OUT, "bundle").iterator().next();
+        // TODO Like allBundles but use maps, where value is distance. Tricky part
+        // is that there might be multiple ways with different distances
+        return 0;
     }
 }

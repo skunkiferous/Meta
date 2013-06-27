@@ -16,7 +16,7 @@
 package com.blockwithme.meta.annotations;
 
 import java.lang.annotation.Annotation;
-import java.util.List;
+import java.util.Map;
 
 import org.reflections.Reflections;
 
@@ -65,14 +65,24 @@ public interface AnnotationReader {
             final Class<ANNOTATION> annotationType,
             final Class<VALUE> valueType, final Converter<VALUE, ?, ?> converter);
 
-    /** Registers an annotation PostProcessor. */
-    AnnotationReader withPostProcessor(final PostProcessor postProcessor);
+    /** Registers a type Post-Processor. */
+    AnnotationReader withPostProcessor(final TypeProcessor postProcessor);
 
-    /** Reads the annotations on a type. */
+    /** Registers an annotation Post-Processor. */
+    <ANNOTATION> AnnotationReader withPostProcessor(
+            final Class<ANNOTATION> annotationType,
+            final AnnotationProcessor<ANNOTATION, ?> postProcessor);
+
+    /** Reads all the annotations on a type. */
     AnnotatedType read(final Class<?> type);
 
-    /** Finds all annotated types, and reads their annotations. */
-    List<AnnotatedType> read(
+    /**
+     * Finds all types annotated with at least one of the given annotations,
+     * and reads their annotations. The result is a sorted map from class name
+     * to annotation data. Note the the map contain the complete data,
+     * including data on annotations not part of the method parameters.
+     */
+    Map<String, AnnotatedType> read(
             final Reflections reflections,
             @SuppressWarnings("unchecked") final Class<? extends Annotation>... annotations);
 }
