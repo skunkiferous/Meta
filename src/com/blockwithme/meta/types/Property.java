@@ -15,6 +15,7 @@
  */
 package com.blockwithme.meta.types;
 
+import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.frames.Adjacency;
 import com.tinkerpop.frames.typed.TypeValue;
 
@@ -26,11 +27,11 @@ import com.tinkerpop.frames.typed.TypeValue;
 @TypeValue("Property")
 public interface Property extends Bundled {
     /** The property's owner type. */
-    @Adjacency(label = "type")
+    @Adjacency(label = "hasProperty", direction = Direction.IN)
     Type getType();
 
     /** The property's owner type. */
-    @Adjacency(label = "type")
+    @Adjacency(label = "hasProperty", direction = Direction.IN)
     void setType(final Type type);
 
     /** The property type range. */
@@ -41,19 +42,29 @@ public interface Property extends Bundled {
     @Adjacency(label = "typeRange")
     void setTypeRange(final TypeRange typeRange);
 
+    /**
+     * Does the owner of this property contains/owns the content of the
+     * property? Defaults to true.
+     */
+    @com.tinkerpop.frames.Property("contains")
+    boolean getContains();
+
+    /**
+     * Does the owner of this property contains/owns the content of the
+     * property? Defaults to true.
+     */
+    @com.tinkerpop.frames.Property("contains")
+    void setContains(final boolean contains);
+
+    /** Is this property persistent? */
+    @com.tinkerpop.frames.Property("persistent")
+    boolean isPersistent();
+
+    /** Is this property persistent? */
+    @com.tinkerpop.frames.Property("persistent")
+    void setPersistent(final boolean isPersistent);
+
     // TODO: We should have access control specifications
-
-    /** The kinds of persistence supported by this property. */
-    @com.tinkerpop.frames.Property("persistence")
-    String[] getPersistence();
-
-    /** Adds a kind of persistence supported by this property. */
-    @com.tinkerpop.frames.Property("persistence")
-    void addPersistence(final String persistence);
-
-    /** Removes a kind of persistence supported by this property. */
-    @com.tinkerpop.frames.Property("persistence")
-    void removePersistence(final String persistence);
 
     // TODO ...
 }

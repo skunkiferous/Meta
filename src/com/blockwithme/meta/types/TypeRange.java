@@ -17,8 +17,7 @@ package com.blockwithme.meta.types;
 
 import com.tinkerpop.frames.Adjacency;
 import com.tinkerpop.frames.Property;
-import com.tinkerpop.frames.annotations.gremlin.GremlinGroovy;
-import com.tinkerpop.frames.annotations.gremlin.GremlinParam;
+import com.tinkerpop.frames.modules.javahandler.JavaHandler;
 import com.tinkerpop.frames.typed.TypeValue;
 
 /**
@@ -43,52 +42,64 @@ public interface TypeRange extends Bundled {
     @Property("actualInstance")
     void setActualInstance(final boolean actualInstance);
 
-    /**
-     * Does the owner of this property contains/owns the content of the
-     * property? Defaults to true.
-     */
-    @Property("contains")
-    boolean getContains();
+    /** The declared type of this property. */
+    @Adjacency(label = "defaultsTo")
+    Type getDeclaredType();
 
-    /**
-     * Does the owner of this property contains/owns the content of the
-     * property? Defaults to true.
-     */
-    @Property("contains")
-    void setContains(final boolean contains);
+    /** The declared type of this property. */
+    @Adjacency(label = "defaultsTo")
+    void setDeclaredType(final Type defaultType);
+
+    /** Is only the the declared type accepted, and only the data value preserved? */
+    @Property("exact")
+    boolean isExact();
+
+    /** Is only the the declared type accepted, and only the data value preserved? */
+    @Property("exact")
+    void setExact(final boolean isExact);
 
     /**
      * Lists the explicitly accepted children type, of the declared type.
-     * An empty list means an exact type match.
      */
     @Adjacency(label = "accepts")
-    Type[] getChildren();
+    Type[] getAcceptedTypes();
 
     /** Adds a new accepted child. */
     @Adjacency(label = "accepts")
-    void addChild(final Type type);
+    void addAcceptedType(final Type type);
 
     /** Removes an accepted child. */
     @Adjacency(label = "accepts")
-    void removeChild(final Type type);
+    void removeAcceptedTypet(final Type type);
 
-    /** Returns the accepted child with the given name, if any. */
-    @GremlinGroovy("it.out('accepts').has('name',name)")
-    Type findChild(@GremlinParam("name") final String name);
+    /**
+     * Lists the explicitly rejected children type, of the declared type.
+     */
+    @Adjacency(label = "rejects")
+    Type[] getRejectedTypes();
 
-    /** Returns the type filters. */
-    @Property("filters")
-    TypeFilter[] getTypeFilters();
+    /** Adds a new rejected child. */
+    @Adjacency(label = "rejects")
+    void addRejectedType(final Type type);
 
-    /** Adds a new filter. */
-    @Property("filters")
-    void addTypeFilter(final TypeFilter filter);
+    /** Removes an rejected child. */
+    @Adjacency(label = "rejects")
+    void removeRejectedType(final Type type);
 
-    /** Removes an filter. */
-    @Property("filters")
-    void removeTypeFilter(final TypeFilter filter);
+//
+//    /** Returns the type filters. */
+//    @Property("filters")
+//    TypeFilter[] getAcceptFilters();
+//
+//    /** Adds a new filter. */
+//    @Property("filters")
+//    void addAcceptFilter(final TypeFilter filter);
+//
+//    /** Removes an filter. */
+//    @Property("filters")
+//    void removeAcceptFilter(final TypeFilter filter);
 
-    // TODO
     /** Is the given type an accepted child type? */
-//    boolean accept(final Type type);
+    @JavaHandler
+    boolean accept(final Type type);
 }

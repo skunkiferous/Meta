@@ -15,8 +15,6 @@
  */
 package com.blockwithme.meta.types.annotations;
 
-import com.blockwithme.meta.annotations.Instantiate;
-import com.blockwithme.meta.types.TypeFilter;
 
 /**
  * The type range defines the range of possible types accepted by a
@@ -38,32 +36,26 @@ public @interface TypeRange {
     boolean exact() default false;
 
     /**
-     * Does the owner of this property contains/owns the content of the
-     * property? Defaults to true.
-     */
-    boolean contains() default true;
-
-    /**
      * Lists the explicitly accepted children type, of the declared type.
      * An empty list does not imply an exact type match.
      */
-    Class<?>[] children() default {};
-
-    /**
-     * Defines the implicitly accepted children types, of the declared type,
-     * through custom filters.
-     * An empty list does not imply an exact type match.
-     */
-    @Instantiate
-    Class<? extends TypeFilter>[] childrenFilters() default {};
+    Class<?>[] accepts() default {};
 
     /**
      * Additional type restrictions, which limit the types of the instances,
      * by specifying that some other type cannot be accepted.
      */
-    Class<?>[] excludes() default {};
-
-    /** Implicit type exclusion, through custom filters. */
-    @Instantiate
-    Class<? extends TypeFilter>[] excludeFilters() default {};
+    Class<?>[] rejects() default {};
+//
+//    /**
+//     * Defines the implicitly accepted children types, of the declared type,
+//     * through custom filters.
+//     * An empty list does not imply an exact type match.
+//     */
+//    @Instantiate
+//    Class<? extends TypeFilter>[] childrenFilters() default {};
+//
+//    /** Implicit type exclusion, through custom filters. */
+//    @Instantiate
+//    Class<? extends TypeFilter>[] excludeFilters() default {};
 }

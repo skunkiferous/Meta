@@ -204,22 +204,17 @@ public interface Type extends Bundled {
     @GremlinGroovy(value = "it.in('extends').count(otherType)==0", frame = false)
     boolean isDirectChild(@GremlinParam("otherType") final Type otherType);
 
-    /** All the other types containing this type. */
+    /** All the other types using this type. */
     @Adjacency(label = "usedBy")
-    Container[] getContainers();
+    Property[] getContainers();
 
-    /** Adds a new container. */
+    /** Adds a new user. */
     @Adjacency(label = "usedBy")
-    void addContainer(final Container container);
+    void addContainer(final Property user);
 
-    /** Removes a container. */
+    /** Removes a user. */
     @Adjacency(label = "usedBy")
-    void removeContainer(final Container container);
-
-    /** Is the given other type a container of this type? */
-    // TODO This wont work!
-    @GremlinGroovy(value = "it.out('usedBy').has('container',otherType)")
-    Container[] findContainer(@GremlinParam("otherType") final Type otherType);
+    void removeContainer(final Property user);
 
     /** The Domain of this type. Could be null for Data and Trait. */
     @Adjacency(label = "domain")

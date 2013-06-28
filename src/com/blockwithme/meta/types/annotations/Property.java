@@ -33,7 +33,13 @@ public @interface Property {
     /** The property type range. */
     TypeRange typeRange();
 
-    /** The kinds of persistence supported by this property. */
-    String[] persistence();
+    /**
+     * Does the owner of this property contains/owns the content of the
+     * property? Defaults to true.
+     */
+    boolean contains() default true;
+
+    /** Is this property persistent? */
+    boolean persistent() default true;
 
 }
