@@ -18,7 +18,7 @@ package com.blockwithme.meta.infrastructure;
 import java.net.InetAddress;
 
 import com.tinkerpop.frames.Property;
-import com.tinkerpop.frames.typed.TypeValue;
+import com.tinkerpop.frames.modules.typedgraph.TypeValue;
 
 /**
  * Represents a TCP/IP network, within a cluster.

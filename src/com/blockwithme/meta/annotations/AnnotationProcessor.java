@@ -18,7 +18,7 @@ package com.blockwithme.meta.annotations;
 import java.lang.reflect.AnnotatedElement;
 
 /**
- * Post-processes an annotation data.
+ * Post-processes an annotation data, after it was generated using reflection.
  *
  * @author monster
  */

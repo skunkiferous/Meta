@@ -47,11 +47,15 @@ import com.blockwithme.meta.annotations.TypeProcessor;
  * An AnnotationReader implementation.
  *
  * TODO Add auto-registration of the processors/converters ...
+ * (By using special annotations on them too, that are searched for at runtime)
  *
  * TODO We should have a "Properties" Value-converter, where an array of Strings
  * in the form: {"age:int(5)","type:class(com.test.Test)", ...} can be defined,
  * and annotated with @Properties and automatically converted to a property map,
  * and added as a sub-map to the current annotation.
+ *
+ * TODO We used singletonMap() as Key-Value-Pair map key, out of laziness.
+ * We should replace it with something more efficient, like a "Tuple".
  *
  * @author monster
  */
@@ -78,11 +82,12 @@ public class AnnotationReaderImpl implements AnnotationReader {
     private final PropMap context;
 
     /**
-     *
+     * Creates an AnnotationReader with the given context.
      */
     @SuppressWarnings("unchecked")
     public AnnotationReaderImpl(final PropMap context) {
         this.context = context;
+        // Instantiate is always registered.
         @SuppressWarnings("rawtypes")
         final Instantiator converter = new Instantiator<>();
         withValueConverter(Instantiate.class, String.class, converter);
@@ -152,22 +157,31 @@ public class AnnotationReaderImpl implements AnnotationReader {
     @Override
     public Map<String, AnnotatedType> read(final Reflections reflections,
             final Class<? extends Annotation>... annotations) {
+        // We want to find the types to process. But we don't differentiate in
+        // the parameters, between type and method annotations. So we just
+        // check all possible cases.
         final HashSet<Class<?>> types = new HashSet<>();
+        // For each annotation ...
         for (final Class<? extends Annotation> annotation : annotations) {
+            // Check if it is on types
             types.addAll(reflections.getTypesAnnotatedWith(annotation));
+            // Check if it is on fields
             for (final Field field : reflections
                     .getFieldsAnnotatedWith(annotation)) {
                 types.add(field.getDeclaringClass());
             }
+            // Check if it is on methods
             for (final Method method : reflections
                     .getMethodsAnnotatedWith(annotation)) {
                 types.add(method.getDeclaringClass());
             }
+            // Check if it is on constructors
             for (final Constructor<?> constructor : reflections
                     .getConstructorsAnnotatedWith(annotation)) {
                 types.add(constructor.getDeclaringClass());
             }
         }
+        // Now that we found the types, process them.
         final Map<String, AnnotatedType> result = new TreeMap<>();
         for (final Class<?> type : types) {
             result.put(type.getName(), read(type));
@@ -177,6 +191,7 @@ public class AnnotationReaderImpl implements AnnotationReader {
 
     /** Returns all the getters for the given annotation. */
     private Method[] findGetters(final Class<?> annotation) {
+        // Getters are only extracted once per type
         Method[] result = annotationMethods.get(annotation);
         if (result == null) {
             final List<Method> list = new ArrayList<>();
@@ -190,7 +205,6 @@ public class AnnotationReaderImpl implements AnnotationReader {
                     list.add(m);
                 }
             }
-//            System.out.println("findGetters(" + annotation + ")=" + list);
             result = list.toArray(new Method[list.size()]);
             annotationMethods.put(annotation, result);
         }
@@ -203,9 +217,10 @@ public class AnnotationReaderImpl implements AnnotationReader {
             final Annotation annotation, final Class<?> annotationType,
             final AnnotatedElement annotatedElement) {
         final PropMapImpl result = new PropMapImpl();
+        // For each getter (== each property)
         for (final Method getter : findGetters(annotationType)) {
             final String property = getter.getName();
-            // Read value
+            // Read annotation value of property
             Object value = null;
             try {
                 value = getter.invoke(annotation);
@@ -213,13 +228,15 @@ public class AnnotationReaderImpl implements AnnotationReader {
                     | InvocationTargetException e) {
                 e.printStackTrace();
             }
-            // Process value
+            // Process value ...
+            // First, check for a property Converter
             Converter converter = propertyConverters.get(Collections
                     .singletonMap(annotationType, property));
             if (converter != null) {
                 value = converter.convert(context, annotatedType, annotation,
                         property, value);
             } else {
+                // The check for a value Converter
                 for (final Annotation getterAnnotation : getter
                         .getAnnotations()) {
                     converter = valueConverters.get(Collections.singletonMap(
@@ -231,17 +248,21 @@ public class AnnotationReaderImpl implements AnnotationReader {
                     }
                 }
             }
+            // Annotation property is itself an Annotation
             if (value instanceof Annotation) {
+                // recurse
                 final Annotation subAnn = (Annotation) value;
                 final Class<?> subAnnType = unproxy(subAnn.getClass());
                 value = processAnnotation(annotatedType, subAnn, subAnnType,
                         null);
             } else if (value instanceof Annotation[]) {
+                // Annotation property is itself an Annotation array
                 final Annotation[] subAnn = (Annotation[]) value;
                 final Class<?> subAnnType = unproxy(subAnn.getClass()
                         .getComponentType());
                 final PropMapImpl[] array = new PropMapImpl[subAnn.length];
                 for (int i = 0; i < subAnn.length; i++) {
+                    // recurse
                     array[i] = processAnnotation(annotatedType, subAnn[i],
                             subAnnType, null);
                 }
@@ -249,6 +270,7 @@ public class AnnotationReaderImpl implements AnnotationReader {
             }
             result.put(property, value);
         }
+        // Check for a AnnotationProcessor
         final AnnotationProcessor processor = annotationProcessors
                 .get(annotationType);
         if (processor != null) {
@@ -258,14 +280,19 @@ public class AnnotationReaderImpl implements AnnotationReader {
         return result;
     }
 
+    /**
+     * Annotation *implementations* are returned as generated proxy
+     * implementing the annotation interface. But we are not interested in
+     * the concrete proxy type. So we try to get back the annotation type.
+     */
     private Class<?> unproxy(final Class<?> maybeProxy) {
         if (Proxy.isProxyClass(maybeProxy)) {
             final Class<?>[] interfaces = maybeProxy.getInterfaces();
             if (interfaces.length == 1) {
                 return interfaces[0];
             } else if (interfaces.length > 1) {
-                System.out.println("Too many interfaces for: " + maybeProxy
-                        + " " + Arrays.asList(interfaces));
+                throw new IllegalStateException("Too many interfaces for: "
+                        + maybeProxy + " " + Arrays.asList(interfaces));
             }
         }
         return maybeProxy;
@@ -277,17 +304,23 @@ public class AnnotationReaderImpl implements AnnotationReader {
     @Override
     public AnnotatedType read(final Class<?> type) {
         final AnnotatedTypeImpl result = new AnnotatedTypeImpl(type);
+        // First, check the getters
         for (final Method method : type.getMethods()) {
-            result.getMethodData(method);
-            for (final Annotation annotation : method.getAnnotations()) {
-                final Class<?> annotationType = unproxy(annotation.getClass());
-                result.addMethodAnnotation(
-                        method,
-                        annotationType,
-                        processAnnotation(result, annotation, annotationType,
-                                method));
+            if (!method.getDeclaringClass().getName()
+                    .startsWith("com.tinkerpop")) {
+                result.getMethodData(method);
+                for (final Annotation annotation : method.getAnnotations()) {
+                    final Class<?> annotationType = unproxy(annotation
+                            .getClass());
+                    result.addMethodAnnotation(
+                            method,
+                            annotationType,
+                            processAnnotation(result, annotation,
+                                    annotationType, method));
+                }
             }
         }
+        // Then the constructors
         for (final Constructor<?> constructor : type.getConstructors()) {
             result.getConstructorData(constructor);
             for (final Annotation annotation : constructor.getAnnotations()) {
@@ -299,26 +332,32 @@ public class AnnotationReaderImpl implements AnnotationReader {
                                 constructor));
             }
         }
+        // Then the fields
         for (final Field field : type.getFields()) {
-            result.getFieldData(field);
-            for (final Annotation annotation : field.getAnnotations()) {
-                final Class<?> annotationType = unproxy(annotation.getClass());
-                result.addFieldAnnotation(
-                        field,
-                        annotationType,
-                        processAnnotation(result, annotation, annotationType,
-                                field));
+            if (!field.getDeclaringClass().getName()
+                    .startsWith("com.tinkerpop.blueprints")) {
+                result.getFieldData(field);
+                for (final Annotation annotation : field.getAnnotations()) {
+                    final Class<?> annotationType = unproxy(annotation
+                            .getClass());
+                    result.addFieldAnnotation(
+                            field,
+                            annotationType,
+                            processAnnotation(result, annotation,
+                                    annotationType, field));
+                }
             }
         }
+        // Then only the annotations on the type itself
         for (final Annotation annotation : type.getAnnotations()) {
             final Class<?> annotationType = unproxy(annotation.getClass());
             result.addTypeAnnotation(annotationType,
                     processAnnotation(result, annotation, annotationType, type));
         }
+        // Finally, process the type
         for (final TypeProcessor postProcessor : postProcessors) {
             postProcessor.process(context, result);
         }
-        System.out.println("read(" + type + ")=" + result);
         return result;
     }
 }

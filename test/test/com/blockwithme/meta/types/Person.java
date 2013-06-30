@@ -13,24 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta;
+package test.com.blockwithme.meta.types;
 
-import com.tinkerpop.frames.VertexFrame;
-import com.tinkerpop.frames.annotations.gremlin.GremlinGroovy;
-import com.tinkerpop.frames.modules.typedgraph.TypeField;
+import com.blockwithme.meta.TypedVertex;
+import com.blockwithme.meta.types.annotations.Property;
+import com.blockwithme.meta.types.annotations.Type;
 
 /**
- * TypedVertex is the base class of all vertex.
- * It allows the type information to be preserved when converting the proxy
- * instances to/from pure vertex.
- *
  * @author monster
+ *
  */
-@TypeField("class")
-public interface TypedVertex extends VertexFrame {
+@Type
+public interface Person extends TypedVertex {
+    @Property
+    String getName();
 
-    /** Returns the description of this vertex. */
-    @GremlinGroovy(value = "com.blockwithme.meta.Statics.toString(it)", frame = false)
-    String getString();
-
+    @Property
+    Pet[] getPets();
 }

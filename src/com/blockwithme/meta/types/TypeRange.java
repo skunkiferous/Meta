@@ -18,7 +18,7 @@ package com.blockwithme.meta.types;
 import com.tinkerpop.frames.Adjacency;
 import com.tinkerpop.frames.Property;
 import com.tinkerpop.frames.modules.javahandler.JavaHandler;
-import com.tinkerpop.frames.typed.TypeValue;
+import com.tinkerpop.frames.modules.typedgraph.TypeValue;
 
 /**
  * The type range defines the range of possible types accepted by a
@@ -62,7 +62,7 @@ public interface TypeRange extends Bundled {
      * Lists the explicitly accepted children type, of the declared type.
      */
     @Adjacency(label = "accepts")
-    Type[] getAcceptedTypes();
+    Iterable<Type> getAcceptedTypes();
 
     /** Adds a new accepted child. */
     @Adjacency(label = "accepts")
@@ -76,7 +76,7 @@ public interface TypeRange extends Bundled {
      * Lists the explicitly rejected children type, of the declared type.
      */
     @Adjacency(label = "rejects")
-    Type[] getRejectedTypes();
+    Iterable<Type> getRejectedTypes();
 
     /** Adds a new rejected child. */
     @Adjacency(label = "rejects")

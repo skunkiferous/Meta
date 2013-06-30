@@ -17,7 +17,7 @@ package com.blockwithme.meta.types;
 
 import com.blockwithme.meta.TypedVertex;
 import com.tinkerpop.frames.Property;
-import com.tinkerpop.frames.typed.TypeValue;
+import com.tinkerpop.frames.modules.typedgraph.TypeValue;
 
 /**
  * Something that has a name.

@@ -17,7 +17,7 @@ package com.blockwithme.meta.infrastructure;
 
 import com.blockwithme.meta.TypedVertex;
 import com.tinkerpop.frames.Property;
-import com.tinkerpop.frames.typed.TypeValue;
+import com.tinkerpop.frames.modules.typedgraph.TypeValue;
 
 /**
  * An actor is an active component, that can send and receive messages, and

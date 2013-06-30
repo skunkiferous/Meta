@@ -15,7 +15,7 @@
  */
 package com.blockwithme.meta.infrastructure;
 
-import com.tinkerpop.frames.typed.TypeValue;
+import com.tinkerpop.frames.modules.typedgraph.TypeValue;
 
 /**
  * A cluster is a group of nodes; either hardware, or virtual,

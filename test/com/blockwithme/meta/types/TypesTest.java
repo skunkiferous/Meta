@@ -15,15 +15,22 @@
  */
 package com.blockwithme.meta.types;
 
+import java.io.IOException;
+
 import junit.framework.TestCase;
 
+import org.reflections.Reflections;
+
 import com.blockwithme.meta.Statics;
+import com.blockwithme.meta.annotations.impl.PropMapImpl;
 import com.blockwithme.meta.infrastructure.Application;
 import com.blockwithme.meta.infrastructure.Connector;
+import com.blockwithme.meta.types.impl.TypeGraphBuilder;
+import com.blockwithme.meta.types.impl.TypeGraphIO;
 import com.tinkerpop.blueprints.impls.tg.TinkerGraph;
 import com.tinkerpop.frames.FramedGraph;
 import com.tinkerpop.frames.FramedGraphFactory;
-import com.tinkerpop.frames.annotations.gremlin.GremlinGroovyModule;
+import com.tinkerpop.frames.modules.gremlingroovy.GremlinGroovyModule;
 
 /**
  * @author monster
@@ -73,4 +80,14 @@ public class TypesTest extends TestCase {
         assertEquals(ftp, app.findConnector("ftp"));
     }
 
+    public void testAutoGen() throws IOException {
+        final TypeGraphBuilder builder = new TypeGraphBuilder();
+        final FramedGraph<TinkerGraph> graph = builder.newGraph();
+        final Bundle bundle = graph.addVertex(null, Bundle.class);
+        bundle.setName("test");
+        bundle.setVersion("0.0.1");
+        builder.build(graph, new PropMapImpl(), new Reflections(
+                "test.com.blockwithme.meta.types"), bundle);
+        TypeGraphIO.output(graph, System.out);
+    }
 }

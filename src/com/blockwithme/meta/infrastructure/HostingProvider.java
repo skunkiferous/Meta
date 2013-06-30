@@ -19,7 +19,7 @@ import com.blockwithme.meta.types.Named;
 import com.tinkerpop.frames.Adjacency;
 import com.tinkerpop.frames.annotations.gremlin.GremlinGroovy;
 import com.tinkerpop.frames.annotations.gremlin.GremlinParam;
-import com.tinkerpop.frames.typed.TypeValue;
+import com.tinkerpop.frames.modules.typedgraph.TypeValue;
 
 /**
  * An hosting provider provides hardware and/or virtual nodes, that we can

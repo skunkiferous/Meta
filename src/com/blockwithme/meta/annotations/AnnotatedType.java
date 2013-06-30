@@ -21,15 +21,17 @@ import java.lang.reflect.Method;
 import java.util.Map;
 
 /**
- * @author monster
+ * AnnotatedType contains all the data produced for a type (class), using
+ * reflection. Most of it comes from annotations.
  *
+ * @author monster
  */
 public interface AnnotatedType {
 
     /** Returns the annotated type itself. */
     public Class<?> getType();
 
-    /** Returns the type annotation data. */
+    /** Returns the type annotation data. Keys are the types of the annotation. */
     public Map<Class<?>, PropMap> getTypeData();
 
     /** Adds a type annotation. */
@@ -39,7 +41,7 @@ public interface AnnotatedType {
     /** Returns all the registered methods. */
     public Method[] getMethods();
 
-    /** Returns the Method annotation data. */
+    /** Returns the Method annotation data. Keys are the types of the annotation. */
     public Map<Class<?>, PropMap> getMethodData(final Method method);
 
     /** Adds a Method annotation. */
@@ -50,7 +52,7 @@ public interface AnnotatedType {
     @SuppressWarnings("rawtypes")
     public Constructor[] getConstructors();
 
-    /** Returns the Constructor annotation data. */
+    /** Returns the Constructor annotation data. Keys are the types of the annotation. */
     public Map<Class<?>, PropMap> getConstructorData(
             @SuppressWarnings("rawtypes") final Constructor constructor);
 
@@ -62,7 +64,7 @@ public interface AnnotatedType {
     /** Returns all the registered Fields. */
     public Field[] getFields();
 
-    /** Returns the Field annotation data. */
+    /** Returns the Field annotation data. Keys are the types of the annotation. */
     public Map<Class<?>, PropMap> getFieldData(final Field field);
 
     /** Adds a Field annotation. */

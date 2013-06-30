@@ -15,40 +15,52 @@
  */
 package com.blockwithme.meta.types;
 
+import com.tinkerpop.blueprints.Vertex;
+import com.tinkerpop.frames.modules.javahandler.JavaHandlerImpl;
+
 /**
- * Defines the general classification of a type. It is used mostly for
- * validating the complete schema of all types.
- *
  * @author monster
+ *
  */
-public enum Kind {
+public abstract class Type$Impl implements JavaHandlerImpl<Vertex>, Type {
+
     /**
      * Data is for technical types without domain meaning, like Strings,
      * arrays, ... It cannot inherit, directly or indirectly, from a Root type.
      */
-    Data,
-    /** An array of something is just a special kind of "Data". */
-    Array,
+    @Override
+    public boolean isData() {
+        return (getKind() == Kind.Data) || isArray();
+    }
+
+    /** true only if it is an array (and therefore also a data). */
+    @Override
+    public boolean isArray() {
+        return getKind() == Kind.Array;
+    }
+
     /**
-     * A Root type is at the base of a hierarchy of types.
+     * A Root type is at the base of an hierarchy of types.
      * It cannot inherit, directly or indirectly, from another Root type, or
      * Data type. Implicitly, a Root type also defines a Domain. A Domain is
      * useful to classify Data and Trait types, which cannot/don't have to,
-     * extend a Root type. All types extending a Root type, are in that Domain.
+     * extend a Root type. All type extending a Root type, are in that Domain.
      */
-    Root,
-    /**
-     * A sub-type (specialization) of a Root type. It can only inherit,
-     * directly or indirectly, from exactly one Root type. It cannot
-     * inherit from a Data type.
-     */
-    Specialization,
+    @Override
+    public boolean isRoot() {
+        return getKind() == Kind.Root;
+    }
+
     /**
      * A trait is a "partial type", which covers only one "shared aspect" of
      * multiple types. For example, Serialisable. It can be inherited by
      * anything.
      */
-    Trait,
+    @Override
+    public boolean isTrait() {
+        return getKind() == Kind.Trait;
+    }
+
     /**
      * An Implementation is the, potentially abstract, realization of some
      * non-Data type. It must not define any "interface" itself, but only
@@ -58,15 +70,32 @@ public enum Kind {
      * A Trait Implementation could be a special case that can only be defined
      * using static methods, taking the Trait as first parameter. Or, it would
      * be conceivable to define a Trait together with it's Implementation as
-     * a single abstract class.
+     * an abstract class.
      *
      * An Implementation is concrete, when it implements every of it's parent
      * Types methods.
      */
-    Implementation,
+    @Override
+    public boolean isImplementation() {
+        return getKind() == Kind.Implementation;
+    }
+
     /**
-     * A final type is a specialization that cannot have children outside it's
-     * bundle, and can only have Implementations as child inside it's bundle.
+     * A specialization is a sub-type of a Root type. It can only inherit,
+     * directly or indirectly, from exactly one Root type. It cannot
+     * inherit from a Data type.
      */
-    Final
+    @Override
+    public boolean isSpecialization() {
+        return (getKind() == Kind.Specialization) || isFinal();
+    }
+
+    /**
+     * A final type cannot have children outside it's bundle, and can only
+     * have Implementations as child inside it's bundle.
+     */
+    @Override
+    public boolean isFinal() {
+        return getKind() == Kind.Final;
+    }
 }

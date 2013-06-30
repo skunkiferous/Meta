@@ -15,21 +15,24 @@
  */
 package com.blockwithme.meta.types;
 
+import java.util.List;
+
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.frames.Adjacency;
 import com.tinkerpop.frames.annotations.gremlin.GremlinGroovy;
 import com.tinkerpop.frames.annotations.gremlin.GremlinParam;
-import com.tinkerpop.frames.typed.TypeValue;
+import com.tinkerpop.frames.modules.javahandler.JavaHandler;
+import com.tinkerpop.frames.modules.typedgraph.TypeValue;
 
 /**
  * Represents a fully resolved type. Normally, this means that there were no
  * conflict detected in the schema. A more detailed explanation of types can
- * be found in the documentation of <code>TypeDef<code>.
+ * be found in the documentation of <code>@Type<code>.
  *
  * @author monster
  */
 @TypeValue("Type")
-public interface Type extends Bundled {
+public interface Type extends Bundled, Named {
 
     /** The Java class representing this type. */
     @com.tinkerpop.frames.Property("implements")
@@ -51,20 +54,12 @@ public interface Type extends Bundled {
      * Data is for technical types without domain meaning, like Strings,
      * arrays, ... It cannot inherit, directly or indirectly, from a Root type.
      */
-    @com.tinkerpop.frames.Property("data")
+    @JavaHandler
     boolean isData();
 
-    /** Sets the data flag. */
-    @com.tinkerpop.frames.Property("data")
-    void setData(final boolean isData);
-
     /** true only if it is an array (and therefore also a data). */
-    @com.tinkerpop.frames.Property("array")
+    @JavaHandler
     boolean isArray();
-
-    /** Set to true only if it is an array (and therefore also a data). */
-    @com.tinkerpop.frames.Property("array")
-    void setArray(final boolean isArray);
 
     /**
      * A Root type is at the base of an hierarchy of types.
@@ -73,24 +68,16 @@ public interface Type extends Bundled {
      * useful to classify Data and Trait types, which cannot/don't have to,
      * extend a Root type. All type extending a Root type, are in that Domain.
      */
-    @com.tinkerpop.frames.Property("root")
+    @JavaHandler
     boolean isRoot();
-
-    /** Sets the root flag. */
-    @com.tinkerpop.frames.Property("root")
-    void setRoot(final boolean isRoot);
 
     /**
      * A trait is a "partial type", which covers only one "shared aspect" of
      * multiple types. For example, Serialisable. It can be inherited by
      * anything.
      */
-    @com.tinkerpop.frames.Property("trait")
+    @JavaHandler
     boolean isTrait();
-
-    /** Sets the trait flag */
-    @com.tinkerpop.frames.Property("trait")
-    void setTrait(final boolean isTrait);
 
     /**
      * An Implementation is the, potentially abstract, realization of some
@@ -106,35 +93,23 @@ public interface Type extends Bundled {
      * An Implementation is concrete, when it implements every of it's parent
      * Types methods.
      */
-    @com.tinkerpop.frames.Property("implementation")
+    @JavaHandler
     boolean isImplementation();
-
-    /** Sets the implementation flag */
-    @com.tinkerpop.frames.Property("implementation")
-    void setImplementation(final boolean isImplementation);
 
     /**
      * A specialization is a sub-type of a Root type. It can only inherit,
      * directly or indirectly, from exactly one Root type. It cannot
      * inherit from a Data type.
      */
-    @com.tinkerpop.frames.Property("specialization")
+    @JavaHandler
     boolean isSpecialization();
-
-    /** Sets the specialization flag */
-    @com.tinkerpop.frames.Property("specialization")
-    void setSpecialization(final boolean isSpecialization);
 
     /**
      * A final type cannot have children outside it's bundle, and can only
      * have Implementations as child inside it's bundle.
      */
-    @com.tinkerpop.frames.Property("final")
+    @JavaHandler
     boolean isFinal();
-
-    /** Sets the final flag */
-    @com.tinkerpop.frames.Property("final")
-    void setFinal(final boolean isFinal);
 
     /** The access-level to this type. */
     @com.tinkerpop.frames.Property("access")
@@ -146,7 +121,7 @@ public interface Type extends Bundled {
 
     /** List all direct properties of this type. */
     @Adjacency(label = "hasProperty")
-    Property[] getDirectProperties();
+    Iterable<Property> getDirectProperties();
 
     /** Adds a new direct property. */
     @Adjacency(label = "hasProperty")
@@ -174,7 +149,7 @@ public interface Type extends Bundled {
 
     /** All the direct parents of this type. */
     @Adjacency(label = "extends")
-    Type[] getDirectParents();
+    Iterable<Type> getDirectParents();
 
     /** Adds a new direct parent. */
     @Adjacency(label = "extends")
@@ -194,7 +169,7 @@ public interface Type extends Bundled {
 
     /** All the direct children of this type. */
     @Adjacency(label = "extends", direction = Direction.IN)
-    Type[] getDirectChildren();
+    Iterable<Type> getDirectChildren();
 
     /** Search for a direct child with the given name, if any. */
     @GremlinGroovy("it.in('extends').has('name',name)")
@@ -206,7 +181,7 @@ public interface Type extends Bundled {
 
     /** All the other types using this type. */
     @Adjacency(label = "usedBy")
-    Property[] getContainers();
+    Iterable<Property> getContainers();
 
     /** Adds a new user. */
     @Adjacency(label = "usedBy")
@@ -226,17 +201,13 @@ public interface Type extends Bundled {
 
     /** The kinds of persistence supported by this type. */
     @com.tinkerpop.frames.Property("persistence")
-    String[] getPersistence();
+    List<String> getPersistence();
 
-    /** Adds a kind of persistence supported by this type. */
+    /** The kinds of persistence supported by this type. */
     @com.tinkerpop.frames.Property("persistence")
-    void addPersistence(final String persistence);
+    void setPersistence(final List<String> persistence);
 
-    /** Removes a kind of persistence supported by this type. */
-    @com.tinkerpop.frames.Property("persistence")
-    void removePersistence(final String persistence);
-
-    // TODO
+    // TODO Improve management of children and parents
 
 //  /** List all the properties of this type. */
 //  Property[] allProperties();

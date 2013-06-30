@@ -15,9 +15,8 @@
  */
 package com.blockwithme.meta.annotations;
 
-
 /**
- * Post-processes an AnnotatedType.
+ * Post-processes an AnnotatedType, after it was generated using Reflection.
  *
  * @author monster
  */

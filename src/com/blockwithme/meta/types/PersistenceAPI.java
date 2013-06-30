@@ -15,7 +15,7 @@
  */
 package com.blockwithme.meta.types;
 
-import com.tinkerpop.frames.typed.TypeValue;
+import com.tinkerpop.frames.modules.typedgraph.TypeValue;
 
 /**
  * Represents some persistence API.

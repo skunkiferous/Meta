@@ -15,21 +15,21 @@
  */
 package com.blockwithme.meta;
 
-import com.tinkerpop.frames.VertexFrame;
+import com.tinkerpop.frames.EdgeFrame;
 import com.tinkerpop.frames.annotations.gremlin.GremlinGroovy;
 import com.tinkerpop.frames.modules.typedgraph.TypeField;
 
 /**
- * TypedVertex is the base class of all vertex.
+ * TypedEdge is the base class of all edges.
  * It allows the type information to be preserved when converting the proxy
- * instances to/from pure vertex.
+ * instances to/from pure edge.
  *
  * @author monster
  */
 @TypeField("class")
-public interface TypedVertex extends VertexFrame {
+public interface TypedEdge extends EdgeFrame {
 
-    /** Returns the description of this vertex. */
+    /** Returns the description of this edge. */
     @GremlinGroovy(value = "com.blockwithme.meta.Statics.toString(it)", frame = false)
     String getString();
 

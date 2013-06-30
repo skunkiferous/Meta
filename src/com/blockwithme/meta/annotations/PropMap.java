@@ -15,14 +15,17 @@
  */
 package com.blockwithme.meta.annotations;
 
-import java.util.Map;
+import java.util.NavigableMap;
 
 /**
- * A map of anything that retunrs the disired type, or fail.
+ * A map of anything that returns the desired type, or fail.
  *
  * @author monster
  */
-public interface PropMap extends Map<String, Object> {
-    /** Make sure the property is null, or has the right type. */
+public interface PropMap extends NavigableMap<String, Object> {
+    /** Make sure the property is null, or has the right type, then returns it. */
     <E> E get(final String property, final Class<E> type);
+
+    /** Make sure the property is null, or has the right type, then removes it. */
+    <E> E remove(final String property, final Class<E> type);
 }

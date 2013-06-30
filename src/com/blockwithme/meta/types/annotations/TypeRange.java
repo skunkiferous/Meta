@@ -15,7 +15,6 @@
  */
 package com.blockwithme.meta.types.annotations;
 
-
 /**
  * The type range defines the range of possible types accepted by a
  * non-primitive, non-Data, property. It defaults to all children types of
@@ -25,12 +24,14 @@ package com.blockwithme.meta.types.annotations;
  *
  * If both inclusions and exclusions are specified, the exclusions win.
  *
+ * TODO Add support for type filters, to make accepted/rejected types implicit.
+ *
  * @author monster
  */
 public @interface TypeRange {
 
     /** Is the actual instance preserved, implying any child type is accepted? */
-    boolean actualInstance() default false;
+    boolean actualInstance() default true;
 
     /** Is only the the declared type accepted, and only the data value preserved? */
     boolean exact() default false;

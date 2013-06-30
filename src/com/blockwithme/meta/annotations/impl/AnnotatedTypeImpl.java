@@ -26,7 +26,8 @@ import com.blockwithme.meta.annotations.AnnotatedType;
 import com.blockwithme.meta.annotations.PropMap;
 
 /**
- * Represents an annotated type.
+ * Implements an annotated type representation. The logic that actually
+ * generates the data comes from AnnotationReaderImpl.
  *
  * @author monster
  */

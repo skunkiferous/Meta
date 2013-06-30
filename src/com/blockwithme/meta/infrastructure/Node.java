@@ -18,7 +18,7 @@ package com.blockwithme.meta.infrastructure;
 import com.tinkerpop.frames.Adjacency;
 import com.tinkerpop.frames.annotations.gremlin.GremlinGroovy;
 import com.tinkerpop.frames.annotations.gremlin.GremlinParam;
-import com.tinkerpop.frames.typed.TypeValue;
+import com.tinkerpop.frames.modules.typedgraph.TypeValue;
 
 /**
  * A node can be either a hardware node, or a virtual node.

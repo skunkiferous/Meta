@@ -33,7 +33,7 @@ public interface AnnotationReader {
      *
      * Example: A converter for actualInstance in TypeRangeDef:
      *
-     * public @interface TypeRangeDef {
+     * public @interface TypeRange {
      *     boolean actualInstance() default false;
      * }
      *
@@ -52,7 +52,7 @@ public interface AnnotationReader {
      *
      * Example: A converter for Class<?> (to instances):
      *
-     * public @interface TypeRangeDef {
+     * public @interface TypeRange {
      *     @Instantiate
      *     Class<?>[] children() default {};
      * }

@@ -21,8 +21,9 @@ import com.blockwithme.meta.Statics;
 import com.blockwithme.meta.annotations.PropMap;
 
 /**
- * @author monster
+ * A sorted map implementation that helps converting data on demand.
  *
+ * @author monster
  */
 public class PropMapImpl extends TreeMap<String, Object> implements PropMap {
 
@@ -42,4 +43,11 @@ public class PropMapImpl extends TreeMap<String, Object> implements PropMap {
         return Statics.convert(get(property), type);
     }
 
+    /* (non-Javadoc)
+     * @see com.blockwithme.meta.annotations.PropMap#remove(java.lang.String, java.lang.Class)
+     */
+    @Override
+    public <E> E remove(final String property, final Class<E> type) {
+        return Statics.convert(remove(property), type);
+    }
 }

@@ -22,8 +22,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * @author monster
+ * Defines explicitly a "property" using an annotation.
  *
+ * TODO See if we could also allow implicit property creation, using defaults.
+ *
+ * @author monster
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
@@ -31,7 +34,7 @@ import java.lang.annotation.Target;
 public @interface Property {
 
     /** The property type range. */
-    TypeRange typeRange();
+    TypeRange typeRange() default @TypeRange;
 
     /**
      * Does the owner of this property contains/owns the content of the

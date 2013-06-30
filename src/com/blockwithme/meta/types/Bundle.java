@@ -19,7 +19,7 @@ import com.tinkerpop.frames.Adjacency;
 import com.tinkerpop.frames.Property;
 import com.tinkerpop.frames.annotations.gremlin.GremlinGroovy;
 import com.tinkerpop.frames.annotations.gremlin.GremlinParam;
-import com.tinkerpop.frames.typed.TypeValue;
+import com.tinkerpop.frames.modules.typedgraph.TypeValue;
 
 /**
  * A bundle is a grouping of resources. Typically types, but also media-files.
@@ -52,7 +52,7 @@ public interface Bundle extends Named {
 
     /** List the exported types defined in this bundle. */
     @Adjacency(label = "exports")
-    Type[] getExports();
+    Iterable<Type> getExports();
 
     /** Adds a new export. */
     @Adjacency(label = "exports")
@@ -68,7 +68,7 @@ public interface Bundle extends Named {
 
     /** List the bundle's dependencies. */
     @Adjacency(label = "dependsOn")
-    Dependency[] getDependencies();
+    Iterable<Dependency> getDependencies();
 
     /** Adds a new Dependency. */
     @Adjacency(label = "dependsOn")
@@ -84,7 +84,7 @@ public interface Bundle extends Named {
 
     /** All the services offered by this bundle. */
     @Adjacency(label = "offers")
-    Service[] getServices();
+    Iterable<Service> getServices();
 
     /** Adds a new service. */
     @Adjacency(label = "offers")

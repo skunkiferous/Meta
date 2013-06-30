@@ -21,13 +21,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import com.blockwithme.meta.annotations.Instantiate;
 import com.blockwithme.meta.types.Access;
 import com.blockwithme.meta.types.Kind;
-import com.blockwithme.meta.types.TypeFilter;
 
 /**
- * A TypeDef describes the type it annotates, to allow schema validation.
+ * A @Type describes the type it annotates, to allow schema validation...
  * It can be used on any kind of Java Class.
  *
  * Java types should be used to represent any external resource, to allow
@@ -46,7 +44,7 @@ import com.blockwithme.meta.types.TypeFilter;
  * type, or something else.
  *
  * Third-party types, including the JDK types, can also be classified by
- * registering them explicitly with the type registry.
+ * registering them explicitly with the type graph.
  *
  * A type system can only be validated, once all types belonging to it are
  * known. This implies that all types used anywhere in the code must be
@@ -56,7 +54,9 @@ import com.blockwithme.meta.types.TypeFilter;
  * are known for the system, it can be validated as a whole, and for every
  * type, the concrete list of children and parent types can be computed.
  *
- * <code>@TypeDef</code> is explicitly not inheritable.
+ * <code>@Type</code> is explicitly not inheritable.
+ *
+ * TODO Add support for type filters, to make accepted/rejected types implicit.
  *
  * @author monster
  */
@@ -64,11 +64,14 @@ import com.blockwithme.meta.types.TypeFilter;
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 public @interface Type {
+    /** Automatically generate properties? */
+    boolean auto() default false;
+
     /** The kind of type, that this class/interface/enum is. */
     Kind kind() default Kind.Specialization;
 
     /** The access-level. */
-    Access access() default Access.Default;
+    Access access() default Access.Public;
 
     /**
      * The types that are implicitly also implemented by this type. This is
@@ -78,9 +81,10 @@ public @interface Type {
      */
     Class<?>[] parents() default {};
 
-    /** Implicit parents definition, through custom filters. */
-    @Instantiate
-    Class<? extends TypeFilter>[] parentFilters() default {};
+//
+//    /** Implicit parents definition, through custom filters. */
+//    @Instantiate
+//    Class<? extends TypeFilter>[] parentFilters() default {};
 
     /**
      * Similar to parents, but backwards. It means that all instances of the
@@ -89,9 +93,10 @@ public @interface Type {
      */
     Class<?>[] children() default {};
 
-    /** Implicit children definition, through custom filters. */
-    @Instantiate
-    Class<? extends TypeFilter>[] childrenFilters() default {};
+//
+//    /** Implicit children definition, through custom filters. */
+//    @Instantiate
+//    Class<? extends TypeFilter>[] childrenFilters() default {};
 
     /**
      * Additional type restrictions, which limit the sub-types and instances,
@@ -100,9 +105,10 @@ public @interface Type {
      */
     Class<?>[] excludes() default {};
 
-    /** Implicit type exclusion, through custom filters. */
-    @Instantiate
-    Class<? extends TypeFilter>[] excludeFilters() default {};
+//
+//    /** Implicit type exclusion, through custom filters. */
+//    @Instantiate
+//    Class<? extends TypeFilter>[] excludeFilters() default {};
 
     /**
      * The Type's Domain. It is implicitly defined as the Root type, if this
@@ -114,5 +120,5 @@ public @interface Type {
     Class<?> domain() default Object.class;
 
     /** What kinds of persistence are allowed. */
-    String[] persistence() default {};
+    String[] persistence() default { "java.io.Serializable" };
 }

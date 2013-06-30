@@ -17,14 +17,16 @@ package com.blockwithme.meta.types.annotations.impl;
 
 import java.lang.reflect.Method;
 
+import com.blockwithme.meta.Statics;
 import com.blockwithme.meta.annotations.AnnotatedType;
 import com.blockwithme.meta.annotations.AnnotationProcessor;
 import com.blockwithme.meta.annotations.PropMap;
 import com.blockwithme.meta.types.annotations.Property;
 
 /**
- * @author monster
+ * Sets the correct name for annotated properties.
  *
+ * @author monster
  */
 public class PropertyAnnotationProcessor implements
         AnnotationProcessor<Property, Method> {
@@ -36,15 +38,7 @@ public class PropertyAnnotationProcessor implements
             final AnnotatedType annotatedType,
             final Property annotatedTypeAnnotation,
             final Method annotatedElement, final PropMap annotationData) {
-        String name = annotatedElement.getName();
-        if (name.startsWith("is") && (name.length() > 2)
-                && Character.isUpperCase(name.charAt(2))) {
-            name = Character.toLowerCase(name.charAt(2)) + name.substring(3);
-        } else if ((name.startsWith("get") || name.startsWith("set")
-                || name.startsWith("has") || name.startsWith("can"))
-                && (name.length() > 3) && Character.isUpperCase(name.charAt(3))) {
-            name = Character.toLowerCase(name.charAt(3)) + name.substring(4);
-        }
-        annotationData.put("name", name);
+        annotationData
+                .put("name", Statics.getPropertyNameFor(annotatedElement));
     }
 }

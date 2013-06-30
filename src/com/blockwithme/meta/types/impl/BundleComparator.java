@@ -19,8 +19,8 @@ import java.util.Comparator;
 import java.util.Objects;
 
 import com.blockwithme.meta.Statics;
-import com.tinkerpop.blueprints.Direction;
-import com.tinkerpop.blueprints.Vertex;
+import com.blockwithme.meta.types.Bundle;
+import com.blockwithme.meta.types.Feature;
 
 /**
  * A bundle comparator compares bundles based on their distance to the root
@@ -28,27 +28,26 @@ import com.tinkerpop.blueprints.Vertex;
  *
  * @author monster
  */
-public class BundleComparator implements Comparator<Vertex> {
+public class BundleComparator implements Comparator<Bundle> {
     /** The application. */
-    private final Vertex root;
+    private final Feature appFeature;
 
     /** Creates a BundleComparator */
-    public BundleComparator(final Vertex appFeature) {
-        this.root = Objects.requireNonNull(appFeature)
-                .getVertices(Direction.OUT, "bundle").iterator().next();
+    public BundleComparator(final Feature appFeature) {
+        this.appFeature = Objects.requireNonNull(appFeature);
     }
 
     /* (non-Javadoc)
      * @see java.util.Comparator#compare(java.lang.Object, java.lang.Object)
      */
     @Override
-    public int compare(final Vertex bundle1, final Vertex bundle2) {
-        final int depth1 = Statics.distanceFromRoot(root, bundle1);
-        final int depth2 = Statics.distanceFromRoot(root, bundle2);
+    public int compare(final Bundle bundle1, final Bundle bundle2) {
+        final int depth1 = Statics.distanceFromRoot(appFeature, bundle1);
+        final int depth2 = Statics.distanceFromRoot(appFeature, bundle2);
         int result = (depth1 - depth2);
         if (result == 0) {
-            final String name1 = String.valueOf(bundle1.getProperty("name"));
-            final String name2 = String.valueOf(bundle2.getProperty("name"));
+            final String name1 = bundle1.getName();
+            final String name2 = bundle2.getName();
             result = name1.compareTo(name2);
         }
         return result;

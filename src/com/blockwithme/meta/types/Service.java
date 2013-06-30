@@ -17,7 +17,7 @@ package com.blockwithme.meta.types;
 
 import com.tinkerpop.frames.Adjacency;
 import com.tinkerpop.frames.Property;
-import com.tinkerpop.frames.typed.TypeValue;
+import com.tinkerpop.frames.modules.typedgraph.TypeValue;
 
 /**
  * This describes a service *type*, not a service instance.

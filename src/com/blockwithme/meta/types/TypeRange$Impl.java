@@ -22,7 +22,7 @@ import com.tinkerpop.frames.modules.javahandler.JavaHandlerImpl;
  * @author monster
  *
  */
-public abstract class TypeRangeImpl implements JavaHandlerImpl<Vertex>,
+public abstract class TypeRange$Impl implements JavaHandlerImpl<Vertex>,
         TypeRange {
 
     /** Is the given type an accepted child type? */
@@ -34,17 +34,17 @@ public abstract class TypeRangeImpl implements JavaHandlerImpl<Vertex>,
         if (isExact()) {
             return false;
         }
-        final Type[] accepted = getAcceptedTypes();
-        if (accepted.length > 0) {
-            for (final Type t : accepted) {
-                if (type == t) {
-                    return true;
-                }
+        boolean accepted = false;
+        for (final Type t : getAcceptedTypes()) {
+            accepted = true;
+            if (type == t) {
+                return true;
             }
+        }
+        if (accepted) {
             return false;
         }
-        final Type[] rejected = getRejectedTypes();
-        for (final Type t : rejected) {
+        for (final Type t : getRejectedTypes()) {
             if (type == t) {
                 return false;
             }

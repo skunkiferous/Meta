@@ -16,7 +16,7 @@
 package com.blockwithme.meta.infrastructure;
 
 import com.blockwithme.meta.types.Named;
-import com.tinkerpop.frames.typed.TypeValue;
+import com.tinkerpop.frames.modules.typedgraph.TypeValue;
 
 /**
  * Represents some storage. This include file systems and databases.

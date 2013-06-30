@@ -16,6 +16,7 @@
 package com.blockwithme.meta;
 
 import java.lang.reflect.Array;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -24,33 +25,56 @@ import java.util.TreeSet;
 
 import org.reflections.Reflections;
 
+import com.blockwithme.meta.types.Bundle;
+import com.blockwithme.meta.types.Feature;
 import com.tinkerpop.blueprints.Direction;
+import com.tinkerpop.blueprints.Element;
 import com.tinkerpop.blueprints.Vertex;
-import com.tinkerpop.frames.Module;
-import com.tinkerpop.frames.typed.TypeValue;
-import com.tinkerpop.frames.typed.TypedGraphModuleBuilder;
+import com.tinkerpop.frames.EdgeFrame;
+import com.tinkerpop.frames.VertexFrame;
+import com.tinkerpop.frames.modules.Module;
+import com.tinkerpop.frames.modules.typedgraph.TypeValue;
+import com.tinkerpop.frames.modules.typedgraph.TypedGraphModuleBuilder;
 
 /**
- * @author monster
+ * Divers helper methods.
  *
+ * TODO Eventually, it should be our goal to remove all usage of @GremlinGroovy
+ * and create @JavaHandler methods instead. Most likely, reusable code,
+ * like searching for a Vertex by "name" can be put here, and the JavaHandler
+ * can then simply delegate here.
+ *
+ * @author monster
  */
 public class Statics {
 
+    /** All "Frames" */
     private static Set<Class<?>> typedInterfaces;
 
-    /** toString() for a TypedVertex. */
-    public static String toString(final Vertex vertex) {
+    /** toString() for a Element (bothe Vertex and Edge). */
+    public static String toString(final Element elem) {
         final StringBuilder buf = new StringBuilder();
-        buf.append(vertex.getProperty("class")).append("(id=")
-                .append(vertex.getId());
-        for (final String key : new TreeSet<String>(vertex.getPropertyKeys())) {
+        buf.append(elem.getProperty("class")).append("(id=")
+                .append(elem.getId());
+        final Set<String> keyes = elem.getPropertyKeys();
+        for (final String key : new TreeSet<String>(keyes)) {
             if (!"class".equals(key)) {
                 buf.append(",").append(key).append("=")
-                        .append(vertex.getProperty(key));
+                        .append(elem.getProperty(key));
             }
         }
         buf.append(")");
         return buf.toString();
+    }
+
+    /** toString() for a VertexFrame. */
+    public static String toString(final VertexFrame vertex) {
+        return toString(vertex.asVertex());
+    }
+
+    /** toString() for a EdgeFrame. */
+    public static String toString(final EdgeFrame edge) {
+        return toString(edge.asEdge());
     }
 
     /** Finds all the interfaces annotated with TypeValue. */
@@ -75,6 +99,8 @@ public class Statics {
 
     /** Converts a version string to an int. */
     public static int versionToInt(final String version) {
+        // TDOD This code surely exists somewhere else too ...
+        // It can probably be provided by OSGi when we switch to it.
         if ((version == null) || version.isEmpty()) {
             return 0;
         }
@@ -107,6 +133,7 @@ public class Statics {
         return major * 1024 * 2048 + minor * 2048 + incremental;
     }
 
+    /** Try to do some automated "generic" conversion */
     @SuppressWarnings("unchecked")
     public static <E> E convert(final Object value, final Class<E> type) {
         if ((value == null) || type.isInstance(value) || (type == Object.class)) {
@@ -191,7 +218,7 @@ public class Statics {
     }
 
     /**
-     * Returns all the bundles depended on, by this "feature".
+     * Finds the bundle depended on, with the given name, by this "feature".
      */
     public static Vertex findBundleByName(final Vertex appFeature,
             final String name) {
@@ -203,6 +230,20 @@ public class Statics {
         return null;
     }
 
+    /** Generate a property name from a method. */
+    public static String getPropertyNameFor(final Method annotatedElement) {
+        String name = annotatedElement.getName();
+        if (name.startsWith("is") && (name.length() > 2)
+                && Character.isUpperCase(name.charAt(2))) {
+            name = Character.toLowerCase(name.charAt(2)) + name.substring(3);
+        } else if ((name.startsWith("get") || name.startsWith("set")
+                || name.startsWith("has") || name.startsWith("can"))
+                && (name.length() > 3) && Character.isUpperCase(name.charAt(3))) {
+            name = Character.toLowerCase(name.charAt(3)) + name.substring(4);
+        }
+        return name;
+    }
+
     /**
      * Returns the shortest distance from the root bundle (0) through
      * dependencies. Returns Integer.MAX_VALUE when unknown/not found.
@@ -211,6 +252,17 @@ public class Statics {
             final Vertex otherBundle) {
         final Vertex rootBundle = Objects.requireNonNull(appFeature)
                 .getVertices(Direction.OUT, "bundle").iterator().next();
+        // TODO Like allBundles but use maps, where value is distance. Tricky part
+        // is that there might be multiple ways with different distances
+        return 0;
+    }
+
+    /**
+     * Returns the shortest distance from the root bundle (0) through
+     * dependencies. Returns Integer.MAX_VALUE when unknown/not found.
+     */
+    public static int distanceFromRoot(final Feature appFeature,
+            final Bundle otherBundle) {
         // TODO Like allBundles but use maps, where value is distance. Tricky part
         // is that there might be multiple ways with different distances
         return 0;

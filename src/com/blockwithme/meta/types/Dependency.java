@@ -4,7 +4,7 @@
 package com.blockwithme.meta.types;
 
 import com.tinkerpop.frames.Property;
-import com.tinkerpop.frames.typed.TypeValue;
+import com.tinkerpop.frames.modules.typedgraph.TypeValue;
 
 /**
  * A dependency defines the requirement that a bundle as about the presence of

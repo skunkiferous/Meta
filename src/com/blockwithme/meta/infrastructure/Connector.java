@@ -19,7 +19,7 @@ import java.net.URL;
 
 import com.blockwithme.meta.types.Named;
 import com.tinkerpop.frames.Property;
-import com.tinkerpop.frames.typed.TypeValue;
+import com.tinkerpop.frames.modules.typedgraph.TypeValue;
 
 /**
  * Represents a "receiving" network connection (server socket, ...)
