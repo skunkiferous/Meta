@@ -16,13 +16,13 @@
 package com.blockwithme.meta.types;
 
 import com.tinkerpop.blueprints.Vertex;
-import com.tinkerpop.frames.modules.javahandler.JavaHandlerImpl;
+import com.tinkerpop.frames.modules.javahandler.JavaHandlerContext;
 
 /**
  * @author monster
  *
  */
-public abstract class TypeRange$Impl implements JavaHandlerImpl<Vertex>,
+public abstract class TypeRange$Impl implements JavaHandlerContext<Vertex>,
         TypeRange {
 
     /** Is the given type an accepted child type? */

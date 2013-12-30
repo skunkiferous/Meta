@@ -22,13 +22,14 @@ import java.util.List;
 import com.blockwithme.meta.Statics;
 import com.blockwithme.meta.types.impl.BundleComparator;
 import com.tinkerpop.blueprints.Vertex;
-import com.tinkerpop.frames.modules.javahandler.JavaHandlerImpl;
+import com.tinkerpop.frames.modules.javahandler.JavaHandlerContext;
 
 /**
  * @author monster
  *
  */
-public abstract class Feature$Impl implements JavaHandlerImpl<Vertex>, Feature {
+public abstract class Feature$Impl implements JavaHandlerContext<Vertex>,
+        Feature {
     /** Returns all the currently available bundles within this application. */
     @Override
     public Bundle[] bundles() {

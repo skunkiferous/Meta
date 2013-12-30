@@ -16,13 +16,13 @@
 package com.blockwithme.meta.types;
 
 import com.tinkerpop.blueprints.Vertex;
-import com.tinkerpop.frames.modules.javahandler.JavaHandlerImpl;
+import com.tinkerpop.frames.modules.javahandler.JavaHandlerContext;
 
 /**
  * @author monster
  *
  */
-public abstract class Type$Impl implements JavaHandlerImpl<Vertex>, Type {
+public abstract class Type$Impl implements JavaHandlerContext<Vertex>, Type {
 
     /**
      * Data is for technical types without domain meaning, like Strings,
