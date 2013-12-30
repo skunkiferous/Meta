@@ -1,0 +1,25 @@
+Manifest-Version: 1.0
+Bnd-LastModified: 1388431254962
+Build-Jdk: 1.7.0_45
+Built-By: monster
+Bundle-Description: The second generation, XTend-based, Meta API for Typ
+ es, Networks, ...
+Bundle-ManifestVersion: 2
+Bundle-Name: MetaX
+Bundle-SymbolicName: MetaX
+Bundle-Vendor: Sebastien Diot
+Bundle-Version: 0.0.4
+Created-By: Apache Maven Bundle Plugin
+Export-Package: com.blockwithme.meta;version="0.0.4";
+  uses:="com.blockwithme.fn1,
+   com.blockwithme.fn2,
+   com.blockwithme.metax.converter,
+   org.eclipse.xtext.xbase.lib",
+ com.blockwithme.meta.converter;version="0.0.4"
+Import-Package: com.blockwithme.fn1;version="[1.2,2)",com.blockwithme.fn
+ 2;version="[1.2,2)",com.blockwithme.util;version="[0.0,1)",com.blockwit
+ hme.xtend.contrib.base;version="[0.0,1)",com.google.common.base;version
+ ="[14.0,15)",com.google.common.collect;version="[14.0,15)",org.eclipse.
+ xtend.lib,org.eclipse.xtext.xbase.lib,org.eclipse.xtext.xbase.lib.util,
+ org.slf4j;version="[1.7,2)"
+Tool: Bnd-2.1.0.20130426-122213
