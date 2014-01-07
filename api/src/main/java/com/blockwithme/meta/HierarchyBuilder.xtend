@@ -16,8 +16,8 @@
 package com.blockwithme.meta
 
 import static java.util.Objects.*
-import static com.blockwithme.xtend.contrib.base.Preconditions.*
-import static com.blockwithme.xtend.contrib.base.SyncUtil.*
+import static com.blockwithme.util.Preconditions.*
+import static com.blockwithme.traits.util.SyncUtil.*
 import java.util.Map
 import org.slf4j.LoggerFactory
 import java.util.List

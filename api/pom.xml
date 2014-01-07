@@ -35,6 +35,15 @@
 		</developer>
 	</developers>
 
+	<licenses>
+		<license>
+			<name>The Apache Software License, Version 2.0</name>
+			<url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+			<distribution>repo</distribution>
+			<comments>A business-friendly OSS license</comments>
+		</license>
+	</licenses>
+
 	<build>
 		<sourceDirectory>src/main/java</sourceDirectory>
 		<testSourceDirectory>src/test/java</testSourceDirectory>
@@ -245,20 +254,32 @@
 			<version>[1.0,2)</version>
 		</dependency>
 		<dependency>
-			<groupId>com.blockwithme</groupId>
-			<artifactId>xtend-contrib-base</artifactId>
-			<version>[0.0,1)</version>
-		</dependency>
-				<dependency>
 			<groupId>org.eclipse.xtend</groupId>
 			<artifactId>org.eclipse.xtend.lib</artifactId>
 			<version>2.5.0</version>
 		</dependency>
+        <dependency>
+            <groupId>org.eclipse.xtend</groupId>
+            <artifactId>org.eclipse.xtend.core</artifactId>
+			<version>2.5.0</version>
+        </dependency>
 		<dependency>
 			<groupId>org.codehaus.plexus</groupId>
 			<artifactId>plexus-compiler-eclipse</artifactId>
 			<version>2.3</version>
 		</dependency>
+		<dependency>
+		  <groupId>com.github.oehme.xtend</groupId>
+		  <artifactId>xtend-contrib</artifactId>
+		  <version>0.4.0</version>
+		</dependency>
+<!--
+		<dependency>
+			<groupId>com.blockwithme</groupId>
+			<artifactId>xtend-contrib-base</artifactId>
+			<version>[0.0,1)</version>
+		</dependency>
+ -->
 	</dependencies>
 	<repositories>
 		<repository>

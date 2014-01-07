@@ -31,8 +31,8 @@ import java.util.Map
 import java.util.TreeSet
 import org.slf4j.LoggerFactory
 
-import static com.blockwithme.xtend.contrib.base.Preconditions.*
-import static com.blockwithme.xtend.contrib.base.SyncUtil.*
+import static com.blockwithme.util.Preconditions.*
+import static com.blockwithme.traits.util.SyncUtil.*
 import static com.blockwithme.meta.Types.*
 import static java.util.Objects.*
 import com.blockwithme.fn1.ObjectFuncObject
@@ -53,7 +53,7 @@ import com.blockwithme.fn1.LongFuncObject
 import com.blockwithme.fn2.ObjectFuncObjectLong
 import com.blockwithme.fn1.DoubleFuncObject
 import com.blockwithme.fn2.ObjectFuncObjectDouble
-import com.blockwithme.xtend.contrib.base.Volatile
+import de.oehme.xtend.contrib.Volatile
 
 /**
  * Hierarchy represents a Type hierarchy. It is not limited to types in the
