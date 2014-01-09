@@ -24,6 +24,8 @@ import org.eclipse.xtend.lib.macro.declaration.MutableTypeDeclaration
 import org.eclipse.xtend.lib.macro.declaration.TypeDeclaration
 import org.eclipse.xtext.xbase.lib.Procedures.Procedure3
 import org.eclipse.xtext.xbase.lib.Procedures.Procedure2
+import org.eclipse.xtend.lib.macro.declaration.NamedElement
+import org.eclipse.xtend.lib.macro.declaration.MutableNamedElement
 
 /**
  * Marks that *all types in this file* should be processed.
@@ -41,8 +43,8 @@ annotation Magic {
  *
  * @author monster
  */
-class MagicAnnotationProcessor implements RegisterGlobalsParticipant<TypeDeclaration>,
-CodeGenerationParticipant<TypeDeclaration>, TransformationParticipant<MutableTypeDeclaration> {
+class MagicAnnotationProcessor implements RegisterGlobalsParticipant<NamedElement>,
+CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedElement> {
 
 	/** Cache key for the processor names */
 	static val String PROCESSORS_NAMES = "PROCESSORS_NAMES"
@@ -52,6 +54,8 @@ CodeGenerationParticipant<TypeDeclaration>, TransformationParticipant<MutableTyp
 
 	/** The processors */
 	static var Processor<?,?>[] PROCESSORS
+
+	static val processorUtil = new ProcessorUtil
 
 	private static def onError(String phase, Throwable t, TypeDeclaration td,
 		Processor<?,?> p, CompilationUnitImpl compilationUnit) {
@@ -66,11 +70,11 @@ CodeGenerationParticipant<TypeDeclaration>, TransformationParticipant<MutableTyp
 		}
 		sw.append("\n ")
 		t.printStackTrace(new PrintWriter(sw))
-		compilationUnit.problemSupport.addError(td, sw.toString)
+		compilationUnit.problemSupport.addError(td, ProcessorUtil.time()+sw.toString)
 	}
 
 	private def <TD extends TypeDeclaration> void loop(
-		List<? extends TypeDeclaration> annotatedSourceElements,
+		List<? extends NamedElement> annotatedSourceElements,
 		String phase, Procedure2<Processor, TD> lambda) {
 		val compilationUnit = ProcessorUtil.getCompilationUnit(annotatedSourceElements)
 		if (compilationUnit !== null) {
@@ -79,59 +83,69 @@ CodeGenerationParticipant<TypeDeclaration>, TransformationParticipant<MutableTyp
 			val register = ("register" == phase)
 			val transform = ("transform" == phase)
 			val generate = ("generate" == phase)
-			if (transform) {
+			if (!register) {
 				AntiClassLoaderCache.clear(pathName+".register.")
-			} else if (generate) {
+			}
+			if (!transform) {
 				AntiClassLoaderCache.clear(pathName+".transform.")
-			} else {
+			}
+			if (!generate) {
 				AntiClassLoaderCache.clear(pathName+".generate.")
 			}
 			val cache = AntiClassLoaderCache.getCache()
 			val processors = getProcessors(annotatedSourceElements)
-			val types = if (transform)
-				ProcessorUtil.getMutableTypes(compilationUnit)
-			else
-				ProcessorUtil.getXtendTypes(compilationUnit)
+			processorUtil.setElement(phase, annotatedSourceElements.get(0))
+			val types = if (transform) processorUtil.mutableTypes else processorUtil.xtendTypes
+			if (ProcessorUtil.DEBUG) {
+				problemSupport.addWarning(annotatedSourceElements.get(0),
+					ProcessorUtil.time()+"FILE: "+pathName+" PHASE: "+phase+" TYPES: "+types.toList)
+			}
 			for (mtd : types) {
+				processorUtil.setElement(phase, mtd)
 				val unprocessed = (cache.put(pathName+"."+phase+"."+mtd.qualifiedName, "") === null)
+				if (ProcessorUtil.DEBUG) {
+					problemSupport.addWarning(annotatedSourceElements.get(0),
+						ProcessorUtil.time()+"PHASE: "+phase+" TYPE: "+mtd+" UNPROCESSED: "+unprocessed)
+				}
 				if (unprocessed) {
 					for (p : processors) {
-						p.setup(problemSupport, cache, pathName, mtd)
+						p.setProcessorUtil(processorUtil)
 						try {
 							if (p.accept(mtd)) {
 								if (ProcessorUtil.DEBUG) {
-									compilationUnit.problemSupport.addWarning(mtd,
-										p+": "+phase+"("+mtd.qualifiedName+") => OK")
+									problemSupport.addWarning(mtd,
+										ProcessorUtil.time()+p+": "+phase+"("+mtd.qualifiedName+") => OK")
 								}
 								lambda.apply(p, mtd as TD)
 							} else if (ProcessorUtil.DEBUG) {
-								compilationUnit.problemSupport.addWarning(mtd,
-									p+": "+phase+"("+mtd.qualifiedName+") => REJECTED")
+								problemSupport.addWarning(mtd,
+									ProcessorUtil.time()+p+": "+phase+"("+mtd.qualifiedName+") => REJECTED")
 							}
 						} catch (Throwable t) {
 							onError(phase, t, mtd, p, compilationUnit)
 						} finally {
-							p.clear()
+							p.setProcessorUtil(null)
 						}
 					}
 				}
 			}
+			processorUtil.setElement(phase, null)
 		}
 	}
 
-	override doRegisterGlobals(List<? extends TypeDeclaration> annotatedSourceElements,
+	override doRegisterGlobals(List<? extends NamedElement> annotatedSourceElements,
 			extension RegisterGlobalsContext context) {
 		<TypeDeclaration>loop(annotatedSourceElements, "register",
 			[p,td|p.register(td, context)])
 	}
 
-	override doGenerateCode(List<? extends TypeDeclaration> annotatedSourceElements,
+	override doGenerateCode(List<? extends NamedElement> annotatedSourceElements,
 			extension CodeGenerationContext context) {
 		<TypeDeclaration>loop(annotatedSourceElements, "generate",
 			[p,td|p.generate(td, context)])
 	}
 
-	override doTransform(List<? extends MutableTypeDeclaration> annotatedSourceElements,
+	override doTransform(List<? extends MutableNamedElement> annotatedSourceElements,
 			extension TransformationContext context) {
 		<MutableTypeDeclaration>loop(annotatedSourceElements, "transform",
 			[p,mtd|p.transform(mtd, context)])
@@ -140,7 +154,7 @@ CodeGenerationParticipant<TypeDeclaration>, TransformationParticipant<MutableTyp
 	/** Returns the list of processors. */
 	@Synchronized
 	private static def Processor<?,?>[] getProcessors(
-		List<? extends TypeDeclaration> annotatedSourceElements) {
+		List<? extends NamedElement> annotatedSourceElements) {
 		val cache = AntiClassLoaderCache.getCache()
 		if (PROCESSORS === null) {
 			val compilationUnit = ProcessorUtil.getCompilationUnit(annotatedSourceElements)
@@ -156,13 +170,13 @@ CodeGenerationParticipant<TypeDeclaration>, TransformationParticipant<MutableTyp
 					list.add(Class.forName(name).newInstance as Processor<?,?>)
 				} catch(Exception ex) {
 					compilationUnit.problemSupport.addError(element,
-						"Could not instantiate processor for '"+name+"': "+ex)
+						ProcessorUtil.time()+"Could not instantiate processor for '"+name+"': "+ex)
 				}
 			}
 			PROCESSORS = list.toArray(<Processor>newArrayOfSize(list.size))
 			if (PROCESSORS.length === 0) {
 				compilationUnit.problemSupport.addWarning(element,
-					"No processor defined.")
+					ProcessorUtil.time()+"No processor defined.")
 			}
 		}
 		PROCESSORS
@@ -187,7 +201,7 @@ CodeGenerationParticipant<TypeDeclaration>, TransformationParticipant<MutableTyp
 				}
 				if (list.empty) {
 					compilationUnit.problemSupport.addWarning(element,
-						"Could not find processors in '"+file+"'")
+						ProcessorUtil.time()+"Could not find processors in '"+file+"'")
 				} else {
 					// Test values once:
 					for (name : list.toArray(newArrayOfSize(list.size))) {
@@ -198,20 +212,20 @@ CodeGenerationParticipant<TypeDeclaration>, TransformationParticipant<MutableTyp
 							}
 						} catch(Exception ex) {
 							compilationUnit.problemSupport.addError(element,
-								"Could not instantiate processor for '"+name+"': "+ex)
+								ProcessorUtil.time()+"Could not instantiate processor for '"+name+"': "+ex)
 							list.remove(name)
 						}
 					}
 					compilationUnit.problemSupport.addWarning(element,
-						"Processors found in file '"+file+"': "+list)
+						ProcessorUtil.time()+"Processors found in file '"+file+"': "+list)
 				}
 			} catch(Exception ex) {
 				compilationUnit.problemSupport.addError(element,
-					"Could not read/process '"+file+"': "+ex)
+					ProcessorUtil.time()+"Could not read/process '"+file+"': "+ex)
 			}
 		} else {
 			compilationUnit.problemSupport.addWarning(element,
-				"Could not find file '"+file+"'")
+				ProcessorUtil.time()+"Could not find file '"+file+"'")
 		}
 		list.toArray(newArrayOfSize(list.size))
 	}

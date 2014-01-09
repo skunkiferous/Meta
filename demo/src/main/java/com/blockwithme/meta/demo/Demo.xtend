@@ -15,11 +15,11 @@
  */
 package com.blockwithme.meta.demo
 
-import com.blockwithme.meta.annotations.Bean
+import com.blockwithme.meta.annotations.Trait
 import com.blockwithme.meta.annotations.Magic
 
 @Magic
-@Bean
+@Trait
 interface DemoType {
 
   /** Boolean property */

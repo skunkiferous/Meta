@@ -15,11 +15,10 @@
  */
 package com.blockwithme.meta.annotations
 
-import com.blockwithme.meta.annotations.Processor
+import com.blockwithme.fn2.BooleanFuncObjectObject
 import org.eclipse.xtend.lib.macro.declaration.InterfaceDeclaration
 import org.eclipse.xtend.lib.macro.declaration.MutableInterfaceDeclaration
 import org.eclipse.xtend.lib.macro.declaration.TypeDeclaration
-import com.blockwithme.fn1.BooleanFuncObject
 
 /**
  * A Processor that only works on Interface types
@@ -32,7 +31,7 @@ class InterfaceProcessor extends Processor<InterfaceDeclaration, MutableInterfac
 	 * Creates a processor with an *optional* filter.
 	 * If specified, the filter must return *true* to accept a type.
 	 */
-	protected new(BooleanFuncObject<TypeDeclaration> filter) {
+	protected new(BooleanFuncObjectObject<ProcessorUtil,TypeDeclaration> filter) {
 		super(filter)
 	}
 

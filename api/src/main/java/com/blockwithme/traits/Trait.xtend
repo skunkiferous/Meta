@@ -39,7 +39,7 @@ import static extension java.lang.Class.*
 import com.blockwithme.fn1.ProcObject
 
 import static extension com.blockwithme.meta.annotations.ProcessorUtil.*
-
+import com.blockwithme.meta.annotations.ProcessorUtil
 
 /**
  * Traits are interfaces with code (state/fields are generated implicitly).
@@ -127,6 +127,9 @@ class TraitProcessorUtil {
 
 	/** The Transformation Context that comes for Annotation Processor. */
 	val extension TransformationContext context
+
+	/** Must be set */
+	protected var ProcessorUtil processorUtil
 
 	/** The following type references are resolved at the time of construction ( hence not static) */
 	val Type ANNOTATION_OVERRIDE

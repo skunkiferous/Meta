@@ -15,10 +15,9 @@
  */
 package com.blockwithme.meta.annotations
 
-import com.blockwithme.meta.annotations.Processor
-import org.eclipse.xtend.lib.macro.declaration.TypeDeclaration
+import com.blockwithme.fn2.BooleanFuncObjectObject
 import org.eclipse.xtend.lib.macro.declaration.MutableTypeDeclaration
-import com.blockwithme.fn1.BooleanFuncObject
+import org.eclipse.xtend.lib.macro.declaration.TypeDeclaration
 
 /**
  * A Processor that only works on any type.
@@ -27,7 +26,7 @@ import com.blockwithme.fn1.BooleanFuncObject
  */
 class TypeProcessor extends Processor<TypeDeclaration, MutableTypeDeclaration> {
 
-	protected new(BooleanFuncObject<TypeDeclaration> filter) {
+	protected new(BooleanFuncObjectObject<ProcessorUtil,TypeDeclaration> filter) {
 		super(filter)
 	}
 }

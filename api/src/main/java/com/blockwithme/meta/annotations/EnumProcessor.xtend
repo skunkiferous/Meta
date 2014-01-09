@@ -15,10 +15,10 @@
  */
 package com.blockwithme.meta.annotations
 
-import org.eclipse.xtend.lib.macro.declaration.TypeDeclaration
+import com.blockwithme.fn2.BooleanFuncObjectObject
 import org.eclipse.xtend.lib.macro.declaration.EnumerationTypeDeclaration
 import org.eclipse.xtend.lib.macro.declaration.MutableEnumerationTypeDeclaration
-import com.blockwithme.fn1.BooleanFuncObject
+import org.eclipse.xtend.lib.macro.declaration.TypeDeclaration
 
 /**
  * A Processor that only works on Enumeration types
@@ -31,7 +31,7 @@ class EnumProcessor extends Processor<EnumerationTypeDeclaration, MutableEnumera
 	 * Creates a processor with an *optional* filter.
 	 * If specified, the filter must return *true* to accept a type.
 	 */
-	protected new(BooleanFuncObject<TypeDeclaration> filter) {
+	protected new(BooleanFuncObjectObject<ProcessorUtil,TypeDeclaration> filter) {
 		super(filter)
 	}
 
