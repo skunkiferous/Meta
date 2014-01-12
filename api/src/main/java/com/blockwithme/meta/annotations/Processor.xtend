@@ -39,14 +39,7 @@ package final class AnnotationFilter implements BooleanFuncObjectObject<Processo
 	}
 
 	private static def check(extension ProcessorUtil processorUtil, TypeDeclaration orig, TypeDeclaration td, String name) {
-		val result = hasDirectAnnotation(td, name)
-		if (ProcessorUtil.DEBUG) {
-			val compilationUnit = td.compilationUnit as CompilationUnitImpl
-			val problemSupport = compilationUnit.problemSupport
-			val msg = "check("+orig.class.simpleName+"("+orig.simpleName+"), "+td.class.simpleName+"("+td.simpleName+"), "+name+"): "+result
-			problemSupport.addWarning(td, ProcessorUtil.time+msg)
-		}
-		result
+		hasDirectAnnotation(td, name)
 	}
 
 	override apply(extension ProcessorUtil processorUtil, TypeDeclaration td) {
@@ -76,7 +69,6 @@ package final class AnnotationFilter implements BooleanFuncObjectObject<Processo
 class Processor<T extends TypeDeclaration, M extends MutableTypeDeclaration> {
 	val BooleanFuncObjectObject<ProcessorUtil,TypeDeclaration> filter
 	protected var extension ProcessorUtil processorUtil
-	protected var extension TypeReferenceProvider typeReferenceProvider
 
 	protected static def BooleanFuncObjectObject<ProcessorUtil,TypeDeclaration> withAnnotation(String name, boolean inherited) {
 		new AnnotationFilter(name, inherited)
@@ -107,10 +99,8 @@ class Processor<T extends TypeDeclaration, M extends MutableTypeDeclaration> {
 	package final def void setProcessorUtil(ProcessorUtil processorUtil) {
 		this.processorUtil = processorUtil
 		if (processorUtil != null) {
-			typeReferenceProvider = processorUtil.compilationUnit.typeReferenceProvider
 			init()
 		} else {
-			typeReferenceProvider = null
 			deinit()
 		}
 	}

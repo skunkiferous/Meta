@@ -17,6 +17,8 @@ package com.blockwithme.meta.annotations
 
 import com.blockwithme.fn.util.Functor
 import com.blockwithme.traits.util.AntiClassLoaderCache
+import java.io.PrintWriter
+import java.io.StringWriter
 import java.lang.annotation.Annotation
 import java.text.SimpleDateFormat
 import java.util.Arrays
@@ -26,8 +28,16 @@ import java.util.HashMap
 import java.util.List
 import java.util.Map
 import java.util.Objects
+import org.eclipse.emf.ecore.EObject
+import org.eclipse.xtend.core.macro.declaration.AbstractElementImpl
 import org.eclipse.xtend.core.macro.declaration.CompilationUnitImpl
 import org.eclipse.xtend.core.macro.declaration.ExpressionImpl
+import org.eclipse.xtend.core.xtend.XtendConstructor
+import org.eclipse.xtend.core.xtend.XtendEnumLiteral
+import org.eclipse.xtend.core.xtend.XtendField
+import org.eclipse.xtend.core.xtend.XtendFunction
+import org.eclipse.xtend.core.xtend.XtendMember
+import org.eclipse.xtend.core.xtend.XtendTypeDeclaration
 import org.eclipse.xtend.core.xtend.impl.XtendVariableDeclarationImpl
 import org.eclipse.xtend.lib.macro.declaration.AnnotationReference
 import org.eclipse.xtend.lib.macro.declaration.ClassDeclaration
@@ -35,6 +45,8 @@ import org.eclipse.xtend.lib.macro.declaration.CompilationUnit
 import org.eclipse.xtend.lib.macro.declaration.ConstructorDeclaration
 import org.eclipse.xtend.lib.macro.declaration.Element
 import org.eclipse.xtend.lib.macro.declaration.EnumerationTypeDeclaration
+import org.eclipse.xtend.lib.macro.declaration.ExecutableDeclaration
+import org.eclipse.xtend.lib.macro.declaration.FieldDeclaration
 import org.eclipse.xtend.lib.macro.declaration.InterfaceDeclaration
 import org.eclipse.xtend.lib.macro.declaration.MemberDeclaration
 import org.eclipse.xtend.lib.macro.declaration.MethodDeclaration
@@ -51,21 +63,23 @@ import org.eclipse.xtend.lib.macro.declaration.TypeParameterDeclaration
 import org.eclipse.xtend.lib.macro.declaration.TypeReference
 import org.eclipse.xtend.lib.macro.services.ProblemSupport
 import org.eclipse.xtend.lib.macro.services.Tracability
+import org.eclipse.xtend.lib.macro.services.TypeReferenceProvider
 import org.eclipse.xtext.common.types.JvmDeclaredType
 import org.eclipse.xtext.common.types.JvmType
 import org.eclipse.xtext.common.types.impl.JvmGenericTypeImpl
 import org.eclipse.xtext.xbase.XBlockExpression
+import org.eclipse.xtext.xbase.lib.Functions.Function1
 
 /**
  * Helper methods for active annotation processing.
  *
  * @author monster
  */
-class ProcessorUtil {
-	static val TIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS ")
+class ProcessorUtil implements TypeReferenceProvider {
+	static val TIME_FORMAT = new SimpleDateFormat("HH:mm:ss.SSS ")
 
 	/** Debug output? */
-	public static val DEBUG = false
+	private static val DEBUG = true
 
 	/**
 	 * The processed NamedElement
@@ -167,7 +181,7 @@ class ProcessorUtil {
 	}
 
 	/** Returns a String version of the current time. */
-	static def time() {
+	private static def time() {
 		TIME_FORMAT.format(new Date())
 	}
 
@@ -201,7 +215,7 @@ class ProcessorUtil {
 		phase
 	}
 
-	/** Returns the Xtend types of this CompilationUnit */
+	/** Returns the top-level Xtend types of this CompilationUnit */
 	final def Iterable<? extends TypeDeclaration> getXtendTypes() {
 		if (xtendTypeDeclarations === null) {
 			xtendTypeDeclarations = compilationUnit.xtendFile.xtendTypes
@@ -210,13 +224,27 @@ class ProcessorUtil {
 		xtendTypeDeclarations
 	}
 
-	/** Returns the mutable types of this CompilationUnit */
+	/** Returns the top-level mutable types of this CompilationUnit */
 	final def Iterable<? extends MutableTypeDeclaration> getMutableTypes() {
 		if (jvmDeclaredTypes === null) {
 			jvmDeclaredTypes = compilationUnit.xtendFile.eResource.contents
 				.filter(JvmDeclaredType).map[compilationUnit.toTypeDeclaration(it)]
 		}
 		jvmDeclaredTypes
+	}
+
+	/** Recursively returns the Xtend types of this CompilationUnit */
+	final def Iterable<? extends TypeDeclaration> getAllXtendTypes() {
+		doRecursivelyN(getXtendTypes()) [
+			(it.declaredClasses + it.declaredInterfaces) as Iterable<? extends TypeDeclaration>
+		]
+	}
+
+	/** Recursively returns the top-level mutable types of this CompilationUnit */
+	final def Iterable<? extends MutableTypeDeclaration> getAllMutableTypes() {
+		doRecursivelyN(getMutableTypes()) [
+			(it.declaredClasses + it.declaredInterfaces) as Iterable<? extends TypeDeclaration>
+		] as Iterable<? extends MutableTypeDeclaration>
 	}
 
 	/** Sometimes, Xtend "forgets" to set the "isInterface" flag on types! */
@@ -343,21 +371,34 @@ class ProcessorUtil {
 		result
 	}
 
-	/** Returns the all parents, *including the type itself* */
-	private def Iterable<? extends TypeDeclaration> findParents2(TypeDeclaration td) {
+	/** Performs some operation recursively on the TypeDeclaration. */
+	final def Iterable<TypeDeclaration> doRecursively1(TypeDeclaration td,
+		Function1<TypeDeclaration, Iterable<? extends TypeDeclaration>> lambda) {
+		doRecursivelyN(Collections.singleton(td), lambda)
+	}
+
+	/** Performs some operation recursively on the TypeDeclarations. */
+	final def Iterable<TypeDeclaration> doRecursivelyN(
+		Iterable<? extends TypeDeclaration> tds,
+		Function1<TypeDeclaration, Iterable<? extends TypeDeclaration>> lambda) {
 		val todo = <TypeDeclaration>newArrayList()
 		val done = <TypeDeclaration>newArrayList()
-		todo.add(td)
+		todo.addAll(tds)
 		while (!todo.empty) {
 			val next = todo.remove(todo.size-1)
 			done.add(next)
-			for (parent : findDirectParents(td)) {
+			for (parent : lambda.apply(next)) {
 				if (!todo.contains(parent) && !done.contains(parent)) {
 					todo.add(parent)
 				}
 			}
 		}
 		done
+	}
+
+	/** Returns the all parents, *including the type itself* */
+	private def Iterable<? extends TypeDeclaration> findParents2(TypeDeclaration td) {
+		doRecursively1(td) [ findDirectParents(it) ]
 	}
 
 	/** Does the given type directly bares the desired annotation? */
@@ -370,19 +411,58 @@ class ProcessorUtil {
 		hasDirectAnnotation(td, annotation.name)
 	}
 
+	/** Returns the name, annotations, base class and implemented interfaces of the type (not the content). */
+	final def String describeTypeDeclaration(TypeDeclaration td, extension Tracability tracability) {
+		Objects.requireNonNull(td, "td")
+		val td2 = findXtend(td)
+		val aei = td2 as AbstractElementImpl
+		'''
+		simpleName >> «td2.simpleName»
+		toString  >> «td2»
+		file  >> «td2.compilationUnit.filePath»
+		generated >> «td2.generated»
+		source >> «td2.source»
+		primaryGeneratedJavaElement >> «td2.primaryGeneratedJavaElement»
+		delegate class >> «aei.delegate.class»
+		annotations >> «qualifiedNames(td2.annotations)»
+		«IF td2 instanceof InterfaceDeclaration»
+			implemented interfaces >> «qualifiedNames(td2.extendedInterfaces)»
+		«ENDIF»
+		«IF td2 instanceof ClassDeclaration»
+			«IF td2.extendedClass !== null»
+				super >> «td2.extendedClass.name»
+			«ENDIF»
+			implemented interfaces >> «qualifiedNames(td2.implementedInterfaces)»
+		«ENDIF»
+		---------------------------------
+		«FOR m : td2.declaredMethods»
+			«m.describeMethod(tracability)»
+			-------------
+		«ENDFOR»
+		---------------------------------
+		«FOR f : td2.declaredFields»
+			«f.describeField(tracability)»
+			-------------
+		«ENDFOR»
+		'''
+	}
+
 	/** Returns a long trace of all the info of that method. */
 	final def String describeMethod(MethodDeclaration m, extension Tracability tracability) {
+		Objects.requireNonNull(m, "m")
 		val bdy =  m.body as ExpressionImpl
 		val method = bdy.delegate as XBlockExpression
 
 		'''
+		simpleName >> «m.simpleName»
+		signature  >> «signature(m)»
 		toString  >> «bdy»
-		toString2  >> «bdy.compilationUnit.toString»
-		generated >> «bdy.compilationUnit.generated»
-		source >> «bdy.compilationUnit.source»
-		primaryGeneratedJavaElement >> «bdy.compilationUnit.primaryGeneratedJavaElement»
-		simpleName >> «bdy.compilationUnit.simpleName»
+		file  >> «bdy.compilationUnit.filePath»
+		generated >> «m.generated»
+		source >> «m.source»
+		primaryGeneratedJavaElement >> «m.primaryGeneratedJavaElement»
 		delegate class >> «bdy.delegate.class»
+		annotations >> «qualifiedNames(m.annotations)»
 		---------------------------------
 		«FOR e : method.expressions»
 			expression >> «e»
@@ -401,6 +481,32 @@ class ProcessorUtil {
 			-------------
 		«ENDFOR»
 		'''
+	}
+
+	/** Returns a long trace of all the info of that field. */
+	final def String describeField(FieldDeclaration f, extension Tracability tracability) {
+		Objects.requireNonNull(f, "f")
+		val bdy =  f.initializer as ExpressionImpl
+		var type = f.type
+		if (type === null) {
+			type = (f.primaryGeneratedJavaElement as FieldDeclaration).type
+		}
+		'''
+		simpleName >> «f.simpleName»
+		type >> «qualifiedName(type)»
+		toString  >> «bdy»
+		file  >> «bdy.compilationUnit.filePath»
+		generated >> «f.generated»
+		source >> «f.source»
+		primaryGeneratedJavaElement >> «f.primaryGeneratedJavaElement»
+		delegate class >> «bdy.delegate.class»
+		annotations >> «qualifiedNames(f.annotations)»
+		'''
+	}
+
+	/** Returns the signature of a method/constructor as a string */
+	final def String signature(ExecutableDeclaration it) {
+		'''«simpleName»(«parameters.map[p|p.type].join(",")[name]»)'''
 	}
 
 	/** Tries to find and return the qualifiedName of the given element. */
@@ -454,14 +560,142 @@ class ProcessorUtil {
 		element.getTypeParameterDeclarator().qualifiedName+"."+element.simpleName
 	}
 
+	/** Tries to find and return the qualifiedName of the given element. */
+	def static dispatch String qualifiedName(XtendMember element) {
+		if (element instanceof XtendTypeDeclaration) {
+			return element.getName()
+		}
+		Objects.requireNonNull(element.declaringType,element+".declaringType")
+		element.declaringType.getName()+"."+element.simpleName
+	}
+
+	/** Tries to find and return the qualifiedName of the given element. */
+	def static String qualifiedNames(Iterable<?> elements) {
+		elements.map[qualifiedName].toString
+	}
+
+	/** Tries to find and return the simpleName of the given XtendMember. */
+	def static dispatch String simpleName(Void element) {
+		null
+	}
+
+	/** Tries to find and return the simpleName of the given XtendMember. */
+	def static dispatch String simpleName(XtendConstructor element) {
+		element.declaringType.name
+	}
+
+	/** Tries to find and return the simpleName of the given XtendMember. */
+	def static dispatch String simpleName(XtendField element) {
+		element.name
+	}
+
+	/** Tries to find and return the simpleName of the given XtendMember. */
+	def static dispatch String simpleName(XtendEnumLiteral element) {
+		element.name
+	}
+
+	/** Tries to find and return the simpleName of the given XtendMember. */
+	def static dispatch String simpleName(XtendFunction element) {
+		element.name
+	}
+
+	/** Tries to find and return the simpleName of the given XtendMember. */
+	def static dispatch String simpleName(XtendTypeDeclaration element) {
+		val qualifiedName = element.name
+		val char dot = '.'
+		val index = qualifiedName.lastIndexOf(dot)
+		if (index < 0)
+			return qualifiedName
+		return qualifiedName.substring(index+1)
+	}
+
+	/** Tries to find "non-Xtend" matching type */
+	final def TypeDeclaration findNonXtend(TypeDeclaration td) {
+		if (td instanceof XtendTypeDeclaration) {
+			val name = td.qualifiedName
+			val result = mutableTypes.findFirst[qualifiedName == name]
+			if (result !== null) {
+				return result
+			}
+		}
+		return td
+	}
+
+	/** Tries to find Xtend matching type */
+	final def TypeDeclaration findXtend(TypeDeclaration td) {
+		if (td instanceof MutableTypeDeclaration) {
+			val name = td.qualifiedName
+			val result = xtendTypes.findFirst[qualifiedName == name]
+			if (result !== null) {
+				return result
+			}
+		}
+		return td
+	}
+
+	/** Builds the standard log message format */
+	private def buildMessage(boolean debug, Class<?> who, String where, String message, Throwable t) {
+		val phase = if (debug) "DEBUG: "+this.phase else phase
+		var msg = message.replaceAll("com.blockwithme.meta.annotations.","cbma.")
+			.replaceAll("com.blockwithme.meta.","cbm.")
+		if (t != null) {
+			msg = msg+"\n"+asString(t)
+		}
+		ProcessorUtil.time+phase+": "+who.simpleName+"."+where+": "+msg
+	}
+
+	/** Returns the element to use when logging */
+	private def Element extractLoggingElement(Element what) {
+		if ((what !== null) && !(what instanceof CompilationUnit)) {
+			if (what instanceof AbstractElementImpl) {
+				val element = what as AbstractElementImpl<? extends EObject>
+				val resource = element.delegate.eResource
+				if (resource == compilationUnit.xtendFile.eResource) {
+					return what
+				} else {
+					// Wrong file!?!
+//					throw new IllegalArgumentException("Element.delegate.eResource: "+resource
+//						+" Expected: "+compilationUnit.xtendFile.eResource
+//					)
+					return this.element
+				}
+			} else if (what instanceof XtendTypeDeclaration) {
+				return findNonXtend(what as TypeDeclaration)
+			} else {
+				throw new IllegalArgumentException("Element type: "+what.class)
+			}
+		} else {
+			element
+		}
+	}
+
+	/** Converts a Throwable stack-trace to a String */
+	final def asString(Throwable t) {
+		val sw = new StringWriter()
+		t.printStackTrace(new PrintWriter(sw))
+		sw.toString
+	}
+
 	/**
 	 * Records an error for the given element
 	 *
 	 * @param element the element to which associate the message
 	 * @param message the message
 	 */
-	final def void error(Element element, String message) {
-		problemSupport.addError(element, ProcessorUtil.time+message)
+	final def void error(Class<?> who, String where, Element what, String message) {
+		val logElem = extractLoggingElement(what)
+		problemSupport.addError(logElem, buildMessage(false, who, where, message, null))
+	}
+
+	/**
+	 * Records an error for the given element
+	 *
+	 * @param element the element to which associate the message
+	 * @param message the message
+	 */
+	final def void error(Class<?> who, String where, Element what, String message, Throwable t) {
+		val logElem = extractLoggingElement(what)
+		problemSupport.addError(logElem, buildMessage(false, who, where, message, t))
 	}
 
 	/**
@@ -470,26 +704,46 @@ class ProcessorUtil {
 	 * @param element the element to which associate the message
 	 * @param message the message
 	 */
-	final def void warn(Element element, String message) {
-		problemSupport.addWarning(element, ProcessorUtil.time+message)
+	final def void warn(Class<?> who, String where, Element what, String message) {
+		val logElem = extractLoggingElement(what)
+		problemSupport.addWarning(logElem, buildMessage(false, who, where, message, null))
 	}
 
 	/**
-	 * Records a warning for the currently processed type
+	 * Records a warning for the given element
 	 *
+	 * @param element the element to which associate the message
 	 * @param message the message
 	 */
-	final def void warn(String message) {
-		problemSupport.addWarning(element, ProcessorUtil.time+message)
+	final def void warn(Class<?> who, String where, Element what, String message, Throwable t) {
+		val logElem = extractLoggingElement(what)
+		problemSupport.addWarning(logElem, buildMessage(false, who, where, message, t))
 	}
 
 	/**
-	 * Records an error for the currently processed type
+	 * Records a warning for the given element
 	 *
+	 * @param element the element to which associate the message
 	 * @param message the message
 	 */
-	final def void error(String message) {
-		problemSupport.addError(element, ProcessorUtil.time+message)
+	final def void debug(Class<?> who, String where, Element what, String message) {
+		if (DEBUG) {
+			val logElem = extractLoggingElement(what)
+			problemSupport.addWarning(logElem, buildMessage(true, who, where, message, null))
+		}
+	}
+
+	/**
+	 * Records a warning for the given element
+	 *
+	 * @param element the element to which associate the message
+	 * @param message the message
+	 */
+	final def void debug(Class<?> who, String where, Element what, String message, Throwable t) {
+		if (DEBUG) {
+			val logElem = extractLoggingElement(what)
+			problemSupport.addWarning(logElem, buildMessage(true, who, where, message, t))
+		}
 	}
 
 	/** Reads from the cache, using a specified prefix. */
@@ -520,37 +774,14 @@ class ProcessorUtil {
 		}
 	}
 
-	/** The Functor TypeReference */
-	final def getFunctor() {
-		functor
-	}
-
-	/** The List TypeReference */
-	final def getList() {
-		list
-	}
-
-	/** The Arrays TypeReference */
-	final def getArrays() {
-		arrays
-	}
-
-	/** The Objects TypeReference */
-	final def getObjects() {
-		objects
-	}
-
-	/** The Override Annotation Type */
-	final def getOverride() {
-		_override
-	}
-
 	/** Returns true, if the given element is a marker interface */
 	final def boolean isMarker(Element element) {
 		if (element instanceof InterfaceDeclaration) {
 			for (parent : findParents(element)) {
-				if (!isMarker(parent)) {
-					return false
+				if (parent != element) {
+					if (!isMarker(parent)) {
+						return false
+					}
 				}
 			}
 			return true
@@ -619,4 +850,114 @@ class ProcessorUtil {
 		String name, TypeReference ... parameterTypes) {
 		findMethod(clazz as TypeDeclaration, name, parameterTypes) as MutableMethodDeclaration
 	}
+
+	/** The Functor TypeReference */
+	final def getFunctor() {
+		functor
+	}
+
+	/** The List TypeReference */
+	final def getList() {
+		list
+	}
+
+	/** The Arrays TypeReference */
+	final def getArrays() {
+		arrays
+	}
+
+	/** The Objects TypeReference */
+	final def getObjects() {
+		objects
+	}
+
+	/** The Override Annotation Type */
+	final def getOverride() {
+		_override
+	}
+
+	override getAnyType() {
+		compilationUnit.typeReferenceProvider.getAnyType()
+	}
+
+	override getList(TypeReference param) {
+		compilationUnit.typeReferenceProvider.getList(param)
+	}
+
+	override getObject() {
+		compilationUnit.typeReferenceProvider.getObject()
+	}
+
+	override getPrimitiveBoolean() {
+		compilationUnit.typeReferenceProvider.getPrimitiveBoolean()
+	}
+
+	override getPrimitiveByte() {
+		compilationUnit.typeReferenceProvider.getPrimitiveByte()
+	}
+
+	override getPrimitiveChar() {
+		compilationUnit.typeReferenceProvider.getPrimitiveChar()
+	}
+
+	override getPrimitiveDouble() {
+		compilationUnit.typeReferenceProvider.getPrimitiveDouble()
+	}
+
+	override getPrimitiveFloat() {
+		compilationUnit.typeReferenceProvider.getPrimitiveFloat()
+	}
+
+	override getPrimitiveInt() {
+		compilationUnit.typeReferenceProvider.getPrimitiveInt()
+	}
+
+	override getPrimitiveLong() {
+		compilationUnit.typeReferenceProvider.getPrimitiveLong()
+	}
+
+	override getPrimitiveShort() {
+		compilationUnit.typeReferenceProvider.getPrimitiveShort()
+	}
+
+	override getPrimitiveVoid() {
+		compilationUnit.typeReferenceProvider.getPrimitiveVoid()
+	}
+
+	override getSet(TypeReference param) {
+		compilationUnit.typeReferenceProvider.getSet(param)
+	}
+
+	override getString() {
+		compilationUnit.typeReferenceProvider.getString()
+	}
+
+	override newArrayTypeReference(TypeReference componentType) {
+		compilationUnit.typeReferenceProvider.newArrayTypeReference(componentType)
+	}
+
+	override newTypeReference(String typeName, TypeReference... typeArguments) {
+		compilationUnit.typeReferenceProvider.newTypeReference(typeName, typeArguments)
+	}
+
+	override newTypeReference(Type typeDeclaration, TypeReference... typeArguments) {
+		compilationUnit.typeReferenceProvider.newTypeReference(typeDeclaration, typeArguments)
+	}
+
+	override newTypeReference(Class<?> clazz, TypeReference... typeArguments) {
+		compilationUnit.typeReferenceProvider.newTypeReference(clazz, typeArguments)
+	}
+
+	override newWildcardTypeReference() {
+		compilationUnit.typeReferenceProvider.newWildcardTypeReference()
+	}
+
+	override newWildcardTypeReference(TypeReference upperBound) {
+		compilationUnit.typeReferenceProvider.newWildcardTypeReference(upperBound)
+	}
+
+	override newWildcardTypeReferenceWithLowerBound(TypeReference lowerBound) {
+		compilationUnit.typeReferenceProvider.newWildcardTypeReferenceWithLowerBound(lowerBound)
+	}
+
 }

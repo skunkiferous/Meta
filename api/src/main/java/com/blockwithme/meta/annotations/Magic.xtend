@@ -57,29 +57,15 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 
 	static val processorUtil = new ProcessorUtil
 
-	private static def onError(String phase, Throwable t, TypeDeclaration td,
-		Processor<?,?> p, CompilationUnitImpl compilationUnit) {
-		val sw = new StringWriter()
-		sw.append(p.toString).append(": ").append(phase).append("(").append(td.qualifiedName).append("): Error!\n ")
-		sw.append("annotations: ").append(td.annotations.toList.toString)
-		if (td instanceof InterfaceDeclaration) {
-			sw.append(", interfaces: ").append(td.extendedInterfaces.toList.toString).append("\n")
-		}
-		if (td instanceof ClassDeclaration) {
-			sw.append(", interfaces: ").append(td.implementedInterfaces.toList.toString).append("\n")
-		}
-		sw.append("\n ")
-		t.printStackTrace(new PrintWriter(sw))
-		compilationUnit.problemSupport.addError(td, ProcessorUtil.time()+sw.toString)
-	}
-
 	private def <TD extends TypeDeclaration> void loop(
 		List<? extends NamedElement> annotatedSourceElements,
 		String phase, Procedure2<Processor, TD> lambda) {
 		val compilationUnit = ProcessorUtil.getCompilationUnit(annotatedSourceElements)
 		if (compilationUnit !== null) {
+			// Must be called first, for logging correctly
+			processorUtil.setElement(phase, annotatedSourceElements.get(0))
+			// Manage "persistent" cache
 			val pathName = compilationUnit.filePath.toString
-			val problemSupport = compilationUnit.problemSupport
 			val register = ("register" == phase)
 			val transform = ("transform" == phase)
 			val generate = ("generate" == phase)
@@ -93,36 +79,37 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 				AntiClassLoaderCache.clear(pathName+".generate.")
 			}
 			val cache = AntiClassLoaderCache.getCache()
+			// Lookup processors
 			val processors = getProcessors(annotatedSourceElements)
-			processorUtil.setElement(phase, annotatedSourceElements.get(0))
-			val types = if (transform) processorUtil.mutableTypes else processorUtil.xtendTypes
-			if (ProcessorUtil.DEBUG) {
-				problemSupport.addWarning(annotatedSourceElements.get(0),
-					ProcessorUtil.time()+"FILE: "+pathName+" PHASE: "+phase+" TYPES: "+types.toList)
-			}
+			// Extract types to process from compilation unit (file)
+			val types = if (transform) processorUtil.allMutableTypes else processorUtil.allXtendTypes
+			processorUtil.debug(MagicAnnotationProcessor, "loop", null,
+					"Top-Level Types: "+ProcessorUtil.qualifiedNames(types))
+			// Process all types
 			for (mtd : types) {
-				processorUtil.setElement(phase, mtd)
-				val unprocessed = (cache.put(pathName+"."+phase+"."+mtd.qualifiedName, "") === null)
-				if (ProcessorUtil.DEBUG) {
-					problemSupport.addWarning(annotatedSourceElements.get(0),
-						ProcessorUtil.time()+"PHASE: "+phase+" TYPE: "+mtd+" UNPROCESSED: "+unprocessed)
-				}
+				// Do not process type more then once per phase
+				// (THAT is the main reason for the "persistent" cache)
+				val unprocessed = (cache.put(pathName+"."+phase+"."+mtd.qualifiedName, "") === null) || register
+				processorUtil.debug(MagicAnnotationProcessor, "loop", mtd,
+					mtd.qualifiedName+" UNPROCESSED: "+unprocessed)
 				if (unprocessed) {
+					// If unprocessed (for this phase), check all processors
 					for (p : processors) {
 						p.setProcessorUtil(processorUtil)
 						try {
+							// Check if the processor is interested
 							if (p.accept(mtd)) {
-								if (ProcessorUtil.DEBUG) {
-									problemSupport.addWarning(mtd,
-										ProcessorUtil.time()+p+": "+phase+"("+mtd.qualifiedName+") => OK")
-								}
+								processorUtil.debug(MagicAnnotationProcessor, "loop", mtd,
+										"Calling: "+p+"."+phase+"("+mtd.qualifiedName+")")
+								// Yes? Then call processor.
 								lambda.apply(p, mtd as TD)
-							} else if (ProcessorUtil.DEBUG) {
-								problemSupport.addWarning(mtd,
-									ProcessorUtil.time()+p+": "+phase+"("+mtd.qualifiedName+") => REJECTED")
+							} else {
+								processorUtil.debug(MagicAnnotationProcessor, "loop", mtd,
+										"NOT Calling: "+p+"."+phase+"("+mtd.qualifiedName+")")
 							}
 						} catch (Throwable t) {
-							onError(phase, t, mtd, p, compilationUnit)
+							processorUtil.error(MagicAnnotationProcessor, "loop", mtd, p+": "
+								+mtd.qualifiedName, t)
 						} finally {
 							p.setProcessorUtil(null)
 						}
@@ -133,18 +120,27 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 		}
 	}
 
+	/** Implements the doRegisterGlobals() phase */
 	override doRegisterGlobals(List<? extends NamedElement> annotatedSourceElements,
 			extension RegisterGlobalsContext context) {
 		<TypeDeclaration>loop(annotatedSourceElements, "register",
 			[p,td|p.register(td, context)])
+		// Test ...
+//		val annotatedClass = (annotatedSourceElements.get(0) as TypeDeclaration)
+//		val name = annotatedClass.qualifiedName+"42"
+//		(annotatedClass.compilationUnit as CompilationUnitImpl)
+//			.problemSupport.addError(annotatedClass, "Registering: "+name)
+//		context.registerInterface(name)
 	}
 
+	/** Implements the doGenerateCode() phase */
 	override doGenerateCode(List<? extends NamedElement> annotatedSourceElements,
 			extension CodeGenerationContext context) {
 		<TypeDeclaration>loop(annotatedSourceElements, "generate",
 			[p,td|p.generate(td, context)])
 	}
 
+	/** Implements the doTransform() phase */
 	override doTransform(List<? extends MutableNamedElement> annotatedSourceElements,
 			extension TransformationContext context) {
 		<MutableTypeDeclaration>loop(annotatedSourceElements, "transform",
@@ -169,14 +165,14 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 				try {
 					list.add(Class.forName(name).newInstance as Processor<?,?>)
 				} catch(Exception ex) {
-					compilationUnit.problemSupport.addError(element,
-						ProcessorUtil.time()+"Could not instantiate processor for '"+name+"': "+ex)
+					processorUtil.error(MagicAnnotationProcessor, "getProcessors", null,
+						"Could not instantiate processor for '"+name+"'",ex)
 				}
 			}
 			PROCESSORS = list.toArray(<Processor>newArrayOfSize(list.size))
 			if (PROCESSORS.length === 0) {
-				compilationUnit.problemSupport.addWarning(element,
-					ProcessorUtil.time()+"No processor defined.")
+				processorUtil.warn(MagicAnnotationProcessor, "getProcessors", null,
+					"No processor defined.")
 			}
 		}
 		PROCESSORS
@@ -200,8 +196,8 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 					}
 				}
 				if (list.empty) {
-					compilationUnit.problemSupport.addWarning(element,
-						ProcessorUtil.time()+"Could not find processors in '"+file+"'")
+					processorUtil.warn(MagicAnnotationProcessor, "findProcessorNames", null,
+						"Could not find processors in '"+file+"'")
 				} else {
 					// Test values once:
 					for (name : list.toArray(newArrayOfSize(list.size))) {
@@ -211,21 +207,21 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 								throw new ClassCastException(name+" is not a "+Processor.name)
 							}
 						} catch(Exception ex) {
-							compilationUnit.problemSupport.addError(element,
-								ProcessorUtil.time()+"Could not instantiate processor for '"+name+"': "+ex)
+							processorUtil.error(MagicAnnotationProcessor, "findProcessorNames", null,
+								"Could not instantiate processor for '"+name+"'",ex)
 							list.remove(name)
 						}
 					}
-					compilationUnit.problemSupport.addWarning(element,
-						ProcessorUtil.time()+"Processors found in file '"+file+"': "+list)
+					processorUtil.warn(MagicAnnotationProcessor, "findProcessorNames", null,
+						"Processors found in file '"+file+"': "+list)
 				}
 			} catch(Exception ex) {
-				compilationUnit.problemSupport.addError(element,
-					ProcessorUtil.time()+"Could not read/process '"+file+"': "+ex)
+				processorUtil.error(MagicAnnotationProcessor, "findProcessorNames", null,
+					"Could not read/process '"+file+"'",ex)
 			}
 		} else {
-			compilationUnit.problemSupport.addWarning(element,
-				ProcessorUtil.time()+"Could not find file '"+file+"'")
+			processorUtil.warn(MagicAnnotationProcessor, "findProcessorNames", null,
+				"Could not find file '"+file+"'")
 		}
 		list.toArray(newArrayOfSize(list.size))
 	}

@@ -22,6 +22,23 @@ import org.eclipse.xtend.lib.macro.declaration.MutableTypeDeclaration
 import org.eclipse.xtend.lib.macro.declaration.TypeDeclaration
 
 import static extension com.blockwithme.meta.annotations.ProcessorUtil.*
+import java.lang.annotation.Target
+import java.lang.annotation.ElementType
+import java.lang.annotation.Retention
+import java.lang.annotation.RetentionPolicy
+import java.lang.annotation.Inherited
+import org.eclipse.xtend.lib.macro.Active
+
+/**
+ * Annotation for "traits"
+ *
+ * @author monster
+ */
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.CLASS)
+@Inherited
+@Active(MagicAnnotationProcessor)
+annotation Trace {}
 
 /**
  * Gives traces about all types "seen".
@@ -36,19 +53,17 @@ class TraceProcessor extends TypeProcessor {
 
 	/** Register new types, to be generated later. */
 	override void register(TypeDeclaration td, RegisterGlobalsContext context) {
-		warn("register: "+td.qualifiedName)
+		warn(TraceProcessor, "register", td, td.qualifiedName)
 	}
 
 	/** Generate new types, registered earlier. */
 	override void generate(TypeDeclaration td, CodeGenerationContext context) {
-		warn("generate: "+td.qualifiedName)
+		warn(TraceProcessor, "generate", td, td.qualifiedName)
 	}
 
 	/** Transform types, new or old. */
 	override void transform(MutableTypeDeclaration mtd, TransformationContext context) {
-		warn("transform: "+mtd.qualifiedName)
-		for (m : mtd.declaredMethods) {
-			warn("transform: "+mtd.qualifiedName+"."+m.simpleName+"\n "+m.describeMethod(context))
-		}
+		warn(TraceProcessor, "transform", mtd, "transform: "+mtd.qualifiedName+"\n "
+			+mtd.describeTypeDeclaration(context))
 	}
 }

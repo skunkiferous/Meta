@@ -1,4 +1,4 @@
-package com.blockwithme.traits;
+package com.blockwithme.meta.annotations;
 
 import org.eclipse.xtend.lib.Data;
 import org.eclipse.xtend.lib.macro.declaration.MutableInterfaceDeclaration;

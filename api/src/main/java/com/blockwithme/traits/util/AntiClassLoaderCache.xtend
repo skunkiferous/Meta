@@ -43,7 +43,7 @@ class AntiClassLoaderCache {
 	}
 
 	/** Returns a thread-safe cache, that survives between multiple class-loaders. */
-	static def Map<String,Object> getCache() {
+	static def ConcurrentMap<String,Object> getCache() {
 		if (CACHE === null) {
 			// What System.properties returns is a *temporary* wrapper
 			// over the true System.properties. It is a *different instance*

@@ -1,4 +1,4 @@
-package com.blockwithme.traits
+package com.blockwithme.meta.annotations
 
 import java.util.List
 import org.eclipse.xtend.lib.macro.Active

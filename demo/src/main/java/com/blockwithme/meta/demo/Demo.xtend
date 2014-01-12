@@ -17,9 +17,10 @@ package com.blockwithme.meta.demo
 
 import com.blockwithme.meta.annotations.Trait
 import com.blockwithme.meta.annotations.Magic
+import com.blockwithme.meta.annotations.Trace
 
-@Magic
 @Trait
+//@Trace
 interface DemoType {
 
   /** Boolean property */
@@ -50,12 +51,16 @@ interface DemoType {
   val objectProp = ""
 }
 
-@Magic
+@Trait
+//@Trace
 interface DemoTypeChild extends DemoType {
+
+  /** Object property */
+  val childProp = ""
 
 }
 
-@Magic
-interface Dummy {
-
+class SomeClass {
+	val age = 42
+	def hello() { "hello" }
 }
