@@ -58,6 +58,16 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 	static val processorUtil = new ProcessorUtil
 
 	private def <TD extends TypeDeclaration> void loop(
+		// Somehow, some of my code is executed *outside* of the active annotation processor
+		// hook methods, and that code needs the cached state, so I cannot clear the cache
+		// at the end of this method.
+		// Example:
+		//java.lang.NullPointerException
+		//	at com.blockwithme.meta.annotations.TraitProcessor.isFunctor(TraitProcessor.java:127)
+		//	at com.blockwithme.meta.annotations.TraitProcessor.access$3(TraitProcessor.java:125)
+		//	at com.blockwithme.meta.annotations.TraitProcessor$12$1.compile(TraitProcessor.java:1130)
+		//	at org.eclipse.xtend.core.macro.declaration.CompilationUnitImpl$18.apply(CompilationUnitImpl.java:981)
+
 		List<? extends NamedElement> annotatedSourceElements,
 		String phase, Procedure2<Processor, TD> lambda) {
 		val compilationUnit = ProcessorUtil.getCompilationUnit(annotatedSourceElements)
@@ -111,12 +121,14 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 							processorUtil.error(MagicAnnotationProcessor, "loop", mtd, p+": "
 								+mtd.qualifiedName, t)
 						} finally {
-							p.setProcessorUtil(null)
+							// Causes error due to "delayed" method compilation
+//							p.setProcessorUtil(null)
 						}
 					}
 				}
 			}
-			processorUtil.setElement(phase, null)
+			// Causes error due to "delayed" method compilation
+//			processorUtil.setElement(phase, null)
 		}
 	}
 
@@ -125,12 +137,6 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 			extension RegisterGlobalsContext context) {
 		<TypeDeclaration>loop(annotatedSourceElements, "register",
 			[p,td|p.register(td, context)])
-		// Test ...
-//		val annotatedClass = (annotatedSourceElements.get(0) as TypeDeclaration)
-//		val name = annotatedClass.qualifiedName+"42"
-//		(annotatedClass.compilationUnit as CompilationUnitImpl)
-//			.problemSupport.addError(annotatedClass, "Registering: "+name)
-//		context.registerInterface(name)
 	}
 
 	/** Implements the doGenerateCode() phase */

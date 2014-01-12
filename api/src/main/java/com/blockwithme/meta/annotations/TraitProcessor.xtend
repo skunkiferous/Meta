@@ -1372,8 +1372,8 @@ class TraitProcessor extends InterfaceProcessor {
 	/** Register new types, to be generated later. */
 	override void register(InterfaceDeclaration td, RegisterGlobalsContext context) {
 		val traitName = td.qualifiedName + "Trait"
-		context.registerInterface(traitName)
-		warn(TraitProcessor, "register", td, "Registering Interface: "+traitName)
+		context.registerClass(traitName)
+		warn(TraitProcessor, "register", td, "Registering Class: "+traitName)
 //		context.registerClass(td.qualifiedName + "Template")
 		warn(TraitProcessor, "register", td, td.qualifiedName)
 	}

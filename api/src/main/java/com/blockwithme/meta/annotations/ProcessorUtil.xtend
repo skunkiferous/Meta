@@ -140,15 +140,16 @@ class ProcessorUtil implements TypeReferenceProvider {
 	/** Sets the NamedElement currently being processed. */
 	package final def void setElement(String phase, NamedElement element) {
 		this.phase = phase
+		val beforeCU = compilationUnit
+		val beforeElement = this.element
 		if (this.element !== element) {
 			this.element = element
-			val before = compilationUnit
 			if (element !== null) {
 				compilationUnit = element.compilationUnit as CompilationUnitImpl
 			} else {
 				compilationUnit = null
 			}
-			if (before !== compilationUnit) {
+			if (beforeCU !== compilationUnit) {
 				types.clear()
 				directParents.clear()
 				parents.clear()
@@ -161,6 +162,7 @@ class ProcessorUtil implements TypeReferenceProvider {
 					prefix = file+"/"+element.qualifiedName+"/"
 					val typeReferenceProvider = compilationUnit.typeReferenceProvider
 					functor = typeReferenceProvider.newTypeReference(Functor)
+					Objects.requireNonNull(functor,"functor")
 					list = typeReferenceProvider.newTypeReference(List)
 					arrays = typeReferenceProvider.newTypeReference(Arrays)
 					objects = typeReferenceProvider.newTypeReference(Objects)
@@ -176,6 +178,19 @@ class ProcessorUtil implements TypeReferenceProvider {
 					objects = null
 					_override = null
 				}
+			}
+		}
+		if (functor === null) {
+			var cu = compilationUnit
+			if (cu === null) {
+				cu = beforeCU
+			}
+			var el = element
+			if (el === null) {
+				el = beforeElement
+			}
+			if ((cu !== null) && (el !== null)) {
+				cu.problemSupport.addError(el, "functor is null")
 			}
 		}
 	}
