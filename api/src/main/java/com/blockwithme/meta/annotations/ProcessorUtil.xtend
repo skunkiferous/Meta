@@ -69,6 +69,7 @@ import org.eclipse.xtext.common.types.JvmType
 import org.eclipse.xtext.common.types.impl.JvmGenericTypeImpl
 import org.eclipse.xtext.xbase.XBlockExpression
 import org.eclipse.xtext.xbase.lib.Functions.Function1
+import de.oehme.xtend.contrib.macro.CommonQueries
 
 /**
  * Helper methods for active annotation processing.
@@ -466,35 +467,44 @@ class ProcessorUtil implements TypeReferenceProvider {
 	final def String describeMethod(MethodDeclaration m, extension Tracability tracability) {
 		Objects.requireNonNull(m, "m")
 		val bdy =  m.body as ExpressionImpl
-		val method = bdy.delegate as XBlockExpression
 
 		'''
 		simpleName >> «m.simpleName»
 		signature  >> «signature(m)»
 		toString  >> «bdy»
+		«IF bdy !== null /* Abstract methods do not have a body! */»
 		file  >> «bdy.compilationUnit.filePath»
+		«ELSE»
+		file  >> null
+		«ENDIF»
 		generated >> «m.generated»
 		source >> «m.source»
 		primaryGeneratedJavaElement >> «m.primaryGeneratedJavaElement»
+		«IF bdy !== null /* Abstract methods do not have a body! */»
 		delegate class >> «bdy.delegate.class»
+		«ELSE»
+		delegate class >> null
+		«ENDIF»
 		annotations >> «qualifiedNames(m.annotations)»
 		---------------------------------
-		«FOR e : method.expressions»
-			expression >> «e»
-			expression class>> «e.class»
-			«IF e instanceof XtendVariableDeclarationImpl»
-				simpleName >> « e.simpleName»
-				qualifiedName >> « e.qualifiedName»
-				right >> « e.right»
-				«IF e.type != null»
-					type qualifiedName >> « e.type.qualifiedName»
-					type identifier >> « e.type.identifier»
+		«IF bdy !== null /* Abstract methods do not have a body! */»
+			«FOR e : (bdy.delegate as XBlockExpression).expressions»
+				expression >> «e»
+				expression class>> «e.class»
+				«IF e instanceof XtendVariableDeclarationImpl»
+					simpleName >> « e.simpleName»
+					qualifiedName >> « e.qualifiedName»
+					right >> « e.right»
+					«IF e.type != null»
+						type qualifiedName >> « e.type.qualifiedName»
+						type identifier >> « e.type.identifier»
+					«ENDIF»
+					value >> « e.name»
+					-------------------
 				«ENDIF»
-				value >> « e.name»
-				-------------------
-			«ENDIF»
-			-------------
-		«ENDFOR»
+				-------------
+			«ENDFOR»
+		«ENDIF»
 		'''
 	}
 
@@ -521,7 +531,8 @@ class ProcessorUtil implements TypeReferenceProvider {
 
 	/** Returns the signature of a method/constructor as a string */
 	final def String signature(ExecutableDeclaration it) {
-		'''«simpleName»(«parameters.map[p|p.type].join(",")[name]»)'''
+//		'''«simpleName»(«parameters.map[p|p.type].join(",")[name]»)'''
+		CommonQueries.signature(it).toString
 	}
 
 	/** Tries to find and return the qualifiedName of the given element. */

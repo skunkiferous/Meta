@@ -20,7 +20,6 @@ import com.blockwithme.meta.annotations.Magic
 import com.blockwithme.meta.annotations.Trace
 
 @Trait
-//@Trace
 interface DemoType {
 
   /** Boolean property */
@@ -60,6 +59,7 @@ interface DemoTypeChild extends DemoType {
 
 }
 
+@Trace
 class SomeClass {
 	val age = 42
 	def hello() { "hello" }

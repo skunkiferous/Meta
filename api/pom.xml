@@ -271,7 +271,7 @@
 		<dependency>
 		  <groupId>com.github.oehme.xtend</groupId>
 		  <artifactId>xtend-contrib</artifactId>
-		  <version>0.4.0</version>
+		  <version>0.4.1</version>
 		</dependency>
 <!--
 		<dependency>

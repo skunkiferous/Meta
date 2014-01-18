@@ -34,6 +34,11 @@ RELEASE PLAN:
 v0.0.3
 ======
 
+Skipped ...
+
+v0.0.4
+======
+
 DONE:
 =====
 
@@ -44,7 +49,7 @@ Add source code generation using Active annotations.
 
 Make sure the tests are updated.
 
-v0.0.4
+v0.0.5
 ======
 
 DONE:
@@ -90,7 +95,7 @@ Allow the creation of converters from Functors.
 
 Make sure the tests are updated.
 
-v0.0.5
+v0.0.6
 ======
 
 DONE:
@@ -175,3 +180,58 @@ The Meta-API must also support Exceptions types
 
 Make sure the tests are updated.
 
+UNPROCESSED:
+============
+
+Add API to allow Processors to order themselves before or after some other Processor.
+
+Generating a separate Read-Only base interface allows us to reuse it for both immutable types and beans.
+
+Generate a copyInto method?
+
+Generate a compute-a-difference method?
+
+Reset method for Properties (requires use of default).
+
+A Builder is basically just a Bean version of an Immutable, so we really always want both.
+
+Log error if more then one file is used per project during annotation processing.
+
+Refactor annotation processing to move access to internal Xtend API in a separate class.
+
+Cache generated new class names in the "register globals" phase, so the processing only happens once.
+
+Design some functionality to "get all types" at runtime, based on the fact that all dependencies
+are "frozen and available" when compiling, and all types in the current project are within the
+currently processed file. We might want to generate a list-of-types if the "generate" phase.
+
+We might need to record some meta-information, required for the compilation of dependent projects,
+into annotation on the generated/transformed source code.
+
+We should have a "Role" hierarchy (extensible enum or marker interfaces) that "qualifies" the
+properties, and can be queried at runtime to drive part of the code generation.
+
+The (original) Meta API IDs should be based on an hexadecimal String, instead of a long.
+We could then safely use two bytes per level, at every level, without being limited to 8 bytes.
+The Network Coordination should use those String IDs too.
+
+We need a way to make "groups of hierarchies" somehow "linear", so we can define IDs that are
+global to the whole group. Maybe we can have a root/primary hierarchy, and the "group ID" is
+managed by the root.
+
+How do we solve the "virtually infinite" JRE "hierarchy"?
+
+The Type of a Property can either come form another Hierarchy as Type, or form the same Hierarchy
+as Class. The actual Type instance can only be resolved at the Hierarchy construction time.
+
+Complete validation is possible only at Hierarchy construction time.
+
+Allowing the type of a property to become more specific in a sub-type cannot be allowed, as it
+would mean the setter of the sub-type accepts only a more specific type, which is not valid in Java.
+
+If for every type of Property (int, Object, ...) the Type instance defined a xxxOffset value,
+identifying how many properties of that type have already been defined, then we could have the
+global IDs computed as "type.xxxOffset + localID", instead of recorded in each property.
+
+When we add support for Methods, we should have the Properties reference the getter and setter
+Methods, instead of using lambdas.
