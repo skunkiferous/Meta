@@ -183,7 +183,7 @@ class MyHierarchy {
     = new Type(MyHierarchyBuilder.TEST_BUILDER, MySubType, null /*[new MySubType]*/,
       Kind.Implementation, #[MY_TYPE], MySubType.INT_PROP2)
 
-  /** The test.com.blockwithme.metax package */
+  /** The test.com.blockwithme.meta package */
   public static val MY_PACKAGE = new TypePackage(MyHierarchyBuilder.TEST_BUILDER,
     MY_TYPE, MyHierarchyBuilder.ENUM_TYPE, MY_SUB_TYPE)
 

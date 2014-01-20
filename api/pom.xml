@@ -171,6 +171,7 @@
 				<includes>
 					<include>LICENSE</include>
 					<include>README.md</include>
+					<include>META-INF/services/*</include>
 				</includes>
 			</resource>
 		</resources>
@@ -272,6 +273,16 @@
 		  <groupId>com.github.oehme.xtend</groupId>
 		  <artifactId>xtend-contrib</artifactId>
 		  <version>0.4.1</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.inject</groupId>
+			<artifactId>guice</artifactId>
+			<version>3.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.inject.extensions</groupId>
+			<artifactId>guice-multibindings</artifactId>
+			<version>3.0</version>
 		</dependency>
 <!--
 		<dependency>

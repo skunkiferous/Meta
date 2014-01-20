@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Sebastien Diot.
+ * Copyright (C) 2014 Sebastien Diot.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,13 +18,11 @@ package com.blockwithme.meta.annotations
 import com.blockwithme.fn2.BooleanFuncObjectObject
 import java.lang.annotation.Annotation
 import java.lang.annotation.Inherited
-import org.eclipse.xtend.core.macro.declaration.CompilationUnitImpl
 import org.eclipse.xtend.lib.macro.CodeGenerationContext
 import org.eclipse.xtend.lib.macro.RegisterGlobalsContext
 import org.eclipse.xtend.lib.macro.TransformationContext
 import org.eclipse.xtend.lib.macro.declaration.MutableTypeDeclaration
 import org.eclipse.xtend.lib.macro.declaration.TypeDeclaration
-import org.eclipse.xtend.lib.macro.services.TypeReferenceProvider
 
 /**
  * Filter for Annotations, that take the (optional) inherited nature of annotations into account.

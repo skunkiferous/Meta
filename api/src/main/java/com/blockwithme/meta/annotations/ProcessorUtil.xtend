@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Sebastien Diot.
+ * Copyright (C) 2014 Sebastien Diot.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -495,7 +495,7 @@ class ProcessorUtil implements TypeReferenceProvider {
 					simpleName >> « e.simpleName»
 					qualifiedName >> « e.qualifiedName»
 					right >> « e.right»
-					«IF e.type != null»
+					«IF e.type !== null»
 						type qualifiedName >> « e.type.qualifiedName»
 						type identifier >> « e.type.identifier»
 					«ENDIF»
@@ -519,12 +519,21 @@ class ProcessorUtil implements TypeReferenceProvider {
 		'''
 		simpleName >> «f.simpleName»
 		type >> «qualifiedName(type)»
+		«IF bdy !== null /* Abstract methods do not have a body! */»
 		toString  >> «bdy»
 		file  >> «bdy.compilationUnit.filePath»
+		«ELSE»
+		toString  >> null
+		file  >> null
+		«ENDIF»
 		generated >> «f.generated»
 		source >> «f.source»
 		primaryGeneratedJavaElement >> «f.primaryGeneratedJavaElement»
+		«IF bdy !== null /* Abstract methods do not have a body! */»
 		delegate class >> «bdy.delegate.class»
+		«ELSE»
+		delegate class >> null
+		«ENDIF»
 		annotations >> «qualifiedNames(f.annotations)»
 		'''
 	}

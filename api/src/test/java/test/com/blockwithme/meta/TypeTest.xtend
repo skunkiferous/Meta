@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Sebastien Diot.
+ * Copyright (C) 2014 Sebastien Diot.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -86,7 +86,7 @@ class TypeTest {
 
     @Test
     public def void testPropGet() {
-    	val obj = MyHierarchy.MY_TYPE.create
+    	val obj = new MyType
 
     	assertEquals(false, MyType.BOOL_PROP.getBoolean(obj))
     	assertEquals(0 as byte, MyType.BYTE_PROP.getByte(obj))
@@ -124,7 +124,7 @@ class TypeTest {
 
     @Test
     public def void testPropSet() {
-    	val obj = MyHierarchy.MY_TYPE.create
+    	val obj = new MyType
 
     	assertEquals(false, obj.boolProp)
     	assertEquals(0 as byte, obj.byteProp)
@@ -162,7 +162,7 @@ class TypeTest {
 
     @Test
     public def void testPropGetObject() {
-    	val obj = MyHierarchy.MY_TYPE.create
+    	val obj = new MyType
 
     	assertEquals(Boolean.FALSE, MyType.BOOL_PROP.getObject(obj))
     	assertEquals(new Byte(0 as byte), MyType.BYTE_PROP.getObject(obj))
@@ -200,7 +200,7 @@ class TypeTest {
 
     @Test
     public def void testPropSetObject() {
-    	val obj = MyHierarchy.MY_TYPE.create
+    	val obj = new MyType
 
     	assertEquals(false, obj.boolProp)
     	assertEquals(0 as byte, obj.byteProp)
@@ -256,13 +256,13 @@ class TypeTest {
     @Test
     public def void testNames() {
      	assertEquals("MyType", MyHierarchy.MY_TYPE.simpleName)
-     	assertEquals("test.com.blockwithme.metax.MyType", MyHierarchy.MY_TYPE.fullName)
-     	assertEquals("metax", MyHierarchy.MY_TYPE.pkg.simpleName)
-     	assertEquals("test.com.blockwithme.metax", MyHierarchy.MY_TYPE.pkg.fullName)
+     	assertEquals("test.com.blockwithme.meta.MyType", MyHierarchy.MY_TYPE.fullName)
+     	assertEquals("meta", MyHierarchy.MY_TYPE.pkg.simpleName)
+     	assertEquals("test.com.blockwithme.meta", MyHierarchy.MY_TYPE.pkg.fullName)
      	assertEquals("persistent", MyHierarchy.META_PROP.simpleName)
-     	assertEquals("com.blockwithme.metax.Type.persistent", MyHierarchy.META_PROP.fullName)
+     	assertEquals("com.blockwithme.meta.Type.persistent", MyHierarchy.META_PROP.fullName)
      	assertEquals("boolProp", MyType.BOOL_PROP.simpleName)
-     	assertEquals("test.com.blockwithme.metax.MyType.boolProp", MyType.BOOL_PROP.fullName)
+     	assertEquals("test.com.blockwithme.meta.MyType.boolProp", MyType.BOOL_PROP.fullName)
     }
 
     @Test
@@ -689,4 +689,11 @@ class TypeTest {
     	assertFalse(MyHierarchy.MY_SUB_TYPE.isParentOf(MyHierarchy.MY_TYPE))
     	assertTrue(MyHierarchy.MY_TYPE.isParentOf(MyHierarchy.MY_SUB_TYPE))
     }
+
+	// TODO Fails due to Xtend bug
+//    @Test
+//    public def void testCreate() {
+//    	val obj = MyHierarchy.MY_TYPE.create
+//    	assertEquals(MyType, obj.class)
+//    }
 }

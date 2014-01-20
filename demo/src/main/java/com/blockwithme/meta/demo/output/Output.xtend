@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Sebastien Diot.
+ * Copyright (C) 2014 Sebastien Diot.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,60 +17,79 @@ package com.blockwithme.meta.demo.output
 
 import com.blockwithme.meta.demo.input.Type
 import com.blockwithme.meta.demo.input.Property
-import com.blockwithme.meta.demo.input.Entity
+import com.blockwithme.meta.demo.input.Instance
+import com.blockwithme.meta.demo.input.ROInstance
+import com.blockwithme.meta.demo.input.BaseInstance
 
 //////////////////////////////////////////////////////////
-// Transformed and generated types
+// Transformed and visible generated types
 //////////////////////////////////////////////////////////
 
-interface AgedRO<I_SELF extends AgedRO/*<I_SELF, M_SELF>*/,
-M_SELF extends Aged/*<I_SELF, M_SELF>*/>
-extends Entity {
-	val ageDefault = 0
+interface AgedTypeProvider {
+	def Type agedType()
+	def Property<Integer> getAge()
+}
+
+interface ROAged extends ROInstance {
 	def int getAge()
-	def M_SELF copy()
 }
 
-interface Aged<I_SELF extends AgedRO/*<I_SELF, M_SELF>*/,
-M_SELF extends Aged/*<I_SELF, M_SELF>*/>
-extends AgedRO<I_SELF, M_SELF> {
-	def M_SELF setAge(int age)
-	def I_SELF snapshot()
-	def void copyFrom(I_SELF other)
+interface Aged extends ROAged, Instance {
+	def Aged setAge(int age)
 }
 
-package class AgedROImpl<I_SELF extends AgedRO/*<I_SELF, M_SELF>*/,
-M_SELF extends Aged/*<I_SELF, M_SELF>*/>
-implements AgedRO<I_SELF, M_SELF> {
-	protected var int age = ageDefault
+
+
+interface NamedTypeProvider {
+	def Type namedType()
+	def Property<String> getName()
+}
+
+interface RONamed extends ROInstance {
+	def String getName()
+}
+
+interface Named extends RONamed, Instance {
+	def Named setName(String name)
+}
+
+
+
+interface PersonTypeProvider extends AgedTypeProvider, NamedTypeProvider {
+	def Type personType()
+	def Property<String> getProfession()
+}
+
+interface ROPerson extends ROAged, RONamed {
+	def String getProfession()
+}
+
+interface Person extends ROPerson, Aged, Named {
+	override Person setAge(int age)
+	override Person setName(String name)
+	def Person setProfession(String profession)
+}
+
+//////////////////////////////////////////////////////////
+// Invisible generated types
+//////////////////////////////////////////////////////////
+
+package abstract class ROAgedImpl extends BaseInstance implements ROAged {
+	protected var int age
 
 	override int getAge() {
 		age
 	}
 
-	override copy() {
-		val result = new AgedImpl()
-		result.copyFrom(this)
-		result as M_SELF
-	}
-
-	// Not visible when using interface AgedRO
-	def M_SELF setAge(int age) {
+	// Not visible when using interface ROAged
+	def Aged setAge(int age) {
 		this.age = age
-		this as M_SELF
+		this as Aged
 	}
 
-	// Not visible when using interface AgedRO
-	def snapshot() {
-		val result = new AgedROImpl()
-		result.copyFrom(this)
-		result as I_SELF
-	}
-
-	// Not visible when using interface AgedRO
-	def void copyFrom(I_SELF other) {
+	protected def void copyFrom2(ROAged other) {
 		if (other === null) {
-			this.age = AgedRO.ageDefault
+			this.age = 0
 		} else {
 			this.age = other.age
 		}
@@ -80,95 +99,35 @@ implements AgedRO<I_SELF, M_SELF> {
 		this.age = age
 	}
 
-	override metaType() {
-		AgedExtension.AGED_CLASS
-	}
-
 	// toString
 	// hashCode
 	// equals
 	// ...
 }
 
-package class AgedImpl<I_SELF extends AgedRO/*<I_SELF, M_SELF>*/,
-M_SELF extends Aged/*<I_SELF, M_SELF>*/>
-extends AgedROImpl<I_SELF, M_SELF>
-implements Aged<I_SELF, M_SELF> {
-}
+package abstract class AgedImpl extends ROAgedImpl implements Aged {
 
-class AgedExtension {
-	public static var Type AGED_CLASS // Injected? Package Static Property?
-	public static var Property AGED_AGE // Injected? Package Static Property?
-
-	static def AgedRO newAgedRO(int age) {
-		val result = new AgedROImpl
-		result.initialize(age)
-		result
-	}
-
-	static def Aged newAged(int age) {
-		val result = new AgedImpl
-		result.initialize(age)
-		result
-	}
-
-	public static val adult = [AgedRO it|it.age >= 18]
-	static def adult(AgedRO aged) {
-		adult.apply(aged)
-	}
 }
 
 
 
 
-interface NamedRO<I_SELF extends NamedRO/*<I_SELF, M_SELF>*/,
-M_SELF extends Named/*<I_SELF, M_SELF>*/>
-extends Entity {
-	val nameDefault = ""
-	def String getName()
-	def M_SELF copy()
-}
-
-interface Named<I_SELF extends NamedRO/*<I_SELF, M_SELF>*/,
-M_SELF extends Named/*<I_SELF, M_SELF>*/>
-extends NamedRO<I_SELF, M_SELF> {
-	def M_SELF setName(String name)
-	def I_SELF snapshot()
-	def void copyFrom(I_SELF other)
-}
-
-package class NamedROImpl<I_SELF extends NamedRO/*<I_SELF, M_SELF>*/,
-M_SELF extends Named/*<I_SELF, M_SELF>*/>
-implements NamedRO<I_SELF, M_SELF> {
-	protected var String name = nameDefault
+package abstract class RONamedImpl extends BaseInstance implements RONamed {
+	protected var String name
 
 	override String getName() {
 		name
 	}
 
-	override copy() {
-		val result = new NamedImpl()
-		result.copyFrom(this)
-		result as M_SELF
-	}
-
-	// Not visible when using interface NamedRO
-	def M_SELF setName(String name) {
+	// Not visible when using interface RONamed
+	def Named setName(String name) {
 		this.name = name
-		this as M_SELF
+		this as Named
 	}
 
-	// Not visible when using interface NamedRO
-	def snapshot() {
-		val result = new NamedROImpl()
-		result.copyFrom(this)
-		result as I_SELF
-	}
-
-	// Not visible when using interface NamedRO
-	def void copyFrom(I_SELF other) {
+	protected def void copyFrom2(RONamed other) {
 		if (other === null) {
-			this.name = NamedRO.nameDefault
+			this.name = null
 		} else {
 			this.name = other.name
 		}
@@ -178,63 +137,21 @@ implements NamedRO<I_SELF, M_SELF> {
 		this.name = name
 	}
 
-	override metaType() {
-		NamedExtension.NAMED_CLASS
-	}
-
 	// toString
 	// hashCode
 	// equals
 	// ...
 }
 
-package class NamedImpl<I_SELF extends NamedRO/*<I_SELF, M_SELF>*/,
-M_SELF extends Named/*<I_SELF, M_SELF>*/>
-extends NamedROImpl<I_SELF, M_SELF>
-implements Named<I_SELF, M_SELF> {
-}
-
-class NamedExtension {
-	public static var Type NAMED_CLASS // Injected? Package Static Property?
-	public static var Property NAMED_AGE // Injected? Package Static Property?
-
-	static def NamedRO newNamedRO(String name) {
-		val result = new NamedROImpl
-		result.initialize(name)
-		result
-	}
-
-	static def Named newNamed(String name) {
-		val result = new NamedImpl
-		result.initialize(name)
-		result
-	}
-
-	// ..
+package abstract class NamedImpl extends RONamedImpl implements Named {
 }
 
 
 
-interface PersonRO<I_SELF extends PersonRO/*<I_SELF, M_SELF>*/,
-M_SELF extends Person/*<I_SELF, M_SELF>*/>
-extends AgedRO<I_SELF, M_SELF>, NamedRO<I_SELF, M_SELF> {
-	val professionDefault = ""
-	def String getProfession()
-}
-
-interface Person<I_SELF extends PersonRO/*<I_SELF, M_SELF>*/,
-M_SELF extends Person/*<I_SELF, M_SELF>*/>
-extends PersonRO<I_SELF, M_SELF>, Aged<I_SELF, M_SELF>, Named<I_SELF, M_SELF> {
-	def M_SELF setProfession(String profession)
-}
-
-package class PersonROImpl<I_SELF extends PersonRO/*<I_SELF, M_SELF>*/,
-M_SELF extends Person/*<I_SELF, M_SELF>*/>
-extends AgedROImpl<I_SELF, M_SELF>
-implements PersonRO<I_SELF, M_SELF>
+package class ROPersonImpl extends ROAgedImpl implements ROPerson
 {
-	protected var String profession = professionDefault
-	protected var String name = nameDefault
+	protected var String profession
+	protected var String name
 
 	override String getName() {
 		name
@@ -246,43 +163,43 @@ implements PersonRO<I_SELF, M_SELF>
 
 	override copy() {
 		val result = new PersonImpl()
-		result.copyFrom(this)
-		result as M_SELF
+		result.copyFrom2(this)
+		result as Person
 	}
 
-	// Not visible when using interface PersonRO
-	def M_SELF setProfession(String profession) {
+	// Not visible when using interface ROPerson
+	def Person setProfession(String profession) {
 		this.profession = profession
-		this as M_SELF
+		this as Person
 	}
 
-	// Not visible when using interface PersonRO
+	// Not visible when using interface ROPerson
 	def setName(String name) {
 		this.name = name
-		this as M_SELF
+		this as Person
 	}
 
-	// Not visible when using interface PersonRO
-	override snapshot() {
-		val result = new PersonROImpl()
-		result.copyFrom(this)
-		result as I_SELF
+	override Person setAge(int age) {
+		super.setAge(age) as Person
 	}
 
-	// Not visible when using interface PersonRO
-	override void copyFrom(I_SELF other) {
-		super.copyFrom(other)
+	// Not visible when using interface ROPerson
+	def snapshot() {
+		val result = new ROPersonImpl()
+		result.copyFrom2(this)
+		result as ROPerson
+	}
+
+	// Not visible when using interface ROPerson
+	protected def void copyFrom2(ROPerson other) {
+		super.copyFrom2(other)
 		if (other === null) {
-			this.name = NamedRO.nameDefault
-			this.profession = PersonRO.professionDefault
+			this.name = null
+			this.profession = null
 		} else {
 			this.name = other.name
 			this.profession = other.profession
 		}
-	}
-
-	override metaType() {
-		PersonExtension.PERSON_CLASS
 	}
 
 	package def void initialize(int age, String name, String profession) {
@@ -297,18 +214,15 @@ implements PersonRO<I_SELF, M_SELF>
 	// ...
 }
 
-package class PersonImpl<I_SELF extends PersonRO/*<I_SELF, M_SELF>*/,
-M_SELF extends Person/*<I_SELF, M_SELF>*/>
-extends PersonROImpl<I_SELF, M_SELF>
-implements Person<I_SELF, M_SELF> {
+package class PersonImpl extends ROPersonImpl implements Person {
 }
 
 class PersonExtension {
 	public static var Type PERSON_CLASS // Injected? Package Static Property?
 	public static var Property PERSON_AGE // Injected? Package Static Property?
 
-	static def PersonRO newPersonRO(int age, String name, String profession) {
-		val result = new PersonROImpl
+	static def ROPerson newROPerson(int age, String name, String profession) {
+		val result = new ROPersonImpl
 		result.initialize(age, name, profession)
 		result
 	}
@@ -324,9 +238,9 @@ class PersonExtension {
 
 class AgeTest {
 	static def void main(String[] args) {
-		val o = AgedExtension.newAgedRO(42)
+		val o = PersonExtension.newROPerson(42, "john", "dentist")
 		System.out.println(o)
-		System.out.println(o instanceof Aged)
+		System.out.println(o instanceof ROPerson)
 		val p = o.copy
 		System.out.println(p)
 	}

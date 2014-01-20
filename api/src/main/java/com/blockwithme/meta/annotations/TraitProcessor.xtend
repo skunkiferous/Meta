@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Sebastien Diot.
+ * Copyright (C) 2014 Sebastien Diot.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,7 +50,8 @@ import static com.blockwithme.fn.util.Util.*
 import static extension com.blockwithme.meta.annotations.ProcessorUtil.*
 import static extension java.lang.Character.*
 import static extension java.lang.Class.*
-import java.util.Objects
+import static java.util.Objects.*
+import com.google.inject.Provider
 
 /**
  * Annotation for "traits"
@@ -65,6 +66,11 @@ annotation Trait {
 	/** If the immutable it true all fields are final,
 	 * and setter methods will return a new instance*/
 	boolean immutable = false
+	// TODO
+	boolean concrete = true
+	// Will only be added in sub-types, and only the return value will be
+	// re-defined in sub-sub-types if concrete is true
+//	def Instance copyFrom(ROInstance other)
 }
 
 /** Temp data structure used for Template generation. */
@@ -98,7 +104,11 @@ class TraitProcessor extends InterfaceProcessor {
 
 	/** The trait can extend from any of the following interfaces,
 	 * when found in the type hierarchy, these interfaces are ignored. */
-	static Set<String> IGNORE_INTERFACES = #{typeof(Serializable).name, typeof(Cloneable).name}
+	static Set<String> IGNORE_INTERFACES = #{
+		Serializable.name, Cloneable.name, Provider.name,
+		// TODO
+		"com.blockwithme.meta.demo.input.BaseInstance"
+	}
 
 	/** Public constructor for this class. */
 	new() {
@@ -1001,9 +1011,15 @@ class TraitProcessor extends InterfaceProcessor {
 
 		superTraits?.forEach [
 			val traitI = name.findInterface
-			clazz.addPartialHashCode(traitI)
-			clazz.addPartialToString(traitI)
-			clazz.addPartialEquals(traitI)
+			val traitClass = findClass(traitI.qualifiedName + 'Trait')
+			if (traitClass === null) {
+				error(TraitProcessor, "generateTraitClassBehavior", traitClass,
+					'Invalid parent :' + traitI.qualifiedName + 'Trait not found.')
+			} else {
+				clazz.addPartialHashCode(traitI)
+				clazz.addPartialToString(traitI)
+				clazz.addPartialEquals(traitI)
+			}
 		]
 		if (superClass != null) {
 			clazz.addPartialHashCode(superInterface)

@@ -183,6 +183,8 @@ Make sure the tests are updated.
 UNPROCESSED:
 ============
 
+Type instances should offer an array of all Properties in alphabetical order.
+
 Add API to allow Processors to order themselves before or after some other Processor.
 
 Generating a separate Read-Only base interface allows us to reuse it for both immutable types and beans.

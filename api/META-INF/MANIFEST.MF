@@ -1,25 +1,38 @@
 Manifest-Version: 1.0
-Bnd-LastModified: 1388431254962
+Bnd-LastModified: 1390242950310
 Build-Jdk: 1.7.0_45
 Built-By: monster
 Bundle-Description: The second generation, XTend-based, Meta API for Typ
  es, Networks, ...
+Bundle-License: http://www.apache.org/licenses/LICENSE-2.0.txt
 Bundle-ManifestVersion: 2
-Bundle-Name: MetaX
-Bundle-SymbolicName: MetaX
+Bundle-Name: Meta
+Bundle-SymbolicName: Meta
 Bundle-Vendor: Sebastien Diot
 Bundle-Version: 0.0.4
 Created-By: Apache Maven Bundle Plugin
-Export-Package: com.blockwithme.meta;version="0.0.4";
-  uses:="com.blockwithme.fn1,
-   com.blockwithme.fn2,
-   com.blockwithme.metax.converter,
-   org.eclipse.xtext.xbase.lib",
- com.blockwithme.meta.converter;version="0.0.4"
-Import-Package: com.blockwithme.fn1;version="[1.2,2)",com.blockwithme.fn
- 2;version="[1.2,2)",com.blockwithme.util;version="[0.0,1)",com.blockwit
- hme.xtend.contrib.base;version="[0.0,1)",com.google.common.base;version
- ="[14.0,15)",com.google.common.collect;version="[14.0,15)",org.eclipse.
- xtend.lib,org.eclipse.xtext.xbase.lib,org.eclipse.xtext.xbase.lib.util,
- org.slf4j;version="[1.7,2)"
+Export-Package: com.blockwithme.meta.annotations;uses:="com.blockwithme.
+ fn2,org.eclipse.xtend.core.macro.declaration,org.eclipse.xtend.core.xte
+ nd,org.eclipse.xtend.lib,org.eclipse.xtend.lib.macro,org.eclipse.xtend.
+ lib.macro.declaration,org.eclipse.xtend.lib.macro.services,org.eclipse.
+ xtext.xbase.lib";version="0.0.4",com.blockwithme.meta;uses:="com.blockw
+ ithme.fn1,com.blockwithme.fn2,com.blockwithme.meta.converter,org.eclips
+ e.xtend.lib.macro,org.eclipse.xtend.lib.macro.declaration,org.eclipse.x
+ text.xbase.lib";version="0.0.4",com.blockwithme.meta.converter;version=
+ "0.0.4",com.blockwithme.traits.util;uses:="org.eclipse.xtext.xbase.lib"
+ ;version="0.0.4"
+Import-Package: com.blockwithme.fn.util;version="[1.2,2)",com.blockwithm
+ e.fn1;version="[1.2,2)",com.blockwithme.fn2;version="[1.2,2)",com.block
+ withme.util;version="[0.0,1)",com.google.common.base;version="[14.0,15)
+ ",com.google.common.collect;version="[14.0,15)",de.oehme.xtend.contrib.
+ macro,org.eclipse.emf.common.notify,org.eclipse.emf.common.util,org.ecl
+ ipse.emf.ecore,org.eclipse.emf.ecore.resource,org.eclipse.xtend.core.ma
+ cro.declaration,org.eclipse.xtend.core.xtend,org.eclipse.xtend.core.xte
+ nd.impl,org.eclipse.xtend.lib,org.eclipse.xtend.lib.macro,org.eclipse.x
+ tend.lib.macro.declaration,org.eclipse.xtend.lib.macro.expression,org.e
+ clipse.xtend.lib.macro.file,org.eclipse.xtend.lib.macro.services,org.ec
+ lipse.xtend2.lib,org.eclipse.xtext.common.types,org.eclipse.xtext.commo
+ n.types.impl,org.eclipse.xtext.common.types.util,org.eclipse.xtext.xbas
+ e,org.eclipse.xtext.xbase.lib,org.eclipse.xtext.xbase.lib.util,org.slf4
+ j;version="[1.7,2)"
 Tool: Bnd-2.1.0.20130426-122213

@@ -2,8 +2,6 @@ package com.blockwithme.meta.annotations
 
 import com.blockwithme.traits.util.AntiClassLoaderCache
 import de.oehme.xtend.contrib.Synchronized
-import java.io.PrintWriter
-import java.io.StringWriter
 import java.lang.annotation.ElementType
 import java.lang.annotation.Retention
 import java.lang.annotation.RetentionPolicy
@@ -17,15 +15,12 @@ import org.eclipse.xtend.lib.macro.RegisterGlobalsContext
 import org.eclipse.xtend.lib.macro.RegisterGlobalsParticipant
 import org.eclipse.xtend.lib.macro.TransformationContext
 import org.eclipse.xtend.lib.macro.TransformationParticipant
-import org.eclipse.xtend.lib.macro.declaration.ClassDeclaration
 import org.eclipse.xtend.lib.macro.declaration.Element
-import org.eclipse.xtend.lib.macro.declaration.InterfaceDeclaration
-import org.eclipse.xtend.lib.macro.declaration.MutableTypeDeclaration
-import org.eclipse.xtend.lib.macro.declaration.TypeDeclaration
-import org.eclipse.xtext.xbase.lib.Procedures.Procedure3
-import org.eclipse.xtext.xbase.lib.Procedures.Procedure2
-import org.eclipse.xtend.lib.macro.declaration.NamedElement
 import org.eclipse.xtend.lib.macro.declaration.MutableNamedElement
+import org.eclipse.xtend.lib.macro.declaration.MutableTypeDeclaration
+import org.eclipse.xtend.lib.macro.declaration.NamedElement
+import org.eclipse.xtend.lib.macro.declaration.TypeDeclaration
+import org.eclipse.xtext.xbase.lib.Procedures.Procedure2
 
 /**
  * Marks that *all types in this file* should be processed.
@@ -50,7 +45,7 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 	static val String PROCESSORS_NAMES = "PROCESSORS_NAMES"
 
 	/** File containing the processor names */
-	static val String PROCESSORS_NAMES_FILE = "magic.processor.names.txt"
+	static val String PROCESSORS_NAMES_FILE = "META-INF/services/"+Processor.name
 
 	/** The processors */
 	static var Processor<?,?>[] PROCESSORS
@@ -159,6 +154,7 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 		List<? extends NamedElement> annotatedSourceElements) {
 		val cache = AntiClassLoaderCache.getCache()
 		if (PROCESSORS === null) {
+			val list = <Processor>newArrayList()
 			val compilationUnit = ProcessorUtil.getCompilationUnit(annotatedSourceElements)
 			val element = annotatedSourceElements.get(0)
 			var String[] names = cache.get(PROCESSORS_NAMES) as String[]
@@ -166,7 +162,6 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 				names = findProcessorNames(compilationUnit, element)
 				cache.put(PROCESSORS_NAMES, names)
 			}
-			val list = <Processor>newArrayList()
 			for (name : names) {
 				try {
 					list.add(Class.forName(name).newInstance as Processor<?,?>)
@@ -175,9 +170,12 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 						"Could not instantiate processor for '"+name+"'",ex)
 				}
 			}
+//			for (p : Loader.load(Processor, MagicAnnotationProcessor.classLoader)) {
+//				list.add(p)
+//			}
 			PROCESSORS = list.toArray(<Processor>newArrayOfSize(list.size))
 			if (PROCESSORS.length === 0) {
-				processorUtil.warn(MagicAnnotationProcessor, "getProcessors", null,
+				processorUtil.error(MagicAnnotationProcessor, "getProcessors", null,
 					"No processor defined.")
 			}
 		}
@@ -195,7 +193,7 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 				val content = compilationUnit.fileSystemSupport.getContents(file)
 				val buf = new StringBuilder(content.length())
 				buf.append(content)
-				for (s : buf.toString.split(":")) {
+				for (s : buf.toString.split("\n")) {
 					val str = s.trim
 					if (!str.empty) {
 						list.add(str)
