@@ -15,39 +15,38 @@
  */
 package com.blockwithme.meta.demo
 
-import com.blockwithme.meta.annotations.Trait
-import com.blockwithme.meta.annotations.Magic
 import com.blockwithme.meta.annotations.Trace
+import com.blockwithme.meta.annotations.Trait
 
 @Trait
 interface DemoType {
 
   /** Boolean property */
-  val boolProp = false
+  boolean boolProp
 
   /** Byte property */
-  val byteProp = 0 as byte
+  byte byteProp
 
   /** Short property */
-  val shortProp = 0 as short
+  short shortProp
 
   /** Char property */
-  val char charProp = 0 as char
+  char charProp
 
   /** Int property */
-  val intProp = 0
+  int intProp
 
   /** Long property */
-  val longProp = 0L
+  long longProp
 
   /** Float property */
-  val floatProp = 0.0f
+  float floatProp
 
   /** Double property */
-  val doubleProp = 0.0
+  double doubleProp
 
   /** Object property */
-  val objectProp = ""
+  String objectProp
 }
 
 @Trait
@@ -55,12 +54,12 @@ interface DemoType {
 interface DemoTypeChild extends DemoType {
 
   /** Object property */
-  val childProp = ""
+  String childProp
 
 }
 
 @Trace
 class SomeClass {
-	val age = 42
-	def hello() { "hello" }
+	int age
+	def hello() { "hello, I'm "+age }
 }

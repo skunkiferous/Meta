@@ -52,6 +52,7 @@ import static extension java.lang.Character.*
 import static extension java.lang.Class.*
 import static java.util.Objects.*
 import com.google.inject.Provider
+import org.eclipse.xtend.lib.macro.declaration.MutableFieldDeclaration
 
 /**
  * Annotation for "traits"
@@ -74,7 +75,7 @@ annotation Trait {
 }
 
 /** Temp data structure used for Template generation. */
-class TemplateField {
+package class TemplateField {
 
 	package String fieldName
 
@@ -88,6 +89,23 @@ class TemplateField {
 
 	package MutableInterfaceDeclaration interf
 
+}
+
+package class FieldInfo {
+
+	package MutableFieldDeclaration field
+
+	package String name
+
+	package TypeReference type
+
+	package MutableInterfaceDeclaration interf
+
+	package String error
+
+	package boolean duplicate
+
+	override toString() { name }
 }
 
 /**
@@ -235,7 +253,11 @@ class TraitProcessor extends InterfaceProcessor {
 					}
 				}
 				if (!f.type.isFunctor) {
-					val fieldInfo = new FieldInfo(f.simpleName, f.type, interf)
+					val fieldInfo = new FieldInfo
+					fieldInfo.field = f
+					fieldInfo.name = f.simpleName
+					fieldInfo.type = f.type
+					fieldInfo.interf = interf
 					if (duplicate.get(0)) {
 						fieldInfo.duplicate = true
 					} else if (error.get(0)) {
@@ -911,14 +933,13 @@ class TraitProcessor extends InterfaceProcessor {
 	}
 
 	/** Adds Getters and Setter to the trait Interface. */
-	def private processField(FieldInfo fieldDeclaration, MutableInterfaceDeclaration interf) {
+	def private boolean processField(FieldInfo fieldDeclaration, MutableInterfaceDeclaration interf) {
 
 		val fieldName = fieldDeclaration.name
 		val toFirstUpper = fieldName.toFirstUpper
 		val fieldType = fieldDeclaration.type
 
 		if (fieldName.charAt(0).isLowerCase && !fieldType.isFunctor) {
-
 			val getter = 'get' + toFirstUpper
 			interf.addMethod(getter) [
 				returnType = fieldType
@@ -927,29 +948,31 @@ class TraitProcessor extends InterfaceProcessor {
 				addParameter(fieldName, fieldType)
 				returnType = interf.newTypeReference
 			]
+			if (fieldType.array) {
+				interf.addMethod('get' + toFirstUpper) [
+					addParameter('index', primitiveInt)
+					returnType = fieldType.arrayComponentType
+				]
+				interf.addMethod('set' + toFirstUpper) [
+					addParameter('index', primitiveInt)
+					addParameter(fieldName, fieldType.arrayComponentType)
+					returnType = interf.newTypeReference
+				]
+			} else if (fieldType.isList) {
+				interf.addMethod('get' + toFirstUpper) [
+					addParameter('index', primitiveInt)
+					returnType = fieldType.actualTypeArguments.head ?: getObject()
+				]
+				interf.addMethod('set' + toFirstUpper) [
+					val tp = fieldType.actualTypeArguments.head ?: getObject()
+					addParameter('index', primitiveInt)
+					addParameter(fieldName, tp)
+					returnType = interf.newTypeReference
+				]
+			}
+			return true
 		}
-		if (fieldType.array) {
-			interf.addMethod('get' + toFirstUpper) [
-				addParameter('index', primitiveInt)
-				returnType = fieldType.arrayComponentType
-			]
-			interf.addMethod('set' + toFirstUpper) [
-				addParameter('index', primitiveInt)
-				addParameter(fieldName, fieldType.arrayComponentType)
-				returnType = interf.newTypeReference
-			]
-		} else if (fieldType.isList) {
-			interf.addMethod('get' + toFirstUpper) [
-				addParameter('index', primitiveInt)
-				returnType = fieldType.actualTypeArguments.head ?: getObject()
-			]
-			interf.addMethod('set' + toFirstUpper) [
-				val tp = fieldType.actualTypeArguments.head ?: getObject()
-				addParameter('index', primitiveInt)
-				addParameter(fieldName, tp)
-				returnType = interf.newTypeReference
-			]
-		}
+		false
 	}
 
 	/**
@@ -966,14 +989,13 @@ class TraitProcessor extends InterfaceProcessor {
 	 * </pre> */
 	def private void generateTraitClassFields(MutableInterfaceDeclaration traitInterface) {
 		val traitClass = traitInterface.findClass
+		val fields = traitInterface.classFields
 		debug(TraitProcessor, "generateTraitClassFields", traitClass,
 			"Generating fields for "+traitClass.qualifiedName)
 		val superClass = if(traitInterface.superInterface != null) traitInterface.superInterface.findClass
 
 		if (superClass != null)
 			traitClass.extendedClass = superClass.newTypeReference
-
-		val fields = traitInterface.classFields
 
 		fields?.forEach [ fInfo |
 			if (!fInfo.duplicate && fInfo.error == null) {
@@ -1400,9 +1422,12 @@ class TraitProcessor extends InterfaceProcessor {
 		// TODO If using inheritance, we should return the "update" the return-type
 		// of the generated property setters. Either through re-declaration, or
 		// through an additional generic parameter
+		val remove = <MutableFieldDeclaration>newArrayList()
 		mtd.forAllFields [ f |
 			if (mtd == f.interf && !f.duplicate)
-				processField(f, mtd)
+				if (processField(f, mtd)) {
+					remove.add(f.field)
+				}
 		]
 		// Add fields to trait impl classes
 		generateTraitClassFields(mtd)
@@ -1415,6 +1440,9 @@ class TraitProcessor extends InterfaceProcessor {
 //		// Generate serialization template
 //		val superClass = mtd.superInterface?.findClass
 //		generateTemplate(traitClass, superClass)
+		for (f : remove) {
+			f.remove()
+		}
 	}
 }
 
