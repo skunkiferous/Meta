@@ -131,12 +131,8 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 	/** Implements the doRegisterGlobals() phase */
 	override void doRegisterGlobals(List<? extends NamedElement> annotatedSourceElements,
 			extension RegisterGlobalsContext context) {
-		try {
-			<TypeDeclaration>loop(annotatedSourceElements, "register",
-				[p,td|p.register(td, context)])
-		} finally {
-			registerClass('com.blockwithme.meta.annotations.tEsT')
-		}
+		<TypeDeclaration>loop(annotatedSourceElements, "register",
+			[p,td|p.register(td, context)])
 	}
 
 	/** Implements the doGenerateCode() phase */
@@ -149,21 +145,8 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 	/** Implements the doTransform() phase */
 	override doTransform(List<? extends MutableNamedElement> annotatedSourceElements,
 			extension TransformationContext context) {
-		try {
-			<MutableTypeDeclaration>loop(annotatedSourceElements, "transform",
-				[p,mtd|p.transform(mtd, context)])
-		} finally {
-			val testClass = findClass('com.blockwithme.meta.annotations.tEsT')
-			if (testClass.findDeclaredField("TEST") === null) {
-				testClass.addField("TEST") [
-					it.type = context.string
-					it.static = true
-					it.final = true
-					it.setVisibility(Visibility.PUBLIC)
-					it.setInitializer(new SCC())
-				]
-			}
-		}
+		<MutableTypeDeclaration>loop(annotatedSourceElements, "transform",
+			[p,mtd|p.transform(mtd, context)])
 	}
 
 	/** Returns the list of processors. */

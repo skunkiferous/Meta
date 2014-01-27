@@ -627,6 +627,11 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	/** Map property name to property (immutable) */
 	public val Map<String,Property<?,?>> simpleNameToProperty
 
+	/**
+	 * Maps the inheritedProperties to their index in that array
+	 */
+	public val Map<Property<?,?>,Integer> inheritedPropertiesToIndex
+
     /** The kind of type, that this class/interface is. */
     public val Kind kind
 
@@ -744,6 +749,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	    var _doublePrimitivePropertyCount = 0
 
 	    val Map<String,Property<?,?>> _simpleNameToProperty = newHashMap()
+	    val Map<Property<?,?>,Integer> _inheritedPropertiesToIndex = newHashMap()
 		for (prop : properties as Property<?,?>[]) {
 			if (prop instanceof PrimitiveProperty<?,?,?>) {
 				_primitivePropertyBitsTotal = _primitivePropertyBitsTotal + prop.bits
@@ -775,6 +781,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 				}
 			}
 		}
+		var int index = 0
 		for (prop : inheritedProperties) {
 			// Property name clash is not allowed between parent either
 			val other = _simpleNameToProperty.put(prop.simpleName, prop)
@@ -783,6 +790,8 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 					+" inherits multiple properties with simpleName "+prop.simpleName
 					+" (at least "+prop.fullName+" and "+other.fullName+")")
 			}
+			_inheritedPropertiesToIndex.put(prop, index)
+			index = index + 1
 		}
 	    propertyCount = properties.length
 	    primitivePropertyCount = primitiveProperties.length
@@ -801,6 +810,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	    floatPrimitivePropertyCount = _floatPrimitivePropertyCount
 	    doublePrimitivePropertyCount = _doublePrimitivePropertyCount
 	    simpleNameToProperty = Collections::unmodifiableMap(_simpleNameToProperty)
+	    inheritedPropertiesToIndex = Collections::unmodifiableMap(_inheritedPropertiesToIndex)
 
 		footprint = Footprint.round(_primitivePropertyByteTotal + Footprint.REFERENCE * objectPropertyCount)
 	    var total = footprint
@@ -846,6 +856,38 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	}
 }
 
+
+/**
+ * The Property visitor
+ */
+interface PropertyVisitor {
+	/** Visits a Boolean Property */
+	def void visit(BooleanProperty<?,?,?> prop)
+
+	/** Visits a Byte Property */
+	def void visit(ByteProperty<?,?,?> prop)
+
+	/** Visits a Character Property */
+	def void visit(CharacterProperty<?,?,?> prop)
+
+	/** Visits a Short Property */
+	def void visit(ShortProperty<?,?,?> prop)
+
+	/** Visits a Integer Property */
+	def void visit(IntegerProperty<?,?,?> prop)
+
+	/** Visits a Float Property */
+	def void visit(FloatProperty<?,?,?> prop)
+
+	/** Visits a Double Property */
+	def void visit(DoubleProperty<?,?,?> prop)
+
+	/** Visits a Long Property */
+	def void visit(LongProperty<?,?,?> prop)
+
+	/** Visits a Object Property */
+	def void visit(ObjectProperty<?,?> prop)
+}
 
 /**
  * Represents a Property of a Type.
@@ -947,11 +989,26 @@ extends MetaBase<Type<OWNER_TYPE>> {
 		contentType
 	}
 
+	/**
+	 * The zero-based property ID, within the inheritedProperties array of the
+	 * given type. -1 when not found.
+	 */
+	def final int inheritedPropertyId(Type<?> type) {
+		val result = requireNonNull(type, "type").inheritedPropertiesToIndex.get(this)
+		if (result === null) {
+			return -1
+		}
+		result
+	}
+
 	/** Returns the value of this property, as an Object */
 	def PROPERTY_TYPE getObject(OWNER_TYPE object)
 
 	/** Sets the value of this property, as an Object */
 	def OWNER_TYPE setObject(OWNER_TYPE object, PROPERTY_TYPE value)
+
+	/** Accepts the visitor */
+	def void accept(PropertyVisitor visitor)
 }
 
 /** Temporary Helper Object, used for Object Property creation. */
@@ -1038,6 +1095,11 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
 
 	override final setObject(OWNER_TYPE object, PROPERTY_TYPE value) {
 		setter.apply(object, value)
+	}
+
+	/** Accepts the visitor */
+	override final void accept(PropertyVisitor visitor) {
+		visitor.visit(this)
 	}
 }
 
@@ -1300,6 +1362,11 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	def final OWNER_TYPE setBoolean(OWNER_TYPE object, boolean value) {
 		setter.apply(object,value)
 	}
+
+	/** Accepts the visitor */
+	override final void accept(PropertyVisitor visitor) {
+		visitor.visit(this)
+	}
 }
 
 
@@ -1377,6 +1444,11 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	def final OWNER_TYPE setByte(OWNER_TYPE object, byte value) {
 		setter.apply(object,value)
 	}
+
+	/** Accepts the visitor */
+	override final void accept(PropertyVisitor visitor) {
+		visitor.visit(this)
+	}
 }
 
 
@@ -1453,6 +1525,11 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** Sets the value of this property, as a char */
 	def final OWNER_TYPE setChar(OWNER_TYPE object, char value) {
 		setter.apply(object,value)
+	}
+
+	/** Accepts the visitor */
+	override final void accept(PropertyVisitor visitor) {
+		visitor.visit(this)
 	}
 }
 
@@ -1532,6 +1609,11 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	def final OWNER_TYPE setShort(OWNER_TYPE object, short value) {
 		setter.apply(object,value)
 	}
+
+	/** Accepts the visitor */
+	override final void accept(PropertyVisitor visitor) {
+		visitor.visit(this)
+	}
 }
 
 
@@ -1608,6 +1690,11 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** Sets the value of this property, as an int */
 	def final OWNER_TYPE setInt(OWNER_TYPE object, int value) {
 		setter.apply(object,value)
+	}
+
+	/** Accepts the visitor */
+	override final void accept(PropertyVisitor visitor) {
+		visitor.visit(this)
 	}
 }
 
@@ -1686,6 +1773,11 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	def OWNER_TYPE setFloat(OWNER_TYPE object, float value) {
 		setter.apply(object,value)
 	}
+
+	/** Accepts the visitor */
+	override final void accept(PropertyVisitor visitor) {
+		visitor.visit(this)
+	}
 }
 
 
@@ -1762,6 +1854,11 @@ extends SixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** Sets the value of this property, as a long */
 	def final OWNER_TYPE setLong(OWNER_TYPE object, long value) {
 		setter.apply(object,value)
+	}
+
+	/** Accepts the visitor */
+	override final void accept(PropertyVisitor visitor) {
+		visitor.visit(this)
 	}
 }
 
@@ -1840,6 +1937,11 @@ extends SixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** Sets the value of this property, as a double */
 	def final OWNER_TYPE setDouble(OWNER_TYPE object, double value) {
 		setter.apply(object,value)
+	}
+
+	/** Accepts the visitor */
+	override final void accept(PropertyVisitor visitor) {
+		visitor.visit(this)
 	}
 }
 

@@ -1451,10 +1451,3 @@ class TraitProcessor extends InterfaceProcessor {
 		}
 	}
 }
-
-class SCC extends StringConcatenationClient {
-	protected override void appendTo(TargetStringConcatenation target) {
-		target.append('""')
-	}
-}
-
