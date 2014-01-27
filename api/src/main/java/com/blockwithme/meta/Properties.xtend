@@ -54,6 +54,9 @@ import com.blockwithme.fn2.ObjectFuncObjectLong
 import com.blockwithme.fn1.DoubleFuncObject
 import com.blockwithme.fn2.ObjectFuncObjectDouble
 import de.oehme.xtend.contrib.Volatile
+import java.util.HashMap
+import java.util.HashSet
+import java.util.Set
 
 /**
  * Hierarchy represents a Type hierarchy. It is not limited to types in the
@@ -104,6 +107,9 @@ public class Hierarchy {
 
 	/** All packages of this hierarchy */
 	public val TypePackage[] allPackages
+
+	/** Quick access to Type instances by name */
+	var Map<String,Type<?>> allTypesByName
 
     /** All the *currently initialized* Hierarchies */
     static def getHierarchies() {
@@ -201,24 +207,6 @@ public class Hierarchy {
         metaProperty
     }
 
-//	/** Searches for a Type */
-//	protected override <JAVA_TYPE> Type<JAVA_TYPE> doFind(
-//		Class<JAVA_TYPE> theType, List<Hierarchy> searchInDependencies) {
-//		var result = _allTypes.findFirst[type == theType] as Type<JAVA_TYPE>
-//		if ((result == null) && (searchInDependencies != null)) {
-//			searchInDependencies.add(this)
-//			for (d : dependencies) {
-//				if (!searchInDependencies.contains(d)) {
-//					result = d.doFind(theType, searchInDependencies)
-//					if (result != null) {
-//						return result
-//					}
-//				}
-//			}
-//		}
-//		result
-//	}
-
     /** Sets the value of this property, as an Object */
     static def setObject(MetaBase<?> object, int index, Object value) {
 		synch(Hierarchy) [
@@ -281,6 +269,50 @@ public class Hierarchy {
 
 	override final toString() {
 		name
+	}
+
+	/** Quick access to Type instances by name */
+	private final def getAllTypesByName() {
+		if (allTypesByName === null) {
+			val map = new HashMap<String,Type<?>>()
+			for (t : allTypes) {
+				map.put(t.fullName, t)
+			}
+			allTypesByName = map
+		}
+		allTypesByName
+	}
+
+	/**
+	 * Searches for a Type by name.
+	 * Also delegates to dependencies.
+	 */
+	final def Type<?> findType(String name) {
+		findType(requireNonEmpty(name, "name"), new HashSet<Hierarchy>())
+	}
+
+	/** Searches for a Type by name */
+	private final def Type<?> findType(String name, Set<Hierarchy> checked) {
+		var result = getAllTypesByName().get(name)
+		if (result === null) {
+			for (h : dependencies) {
+				if (checked.add(h)) {
+					result = h.findType(name, checked)
+					if (result !== null) {
+						return result
+					}
+				}
+			}
+		}
+		result
+	}
+
+	/**
+	 * Searches for a Type by Class.
+	 * Also delegates to dependencies.
+	 */
+	final def <E> Type<E> findType(Class<E> clazz) {
+		findType(requireNonNull(clazz, "clazz").name, new HashSet<Hierarchy>()) as Type<E>
 	}
 }
 
@@ -368,10 +400,12 @@ abstract class MetaBase<PARENT> implements Comparable<MetaBase<?>> {
 
     /** The Hierarchy */
     def final Hierarchy hierarchy() {
-    	if ((hierarchy == null) && (parent instanceof MetaBase<?>)) {
-    		hierarchy = (parent as MetaBase<?>).hierarchy()
+    	if (hierarchy == null) {
+    		if (parent instanceof MetaBase<?>) {
+	    		hierarchy = (parent as MetaBase<?>).hierarchy()
+	    	}
+	    	requireNonNull(hierarchy, "hierarchy")
     	}
-    	requireNonNull(hierarchy, "hierarchy")
     }
 }
 
@@ -410,7 +444,7 @@ package class PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends 
 	CONVERTER converter
 	PropertyType type
 	boolean meta
-	Type<PROPERTY_TYPE> dataType
+	Class<PROPERTY_TYPE> dataType
 	/** Special; normally null element 0. Used by meta-properties */
 	Type<OWNER_TYPE>[] ownerType = <Type>newArrayOfSize(1)
 
@@ -837,7 +871,9 @@ extends MetaBase<Type<OWNER_TYPE>> {
 	/** Only for internal validation ... */
 	package val Class<OWNER_TYPE> ownerClass
 	/** The content/data Type of this property */
-	public val Type<PROPERTY_TYPE> contentType
+	val Class<PROPERTY_TYPE> contentTypeClass
+	/** The content/data Type of this property */
+	var Type<PROPERTY_TYPE> contentType
 	/** The zero-based global property ID */
 	public val int globalPropertyId
 	/** The zero-based property ID, within the owner type */
@@ -866,7 +902,7 @@ extends MetaBase<Type<OWNER_TYPE>> {
 			theData.simpleName, theData.globalId)
 		requireNonNull(theData.converter, "theData.converter)")
 		requireNonNull(theData.converter.type, "theData.converter.type)")
-		contentType = requireNonNull(theData.dataType, "theData.dataType")
+		contentTypeClass = requireNonNull(theData.dataType, "theData.dataType")
 		ownerClass = theData.owner
 		primitive = contentType.primitive && !(this instanceof ObjectProperty)
 		globalPropertyId = theData.globalPropertyId
@@ -890,16 +926,25 @@ extends MetaBase<Type<OWNER_TYPE>> {
 	 * in the same Java class. This is possible if they belong to different
 	 * type hierarchies.
 	 */
-	def final sameProperty(Property<?,?> other) {
+	def final boolean sameProperty(Property<?,?> other) {
 		(other != null) && (other.fullName.equals(fullName))
 	}
 
 	/** The owner type */
-	def final owner() {
+	def final Type<OWNER_TYPE> owner() {
 		if (parent == null) {
 			throw new IllegalStateException("owner of "+this+" is null")
 		}
 		parent
+	}
+
+	/** The content/data Type of this property */
+	def final Type<PROPERTY_TYPE> contentType() {
+		if (contentType === null) {
+			contentType = hierarchy().findType(contentTypeClass)
+			requireNonNull(contentType, contentTypeClass.name)
+		}
+		contentType
 	}
 
 	/** Returns the value of this property, as an Object */
@@ -979,10 +1024,10 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
 
 	/** Constructor */
 	new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
-		Type<PROPERTY_TYPE> theContentType, boolean theShared, boolean theActualInstance,
+		Class<PROPERTY_TYPE> theContentType, boolean theShared, boolean theActualInstance,
 		boolean theExactType, ObjectFuncObject<PROPERTY_TYPE,OWNER_TYPE> theGetter,
 		ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> theSetter) {
-		this(builder.preRegisterProperty(theOwner, theSimpleName, new DummyConverter(theContentType.type),
+		this(builder.preRegisterProperty(theOwner, theSimpleName, new DummyConverter(theContentType),
 			PropertyType::OBJECT, -1, theContentType), theShared, theActualInstance,
 			theExactType, requireNonNull(theGetter, "theGetter"), requireNonNull(theSetter, "theSetter"))
 	}
@@ -1080,7 +1125,7 @@ extends ObjectProperty<OWNER_TYPE, PROPERTY_TYPE> {
 			new MetaGetter<OWNER_TYPE,PROPERTY_TYPE>(theData.globalPropertyId, theDefaultValue),
 			new MetaSetter<OWNER_TYPE,PROPERTY_TYPE>(theData.globalPropertyId))
 		if (theDefaultValue != null) {
-			if (!theData.dataType.type.isInstance(theDefaultValue)) {
+			if (!theData.dataType.isInstance(theDefaultValue)) {
 				throw new IllegalArgumentException()
 			}
 		}
@@ -1089,15 +1134,15 @@ extends ObjectProperty<OWNER_TYPE, PROPERTY_TYPE> {
 
 	/** Constructor */
 	public new(HierarchyBuilder builder, Type<OWNER_TYPE> theOwner, String theSimpleName,
-		Type<PROPERTY_TYPE> theContentType) {
+		Class<PROPERTY_TYPE> theContentType) {
 		this(builder, theOwner, theSimpleName, theContentType, null)
 	}
 
 	/** Constructor */
 	public new(HierarchyBuilder builder, Type<OWNER_TYPE> theOwner, String theSimpleName,
-		Type<PROPERTY_TYPE> theContentType, PROPERTY_TYPE theDefaultValue) {
+		Class<PROPERTY_TYPE> theContentType, PROPERTY_TYPE theDefaultValue) {
 		this(builder.preRegisterProperty(checkOwnerType(theOwner).type as Class<OWNER_TYPE>,
-			theSimpleName, new DummyConverter(theContentType.type),
+			theSimpleName, new DummyConverter(theContentType),
 			PropertyType::OBJECT, -1, theContentType), theDefaultValue)
 		parent = theOwner
 	}
@@ -1228,7 +1273,7 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 
 	/** Constructor */
 	public new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner,
-		String theSimpleName, CONVERTER theConverter, Type<PROPERTY_TYPE> dataType,
+		String theSimpleName, CONVERTER theConverter, Class<PROPERTY_TYPE> dataType,
 		BooleanFuncObject<OWNER_TYPE> theGetter,
 		ObjectFuncObjectBoolean<OWNER_TYPE,OWNER_TYPE> theSetter) {
 		this(builder.preRegisterProperty(theOwner, theSimpleName, theConverter,
@@ -1270,7 +1315,7 @@ extends BooleanProperty<OWNER_TYPE, Boolean, BooleanConverter<OWNER_TYPE, Boolea
 		BooleanFuncObject<OWNER_TYPE> theGetter,
 		ObjectFuncObjectBoolean<OWNER_TYPE,OWNER_TYPE> theSetter) {
 		super(builder, theOwner, theSimpleName,
-			BooleanConverter.DEFAULT as BooleanConverter<OWNER_TYPE, Boolean>, Types.BOOLEAN,
+			BooleanConverter.DEFAULT as BooleanConverter<OWNER_TYPE, Boolean>, Boolean,
 			theGetter, theSetter
 		)
 	}
@@ -1305,7 +1350,7 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 
 	/** Constructor */
 	new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
-		CONVERTER theConverter, int theBits, Type<PROPERTY_TYPE> dataType,
+		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
 		ByteFuncObject<OWNER_TYPE> theGetter,
 		ObjectFuncObjectByte<OWNER_TYPE,OWNER_TYPE> theSetter) {
 		this(builder.preRegisterProperty(theOwner, theSimpleName, theConverter,
@@ -1348,7 +1393,7 @@ extends ByteProperty<OWNER_TYPE, Byte, ByteConverter<OWNER_TYPE, Byte>> {
 		ObjectFuncObjectByte<OWNER_TYPE,OWNER_TYPE> theSetter) {
 		super(builder, theOwner, theSimpleName,
 			ByteConverter.DEFAULT as ByteConverter<OWNER_TYPE, Byte>, 8,
-			Types.BYTE, theGetter, theSetter
+			Byte, theGetter, theSetter
 		)
 	}
 }
@@ -1382,7 +1427,7 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 
 	/** Constructor */
 	new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
-		CONVERTER theConverter, int theBits, Type<PROPERTY_TYPE> dataType,
+		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
 		CharFuncObject<OWNER_TYPE> theGetter,
 		ObjectFuncObjectChar<OWNER_TYPE,OWNER_TYPE> theSetter) {
 		this(builder.preRegisterProperty(theOwner, theSimpleName, theConverter,
@@ -1425,7 +1470,7 @@ extends CharacterProperty<OWNER_TYPE, Character, CharConverter<OWNER_TYPE, Chara
 		ObjectFuncObjectChar<OWNER_TYPE,OWNER_TYPE> theSetter) {
 		super(builder, theOwner, theSimpleName,
 			CharConverter.DEFAULT as CharConverter<OWNER_TYPE, Character>,
-			16, Types.CHARACTER, theGetter, theSetter
+			16, Character, theGetter, theSetter
 		)
 	}
 }
@@ -1460,7 +1505,7 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 
 	/** Constructor */
 	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
-		CONVERTER theConverter, int theBits, Type<PROPERTY_TYPE> dataType,
+		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
 		ShortFuncObject<OWNER_TYPE> theGetter,
 		ObjectFuncObjectShort<OWNER_TYPE,OWNER_TYPE> theSetter) {
 		this(builder.preRegisterProperty(theOwner, theSimpleName, theConverter,
@@ -1503,7 +1548,7 @@ extends ShortProperty<OWNER_TYPE, Short, ShortConverter<OWNER_TYPE, Short>> {
 		ObjectFuncObjectShort<OWNER_TYPE,OWNER_TYPE> theSetter) {
 		super(builder, theOwner, theSimpleName,
 			ShortConverter.DEFAULT as ShortConverter<OWNER_TYPE, Short>,
-			16, Types.SHORT, theGetter, theSetter
+			16, Short, theGetter, theSetter
 		)
 	}
 }
@@ -1537,7 +1582,7 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 
 	/** Constructor */
 	new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
-		CONVERTER theConverter, int theBits, Type<PROPERTY_TYPE> dataType,
+		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
 		IntFuncObject<OWNER_TYPE> theGetter,
 		ObjectFuncObjectInt<OWNER_TYPE,OWNER_TYPE> theSetter) {
 		this(builder.preRegisterProperty(theOwner, theSimpleName, theConverter,
@@ -1580,7 +1625,7 @@ extends IntegerProperty<OWNER_TYPE, Integer, IntConverter<OWNER_TYPE, Integer>> 
 		ObjectFuncObjectInt<OWNER_TYPE,OWNER_TYPE> theSetter) {
 		super(builder, theOwner, theSimpleName,
 			IntConverter.DEFAULT as IntConverter<OWNER_TYPE, Integer>, 32,
-			Types.INTEGER, theGetter, theSetter
+			Integer, theGetter, theSetter
 		)
 	}
 }
@@ -1614,7 +1659,7 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 
 	/** Constructor */
 	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
-		CONVERTER theConverter, Type<PROPERTY_TYPE> dataType,
+		CONVERTER theConverter, Class<PROPERTY_TYPE> dataType,
 		FloatFuncObject<OWNER_TYPE> theGetter,
 		ObjectFuncObjectFloat<OWNER_TYPE,OWNER_TYPE> theSetter) {
 		this(builder.preRegisterProperty(theOwner, theSimpleName, theConverter,
@@ -1657,7 +1702,7 @@ extends FloatProperty<OWNER_TYPE, Float, FloatConverter<OWNER_TYPE, Float>> {
 		ObjectFuncObjectFloat<OWNER_TYPE,OWNER_TYPE> theSetter) {
 		super(builder, theOwner, theSimpleName,
 			FloatConverter.DEFAULT as FloatConverter<OWNER_TYPE, Float>,
-			Types.FLOAT, theGetter, theSetter
+			Float, theGetter, theSetter
 		)
 	}
 }
@@ -1691,7 +1736,7 @@ extends SixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 
 	/** Constructor */
 	new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
-		CONVERTER theConverter, int theBits, Type<PROPERTY_TYPE> dataType,
+		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
 		LongFuncObject<OWNER_TYPE> theGetter,
 		ObjectFuncObjectLong<OWNER_TYPE,OWNER_TYPE> theSetter) {
 		this(builder.preRegisterProperty(theOwner, theSimpleName, theConverter,
@@ -1734,7 +1779,7 @@ extends LongProperty<OWNER_TYPE, Long, LongConverter<OWNER_TYPE, Long>> {
 		ObjectFuncObjectLong<OWNER_TYPE,OWNER_TYPE> theSetter) {
 		super(builder, theOwner, theSimpleName,
 			LongConverter.DEFAULT as LongConverter<OWNER_TYPE, Long>,
-			64, Types.LONG, theGetter, theSetter
+			64, Long, theGetter, theSetter
 		)
 	}
 }
@@ -1769,7 +1814,7 @@ extends SixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 
 	/** Constructor */
 	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner,
-		String theSimpleName, CONVERTER theConverter, Type<PROPERTY_TYPE> dataType,
+		String theSimpleName, CONVERTER theConverter, Class<PROPERTY_TYPE> dataType,
 		DoubleFuncObject<OWNER_TYPE> theGetter,
 		ObjectFuncObjectDouble<OWNER_TYPE,OWNER_TYPE> theSetter) {
 		this(builder.preRegisterProperty(theOwner, theSimpleName, theConverter,
@@ -1812,7 +1857,7 @@ extends DoubleProperty<OWNER_TYPE, Double, DoubleConverter<OWNER_TYPE, Double>> 
 		ObjectFuncObjectDouble<OWNER_TYPE,OWNER_TYPE> theSetter) {
 		super(builder, theOwner, theSimpleName,
 			DoubleConverter.DEFAULT as DoubleConverter<OWNER_TYPE, Double>,
-			Types.DOUBLE, theGetter, theSetter
+			Double, theGetter, theSetter
 		)
 	}
 }
@@ -1840,7 +1885,7 @@ package class MetaHierarchyBuilder extends HierarchyBuilder {
 	PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> doPreRegisterProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, PropertyType thePropType,
-		int theBits, boolean theMeta, Type<PROPERTY_TYPE> dataType) {
+		int theBits, boolean theMeta, Class<PROPERTY_TYPE> dataType) {
 		if (!theMeta) {
 			throw new IllegalArgumentException(
 				"MetaHierarchy supports only meta-properties: "+theSimpleName)
@@ -1857,7 +1902,7 @@ package class MetaHierarchyBuilder extends HierarchyBuilder {
 		// metaType must be found, since theMeta is true
 		result.ownerType.set(0, metaType)
 		LOG.info("Registering meta-property "+theOwner.name+"."+theSimpleName
-			+"("+dataType.fullName+")")
+			+"("+dataType.name+")")
 		result
 	}
 }

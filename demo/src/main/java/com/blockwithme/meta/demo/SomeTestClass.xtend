@@ -13,19 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package test.com.blockwithme.meta
+package com.blockwithme.meta.demo
 
-import com.blockwithme.meta.Hierarchy
-import com.blockwithme.meta.MetaProperty
-import com.blockwithme.meta.Types
-import com.blockwithme.meta.Type
+import com.blockwithme.meta.annotations.Magic
 
 /**
  * @author monster
  *
  */
-class MyLazyLoadListenerTST {
-        public static val TST = Hierarchy.postCreateMetaProperty(
-        	new MetaProperty<Type,Boolean>(Types.META_BUILDER, Types.TYPE, "tst", Boolean)
-        )
+@Magic
+class SomeTestClass {
+
 }

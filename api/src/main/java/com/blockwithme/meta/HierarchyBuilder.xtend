@@ -22,6 +22,24 @@ import java.util.Map
 import org.slf4j.LoggerFactory
 import java.util.List
 import com.blockwithme.meta.converter.Converter
+import com.blockwithme.fn1.BooleanFuncObject
+import com.blockwithme.fn2.ObjectFuncObjectBoolean
+import com.blockwithme.fn1.ByteFuncObject
+import com.blockwithme.fn2.ObjectFuncObjectByte
+import com.blockwithme.fn1.CharFuncObject
+import com.blockwithme.fn2.ObjectFuncObjectChar
+import com.blockwithme.fn1.FloatFuncObject
+import com.blockwithme.fn2.ObjectFuncObjectFloat
+import com.blockwithme.fn1.IntFuncObject
+import com.blockwithme.fn2.ObjectFuncObjectInt
+import com.blockwithme.fn1.ShortFuncObject
+import com.blockwithme.fn2.ObjectFuncObjectShort
+import com.blockwithme.fn1.DoubleFuncObject
+import com.blockwithme.fn2.ObjectFuncObjectDouble
+import com.blockwithme.fn1.LongFuncObject
+import com.blockwithme.fn2.ObjectFuncObjectLong
+import com.blockwithme.fn1.ObjectFuncObject
+import com.blockwithme.fn2.ObjectFuncObjectObject
 
 /**
  * HierarchyBuilder records the temporary information needed to construct
@@ -138,7 +156,7 @@ class HierarchyBuilder {
 	PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> doPreRegisterProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, PropertyType thePropType,
-		int theBits, boolean theMeta, Type<PROPERTY_TYPE> dataType) {
+		int theBits, boolean theMeta, Class<PROPERTY_TYPE> dataType) {
 		requireNonNull(theOwner, "theOwner")
 		requireNonNull(theSimpleName, "theSimpleName")
 		requireNonNull(theConverter, "theConverter")
@@ -146,9 +164,9 @@ class HierarchyBuilder {
 		requireNonNull(dataType, "dataType")
 		LOG.debug("Generating Property registration Data for "+theOwner.name
 			+"."+theSimpleName+": "+thePropType+"/"+dataType+" in Hierarchy "+name)
-		if (theConverter.type != dataType.type) {
+		if (theConverter.type != dataType) {
 			throw new IllegalArgumentException("theConverter.type("+theConverter.type
-				+") must match dataType.type("+dataType.type+")")
+				+") must match dataType.type("+dataType+")")
 		}
 		var counters = allCounters.get(theOwner)
 		if (counters == null) {
@@ -316,7 +334,7 @@ class HierarchyBuilder {
 	PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> preRegisterProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, PropertyType thePropType,
-		int theBits, boolean theMeta, Type<PROPERTY_TYPE> dataType) {
+		int theBits, boolean theMeta, Class<PROPERTY_TYPE> dataType) {
 		synchR(this) [
 			it.checkNotClosed()
 			it.doPreRegisterProperty(theOwner, theSimpleName, theConverter,
@@ -329,7 +347,7 @@ class HierarchyBuilder {
 	PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> preRegisterProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, PropertyType thePropType,
-		int theBits, Type<PROPERTY_TYPE> dataType) {
+		int theBits, Class<PROPERTY_TYPE> dataType) {
 		var _meta = false
 		for (t : Types.META.allTypes) {
 			if (theOwner == t.type) {
@@ -387,9 +405,202 @@ class HierarchyBuilder {
 		]
 	}
 
+	/** We're done! */
 	def close() {
 		synch(this) [
 			closed = true
 		]
+	}
+
+	/* Helper method, to completely hide the implementation of interfaces */
+	def <JAVA_TYPE> Functions.Function0<JAVA_TYPE> createProvider(Class<JAVA_TYPE> interfaze) {
+		val pkg = requireNonNull(interfaze, "interfaze").package.name
+		val name = interfaze.simpleName
+		val providerName = pkg+".impl."+name+"ImplProvider"
+		val impl = Class.forName(providerName)
+		impl.newInstance as Functions.Function0<JAVA_TYPE>
+	}
+
+	// Now comes the factory methods
+
+	/** Creates a Boolean Property */
+	def <OWNER_TYPE> TrueBooleanProperty<OWNER_TYPE> newBooleanProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		BooleanFuncObject<OWNER_TYPE> theGetter,
+		ObjectFuncObjectBoolean<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		new TrueBooleanProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theGetter, theSetter)
+	}
+
+	/** Creates a Boolean Property */
+	def <OWNER_TYPE> TrueBooleanProperty<OWNER_TYPE> newBooleanProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		BooleanPropertyAccessor<OWNER_TYPE> theAccessor) {
+		new TrueBooleanProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theAccessor, theAccessor)
+	}
+
+	/** Creates a Byte Property */
+	def <OWNER_TYPE> TrueByteProperty<OWNER_TYPE> newByteProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		ByteFuncObject<OWNER_TYPE> theGetter,
+		ObjectFuncObjectByte<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		new TrueByteProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theGetter, theSetter)
+	}
+
+	/** Creates a Byte Property */
+	def <OWNER_TYPE> TrueByteProperty<OWNER_TYPE> newByteProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		BytePropertyAccessor<OWNER_TYPE> theAccessor) {
+		new TrueByteProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theAccessor, theAccessor)
+	}
+
+	/** Creates a Character Property */
+	def <OWNER_TYPE> TrueCharacterProperty<OWNER_TYPE> newCharacterProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		CharFuncObject<OWNER_TYPE> theGetter,
+		ObjectFuncObjectChar<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		new TrueCharacterProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theGetter, theSetter)
+	}
+
+	/** Creates a Character Property */
+	def <OWNER_TYPE> TrueCharacterProperty<OWNER_TYPE> newCharacterProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		CharPropertyAccessor<OWNER_TYPE> theAccessor) {
+		new TrueCharacterProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theAccessor, theAccessor)
+	}
+
+	/** Creates a Short Property */
+	def <OWNER_TYPE> TrueShortProperty<OWNER_TYPE> newShortProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		ShortFuncObject<OWNER_TYPE> theGetter,
+		ObjectFuncObjectShort<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		new TrueShortProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theGetter, theSetter)
+	}
+
+	/** Creates a Short Property */
+	def <OWNER_TYPE> TrueShortProperty<OWNER_TYPE> newShortProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		ShortPropertyAccessor<OWNER_TYPE> theAccessor) {
+		new TrueShortProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theAccessor, theAccessor)
+	}
+
+	/** Creates a Float Property */
+	def <OWNER_TYPE> TrueFloatProperty<OWNER_TYPE> newFloatProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		FloatFuncObject<OWNER_TYPE> theGetter,
+		ObjectFuncObjectFloat<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		new TrueFloatProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theGetter, theSetter)
+	}
+
+	/** Creates a Float Property */
+	def <OWNER_TYPE> TrueFloatProperty<OWNER_TYPE> newFloatProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		FloatPropertyAccessor<OWNER_TYPE> theAccessor) {
+		new TrueFloatProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theAccessor, theAccessor)
+	}
+
+	/** Creates a Integer Property */
+	def <OWNER_TYPE> TrueIntegerProperty<OWNER_TYPE> newIntegerProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		IntFuncObject<OWNER_TYPE> theGetter,
+		ObjectFuncObjectInt<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		new TrueIntegerProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theGetter, theSetter)
+	}
+
+	/** Creates a Integer Property */
+	def <OWNER_TYPE> TrueIntegerProperty<OWNER_TYPE> newIntegerProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		IntPropertyAccessor<OWNER_TYPE> theAccessor) {
+		new TrueIntegerProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theAccessor, theAccessor)
+	}
+
+	/** Creates a Double Property */
+	def <OWNER_TYPE> TrueDoubleProperty<OWNER_TYPE> newDoubleProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		DoubleFuncObject<OWNER_TYPE> theGetter,
+		ObjectFuncObjectDouble<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		new TrueDoubleProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theGetter, theSetter)
+	}
+
+	/** Creates a Double Property */
+	def <OWNER_TYPE> TrueDoubleProperty<OWNER_TYPE> newDoubleProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		DoublePropertyAccessor<OWNER_TYPE> theAccessor) {
+		new TrueDoubleProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theAccessor, theAccessor)
+	}
+
+	/** Creates a Long Property */
+	def <OWNER_TYPE> TrueLongProperty<OWNER_TYPE> newLongProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		LongFuncObject<OWNER_TYPE> theGetter,
+		ObjectFuncObjectLong<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		new TrueLongProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theGetter, theSetter)
+	}
+
+	/** Creates a Long Property */
+	def <OWNER_TYPE> TrueLongProperty<OWNER_TYPE> newLongProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		LongPropertyAccessor<OWNER_TYPE> theAccessor) {
+		new TrueLongProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theAccessor, theAccessor)
+	}
+
+	/** Creates a Object Property */
+	def <OWNER_TYPE, PROPERTY_TYPE> ObjectProperty<OWNER_TYPE, PROPERTY_TYPE> newObjectProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		Class<PROPERTY_TYPE> theContentType, boolean theShared, boolean theActualInstance,
+		boolean theExactType, ObjectFuncObject<PROPERTY_TYPE,OWNER_TYPE> theGetter,
+		ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> theSetter) {
+		new ObjectProperty<OWNER_TYPE, PROPERTY_TYPE>(this, theOwner, theSimpleName,
+			theContentType, theShared, theActualInstance, theExactType, theGetter, theSetter
+		)
+	}
+
+	/** Creates a Object Property */
+	def <OWNER_TYPE, PROPERTY_TYPE> ObjectProperty<OWNER_TYPE, PROPERTY_TYPE> newObjectProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		Class<PROPERTY_TYPE> theContentType, boolean theShared, boolean theActualInstance,
+		boolean theExactType, ObjectPropertyAccessor<OWNER_TYPE,PROPERTY_TYPE> theAccessor) {
+		new ObjectProperty<OWNER_TYPE, PROPERTY_TYPE>(this, theOwner, theSimpleName,
+			theContentType, theShared, theActualInstance, theExactType, theAccessor, theAccessor)
+	}
+
+	/** Creates a new Type */
+	def <JAVA_TYPE> Type<JAVA_TYPE> newType(Class<JAVA_TYPE> theType,
+		Functions.Function0<JAVA_TYPE> theConstructor, Kind theKind,
+		Property<JAVA_TYPE,?> ... theProperties) {
+		new Type(this, theType, theConstructor, theKind, theProperties)
+	}
+
+	/** Creates a new Type */
+	def <JAVA_TYPE> Type<JAVA_TYPE> newType(Class<JAVA_TYPE> theType,
+		Functions.Function0<JAVA_TYPE> theConstructor, Kind theKind, Type<?>[] theParents,
+		Property<JAVA_TYPE,?> ... theProperties) {
+		new Type(this, theType, theConstructor, theKind, theParents, theProperties)
+	}
+
+	/** Creates a new TypePackage */
+	def TypePackage newTypePackage(Type<?> ... theTypes) {
+		new TypePackage(this, theTypes)
+	}
+
+	/** Creates a new Hierarchy */
+	def Hierarchy newHierarchy(TypePackage[] packages, Hierarchy ... theDependencies) {
+		val result = new Hierarchy(this, registerPackage(packages), theDependencies)
+		close()
+		result
+	}
+
+	/** Creates a new Hierarchy */
+	def Hierarchy newHierarchy(Hierarchy ... theDependencies) {
+		newHierarchy(newArrayOfSize(0), theDependencies)
+	}
+
+	/** Creates a new Hierarchy */
+	def Hierarchy newHierarchy(TypePackage... packages) {
+		newHierarchy(packages, newArrayOfSize(0))
+	}
+
+	/** Creates a new Hierarchy */
+	def Hierarchy newHierarchy(HierarchyBuilder builder) {
+		newHierarchy(newArrayOfSize(0), newArrayOfSize(0))
 	}
 }

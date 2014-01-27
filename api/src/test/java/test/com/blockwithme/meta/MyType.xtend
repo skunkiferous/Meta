@@ -145,14 +145,14 @@ class MyType {
 
   public static val OBJECT_PROP = new ObjectProperty<MyType, String>(
     MyHierarchyBuilder.TEST_BUILDER, MyType, "objectProp",
-    Types.STRING, true, true, true,
+    String, true, true, true,
     [objectProp], [obj,value|obj.objectProp = value;obj]
   )
 
   public static val ENUM_PROP = new IntegerProperty<MyType, MyEnum, IntConverter<MyType, MyEnum>>(
     MyHierarchyBuilder.TEST_BUILDER, MyType, "enumProp",
     EnumConverter.DEFAULT as IntConverter, 32,
-    MyHierarchyBuilder.ENUM_TYPE,
+    MyEnum,
     [enumProp], [obj,value|obj.enumProp = value;obj]
   )
 }
@@ -172,7 +172,7 @@ class MySubType extends MyType {
 class MyHierarchy {
     public static val META_PROP = Hierarchy.postCreateMetaProperty(
       new MetaProperty<Type,Boolean>(Types.META_BUILDER,
-        Types.TYPE, "persistent", Types.BOOLEAN, Boolean.FALSE))
+        Types.TYPE, "persistent", Boolean, Boolean.FALSE))
 
   public static val Type<MyType> MY_TYPE = new Type(MyHierarchyBuilder.TEST_BUILDER, MyType,
     null/*[new MyType]*/, Kind.Implementation, MyType.BOOL_PROP, MyType.BYTE_PROP,

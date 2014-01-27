@@ -53,6 +53,8 @@ import static extension java.lang.Class.*
 import static java.util.Objects.*
 import com.google.inject.Provider
 import org.eclipse.xtend.lib.macro.declaration.MutableFieldDeclaration
+import org.eclipse.xtend2.lib.StringConcatenationClient
+import org.eclipse.xtend2.lib.StringConcatenationClient.TargetStringConcatenation
 
 /**
  * Annotation for "traits"
@@ -372,144 +374,144 @@ class TraitProcessor extends InterfaceProcessor {
 		clazz.addToString(superClass)
 		clazz.addEquals(superClass)
 	}
+//
+//	/**
+//	 * Add all arguments constructors to a particular Trait class.
+//	 *
+//	 *  @param clazz class to which the constructor is added.
+//	 *  @param superTraits a list of super Trait interfaces if any
+//	 * (excluding the heaviest interface from which the clazz will be inherited)  */
+//	def private addAllArgConstructor(
+//		MutableClassDeclaration clazz,
+//		Iterable<? extends TypeReference> superTraits
+//	) {
+//
+//		val superConstrArgs = new StringBuilder
+//		val assignmentStr = new StringBuilder
+//		val thisInterface = clazz.qualifiedName.interfaceFromClassName
+//		val fields = thisInterface.classFields
+//
+//		clazz.addConstructor [ constrctr |
+//			thisInterface.forAllFields [ fInfo |
+//				val duplicate = newBooleanArrayOfSize(1)
+//				if (fields.contains(fInfo)) {
+//					fields.forEach [ classF |
+//						if (classF == fInfo && classF.duplicate)
+//							duplicate.set(0, true)
+//					]
+//					if (!duplicate.get(0))
+//						assignmentStr.append('this.' + fInfo.name + ' = ' + fInfo.name + ';\n')
+//				} else {
+//					if (superConstrArgs.length > 0)
+//						superConstrArgs.append(', ')
+//					superConstrArgs.append(fInfo.name)
+//				}
+//				if (!duplicate.get(0))
+//					constrctr.addParameter(fInfo.name, fInfo.type)
+//			]
+//			constrctr.docComment = 'The all Argument Constructor'
+//			constrctr.body = [
+//				'''
+//					«IF superConstrArgs.length > 0»
+//						super( «superConstrArgs.toString()» );
+//					«ENDIF»
+//					«assignmentStr.toString()»
+//				''']
+//		]
+//	}
 
-	/**
-	 * Add all arguments constructors to a particular Trait class.
-	 *
-	 *  @param clazz class to which the constructor is added.
-	 *  @param superTraits a list of super Trait interfaces if any
-	 * (excluding the heaviest interface from which the clazz will be inherited)  */
-	def private addAllArgConstructor(
-		MutableClassDeclaration clazz,
-		Iterable<? extends TypeReference> superTraits
-	) {
-
-		val superConstrArgs = new StringBuilder
-		val assignmentStr = new StringBuilder
-		val thisInterface = clazz.qualifiedName.interfaceFromClassName
-		val fields = thisInterface.classFields
-
-		clazz.addConstructor [ constrctr |
-			thisInterface.forAllFields [ fInfo |
-				val duplicate = newBooleanArrayOfSize(1)
-				if (fields.contains(fInfo)) {
-					fields.forEach [ classF |
-						if (classF == fInfo && classF.duplicate)
-							duplicate.set(0, true)
-					]
-					if (!duplicate.get(0))
-						assignmentStr.append('this.' + fInfo.name + ' = ' + fInfo.name + ';\n')
-				} else {
-					if (superConstrArgs.length > 0)
-						superConstrArgs.append(', ')
-					superConstrArgs.append(fInfo.name)
-				}
-				if (!duplicate.get(0))
-					constrctr.addParameter(fInfo.name, fInfo.type)
-			]
-			constrctr.docComment = 'The all Argument Constructor'
-			constrctr.body = [
-				'''
-					«IF superConstrArgs.length > 0»
-						super( «superConstrArgs.toString()» );
-					«ENDIF»
-					«assignmentStr.toString()»
-				''']
-		]
-	}
-
-	/**
-	 * Adds 'newXYZ' methods, where 'XYZ' is a string generated from fully qualified name of 'definingClazz', where
-	 * 'definingClazz' is either 'clazz' itself or any of its super classes. This method is added to 'clazz',
-	 * methods parameters are same as the all arg constructor of 'definingClazz'. one 'newXYZ' method is generated
-	 * for the current and one each for all its super Trait classes.
-	 *
-	 * <pre>
-	 * 	 Each method -
-	 *   	Takes arguments same as the constructor of the defining class.
-	 *   	Return a new instance of the *current* Trait class.
-	 * </pre> */
-	def private void addNewMethod(MutableClassDeclaration clazz, MutableClassDeclaration definingClazz) {
-
-		val MutableClassDeclaration superClass = if (definingClazz.hasSuper)
-				definingClazz.extendedClass.name.findClass
-		if (superClass != null) {
-			clazz.addNewMethod(superClass)
-		}
-		clazz.addMethod("new" + definingClazz.qualifiedName.removeDots.toFirstUpper) [ meth |
-			val argStr = new StringBuffer
-			if (clazz != definingClazz) {
-				meth.addAnnotation(getOverride())
-			}
-			val index = definingClazz.qualifiedName.lastIndexOf('Trait')
-			val iName = definingClazz.qualifiedName.substring(0, index)
-			val definingInterface = iName.findInterface
-			definingInterface.forAllFields [ fInfo |
-				if (!fInfo.duplicate)
-					meth.addParameter(fInfo.name, fInfo.type)
-			]
-			val thisInterface = clazz.qualifiedName.interfaceFromClassName
-			thisInterface.forAllFields [ fInfo |
-				if (!fInfo.duplicate) {
-					if (argStr.length > 0)
-						argStr.append(', ')
-					argStr.append(fInfo.name)
-				}
-			]
-			meth.docComment = 'Creates a new ' + clazz.simpleName + ' Object'
-			meth.body = [
-				'''
-					return new «clazz.simpleName»( «argStr.toString()»);
-				''']
-			meth.returnType = clazz.newTypeReference
-			meth.visibility = Visibility::PROTECTED
-		]
-	}
-
-	/** Adds a zero argument constructor to the Implementation class, the field
-	 * initial values are assigned from the corresponding interface constants. */
-	def private addZeroArgConstructor(
-		MutableClassDeclaration clazz,
-		MutableInterfaceDeclaration interf,
-		Iterable<? extends TypeReference> superTraits,
-		MutableClassDeclaration superCls
-	) {
-
-		if (clazz.findConstructor() == null) {
-			val superConstrArgs = new StringBuilder
-			val assignmentStr = new StringBuilder
-			val thisInterface = clazz.qualifiedName.interfaceFromClassName
-			val fields = thisInterface.classFields
-
-			clazz.addConstructor [ constrctr |
-				thisInterface.forAllFields [ fInfo |
-					if (!fields.contains(fInfo)) {
-						if (superConstrArgs.length > 0)
-							superConstrArgs.append(', ')
-						superConstrArgs.append(interf.simpleName + '.' + fInfo.name)
-					} else {
-						val duplicate = newBooleanArrayOfSize(1)
-						fields.forEach [ classF |
-							if (classF == fInfo && classF.duplicate)
-								duplicate.set(0, true)
-						]
-						if (!duplicate.get(0))
-							assignmentStr.append(
-								'this.' + fInfo.name + ' = ' + interf.simpleName + '.' + fInfo.name + ';\n')
-					}
-				]
-				constrctr.docComment = 'No Argument constructor, values are initialized using the constant values from ' +
-					interf.simpleName
-				constrctr.body = [
-					'''
-						«IF superConstrArgs.length > 0»
-							super( «superConstrArgs.toString()» );
-						«ENDIF»
-						«assignmentStr.toString()»
-					''']
-			]
-		}
-	}
+//	/**
+//	 * Adds 'newXYZ' methods, where 'XYZ' is a string generated from fully qualified name of 'definingClazz', where
+//	 * 'definingClazz' is either 'clazz' itself or any of its super classes. This method is added to 'clazz',
+//	 * methods parameters are same as the all arg constructor of 'definingClazz'. one 'newXYZ' method is generated
+//	 * for the current and one each for all its super Trait classes.
+//	 *
+//	 * <pre>
+//	 * 	 Each method -
+//	 *   	Takes arguments same as the constructor of the defining class.
+//	 *   	Return a new instance of the *current* Trait class.
+//	 * </pre> */
+//	def private void addNewMethod(MutableClassDeclaration clazz, MutableClassDeclaration definingClazz) {
+//
+//		val MutableClassDeclaration superClass = if (definingClazz.hasSuper)
+//				definingClazz.extendedClass.name.findClass
+//		if (superClass != null) {
+//			clazz.addNewMethod(superClass)
+//		}
+//		clazz.addMethod("new" + definingClazz.qualifiedName.removeDots.toFirstUpper) [ meth |
+//			val argStr = new StringBuffer
+//			if (clazz != definingClazz) {
+//				meth.addAnnotation(getOverride())
+//			}
+//			val index = definingClazz.qualifiedName.lastIndexOf('Trait')
+//			val iName = definingClazz.qualifiedName.substring(0, index)
+//			val definingInterface = iName.findInterface
+//			definingInterface.forAllFields [ fInfo |
+//				if (!fInfo.duplicate)
+//					meth.addParameter(fInfo.name, fInfo.type)
+//			]
+//			val thisInterface = clazz.qualifiedName.interfaceFromClassName
+//			thisInterface.forAllFields [ fInfo |
+//				if (!fInfo.duplicate) {
+//					if (argStr.length > 0)
+//						argStr.append(', ')
+//					argStr.append(fInfo.name)
+//				}
+//			]
+//			meth.docComment = 'Creates a new ' + clazz.simpleName + ' Object'
+//			meth.body = [
+//				'''
+//					return new «clazz.simpleName»( «argStr.toString()»);
+//				''']
+//			meth.returnType = clazz.newTypeReference
+//			meth.visibility = Visibility::PROTECTED
+//		]
+//	}
+//
+//	/** Adds a zero argument constructor to the Implementation class, the field
+//	 * initial values are assigned from the corresponding interface constants. */
+//	def private addZeroArgConstructor(
+//		MutableClassDeclaration clazz,
+//		MutableInterfaceDeclaration interf,
+//		Iterable<? extends TypeReference> superTraits,
+//		MutableClassDeclaration superCls
+//	) {
+//
+//		if (clazz.findConstructor() == null) {
+//			val superConstrArgs = new StringBuilder
+//			val assignmentStr = new StringBuilder
+//			val thisInterface = clazz.qualifiedName.interfaceFromClassName
+//			val fields = thisInterface.classFields
+//
+//			clazz.addConstructor [ constrctr |
+//				thisInterface.forAllFields [ fInfo |
+//					if (!fields.contains(fInfo)) {
+//						if (superConstrArgs.length > 0)
+//							superConstrArgs.append(', ')
+//						superConstrArgs.append(interf.simpleName + '.' + fInfo.name)
+//					} else {
+//						val duplicate = newBooleanArrayOfSize(1)
+//						fields.forEach [ classF |
+//							if (classF == fInfo && classF.duplicate)
+//								duplicate.set(0, true)
+//						]
+//						if (!duplicate.get(0))
+//							assignmentStr.append(
+//								'this.' + fInfo.name + ' = ' + interf.simpleName + '.' + fInfo.name + ';\n')
+//					}
+//				]
+//				constrctr.docComment = 'No Argument constructor, values are initialized using the constant values from ' +
+//					interf.simpleName
+//				constrctr.body = [
+//					'''
+//						«IF superConstrArgs.length > 0»
+//							super( «superConstrArgs.toString()» );
+//						«ENDIF»
+//						«assignmentStr.toString()»
+//					''']
+//			]
+//		}
+//	}
 
 	/** Adds a toString method using all the fields of this class, pre-pends toString of the super class. */
 	def private addToString(MutableClassDeclaration clazz, MutableClassDeclaration superClass) {
@@ -1004,6 +1006,7 @@ class TraitProcessor extends InterfaceProcessor {
 					if (traitInterface.immutableTrait)
 						final = true
 				]
+				debug(TraitProcessor, "generateTraitClassFields", traitClass, 'Adding Field :' + fInfo)
 			} else if (fInfo.error == null) {
 				warn(TraitProcessor, "generateTraitClassFields", traitClass, 'Duplicate Field :' + fInfo + ' found in the interface hierarchy.')
 			} else {
@@ -1025,10 +1028,10 @@ class TraitProcessor extends InterfaceProcessor {
 		]
 
 		val superClass = (t.superInterface?.qualifiedName + 'Trait').findClass
-		clazz.addZeroArgConstructor(t, superTraits, superClass)
-		clazz.addAllArgConstructor(superTraits)
+//		clazz.addZeroArgConstructor(t, superTraits, superClass)
+//		clazz.addAllArgConstructor(superTraits)
 		clazz.addMethods(superClass, t)
-		clazz.addNewMethod(t.findClass)
+//		clazz.addNewMethod(t.findClass)
 		clazz.addObjectMethods(superClass)
 
 		superTraits?.forEach [
@@ -1410,10 +1413,12 @@ class TraitProcessor extends InterfaceProcessor {
 	/** Register new types, to be generated later. */
 	override void register(InterfaceDeclaration td, RegisterGlobalsContext context) {
 		val traitName = td.qualifiedName + "Trait"
-		context.registerClass(traitName)
-		warn(TraitProcessor, "register", td, "Registering Class: "+traitName)
-//		context.registerClass(td.qualifiedName + "Template")
-		warn(TraitProcessor, "register", td, td.qualifiedName)
+		if (findTypeGlobally(traitName) === null) {
+			context.registerClass(traitName)
+			warn(TraitProcessor, "register", td, "Registering Class: "+traitName)
+//			context.registerClass(td.qualifiedName + "Template")
+//			warn(TraitProcessor, "register", td, td.qualifiedName)
+		}
 	}
 
 	/** Transform types, new or old. */
@@ -1437,12 +1442,19 @@ class TraitProcessor extends InterfaceProcessor {
 		// Add methods corresponding to lambda (Functor) members
 		val traitClass = findClass(mtd.qualifiedName + 'Trait')
 		traitClass.addBehaviour(mtd)
+		warn(TraitProcessor, "transform", traitClass, traitClass.qualifiedName+":\n"+traitClass.describeTypeDeclaration(context))
 //		// Generate serialization template
 //		val superClass = mtd.superInterface?.findClass
 //		generateTemplate(traitClass, superClass)
 		for (f : remove) {
 			f.remove()
 		}
+	}
+}
+
+class SCC extends StringConcatenationClient {
+	protected override void appendTo(TargetStringConcatenation target) {
+		target.append('""')
 	}
 }
 

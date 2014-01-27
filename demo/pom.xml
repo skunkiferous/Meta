@@ -60,6 +60,7 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
 			<artifactId>Meta</artifactId>
 			<version>0.0.4</version>
 		</dependency>
+<!--
 		<dependency>
 			<groupId>com.google.inject</groupId>
 			<artifactId>guice</artifactId>
@@ -70,6 +71,7 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
 			<artifactId>guice-multibindings</artifactId>
 			<version>3.0</version>
 		</dependency>
+		 -->
 	</dependencies>
 
 	<build>

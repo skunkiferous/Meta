@@ -1,13 +1,10 @@
 package com.blockwithme.meta.annotations
 
-import com.blockwithme.traits.util.AntiClassLoaderCache
-import de.oehme.xtend.contrib.Synchronized
 import java.lang.annotation.ElementType
 import java.lang.annotation.Retention
 import java.lang.annotation.RetentionPolicy
 import java.lang.annotation.Target
 import java.util.List
-import org.eclipse.xtend.core.macro.declaration.CompilationUnitImpl
 import org.eclipse.xtend.lib.macro.Active
 import org.eclipse.xtend.lib.macro.CodeGenerationContext
 import org.eclipse.xtend.lib.macro.CodeGenerationParticipant
@@ -15,12 +12,16 @@ import org.eclipse.xtend.lib.macro.RegisterGlobalsContext
 import org.eclipse.xtend.lib.macro.RegisterGlobalsParticipant
 import org.eclipse.xtend.lib.macro.TransformationContext
 import org.eclipse.xtend.lib.macro.TransformationParticipant
-import org.eclipse.xtend.lib.macro.declaration.Element
 import org.eclipse.xtend.lib.macro.declaration.MutableNamedElement
-import org.eclipse.xtend.lib.macro.declaration.MutableTypeDeclaration
 import org.eclipse.xtend.lib.macro.declaration.NamedElement
-import org.eclipse.xtend.lib.macro.declaration.TypeDeclaration
 import org.eclipse.xtext.xbase.lib.Procedures.Procedure2
+import org.eclipse.xtend.lib.macro.declaration.Visibility
+import org.eclipse.xtend.core.macro.declaration.CompilationUnitImpl
+import org.eclipse.xtend.lib.macro.declaration.Element
+import org.eclipse.xtend.lib.macro.declaration.MutableTypeDeclaration
+import org.eclipse.xtend.lib.macro.declaration.TypeDeclaration
+import com.blockwithme.traits.util.AntiClassLoaderCache
+import de.oehme.xtend.contrib.Synchronized
 
 /**
  * Marks that *all types in this file* should be processed.
@@ -128,10 +129,14 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 	}
 
 	/** Implements the doRegisterGlobals() phase */
-	override doRegisterGlobals(List<? extends NamedElement> annotatedSourceElements,
+	override void doRegisterGlobals(List<? extends NamedElement> annotatedSourceElements,
 			extension RegisterGlobalsContext context) {
-		<TypeDeclaration>loop(annotatedSourceElements, "register",
-			[p,td|p.register(td, context)])
+		try {
+			<TypeDeclaration>loop(annotatedSourceElements, "register",
+				[p,td|p.register(td, context)])
+		} finally {
+			registerClass('com.blockwithme.meta.annotations.tEsT')
+		}
 	}
 
 	/** Implements the doGenerateCode() phase */
@@ -144,8 +149,21 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 	/** Implements the doTransform() phase */
 	override doTransform(List<? extends MutableNamedElement> annotatedSourceElements,
 			extension TransformationContext context) {
-		<MutableTypeDeclaration>loop(annotatedSourceElements, "transform",
-			[p,mtd|p.transform(mtd, context)])
+		try {
+			<MutableTypeDeclaration>loop(annotatedSourceElements, "transform",
+				[p,mtd|p.transform(mtd, context)])
+		} finally {
+			val testClass = findClass('com.blockwithme.meta.annotations.tEsT')
+			if (testClass.findDeclaredField("TEST") === null) {
+				testClass.addField("TEST") [
+					it.type = context.string
+					it.static = true
+					it.final = true
+					it.setVisibility(Visibility.PUBLIC)
+					it.setInitializer(new SCC())
+				]
+			}
+		}
 	}
 
 	/** Returns the list of processors. */
