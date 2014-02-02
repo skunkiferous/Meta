@@ -43,6 +43,32 @@ annotation Bean {
 /**
  * Process classes annotated with @Bean
  *
+ * REGISTER:
+ * 0) Type must be an interface
+ * 1) For each type, scan the type hierarchy, recording field names and types along the way
+ * 2) (atm) Each Type in the hierarchy must either contain only fields without initializers, or be one of the Base types (Bean or Entity)
+ * 3) No (case insensitive) "simple" type name must be used more then once within Hierarchy+dependencies.
+ * 4) No (case insensitive) "simple" field name must be used more then once within Hierarchy+dependencies.
+ * 5) For each type, an Impl type under impl package is registered, if not defined yet
+ * 6) For each type, a type Provider under impl package is registered, if not defined yet
+ * 7) For each type property, an Accessor type under impl package is declared, if not defined yet
+ * 8) For each type *package*, a Meta interface is declared, if not defined yet
+ * GENERATE:
+ * 9) For each type, the fields are replaced with getters and setters
+ * 10) Meta is created
+ * 11) A builder is created in Meta for that package
+ * 12) For each type property, a property accessor class is generated
+ * 14) For each type property, a property object in the "Meta" interface is generated.
+ * 14) For each type, a type Provider under impl package is created.
+ * 15) For each type, following the properties, a type instance is created.
+ * 16) After all types, a package meta-object is created.
+ * 17) The list of dependencies for the Hierarchy is computed.
+ * 18) After the package, the hierarchy is created.
+ * 19) The Impl extends either the impl of the first parent, or BaseImpl or EntityImpl appropriatly
+ * 20) For all getters and setters in type, implementations are generated in Impl
+ * 21) If we have more then one parent, find out all missing properties
+ * 22) Add impl to all missing properties in Impl
+ *
  * @author monster
  */
 class BeanProcessor extends AbstractClassProcessor {

@@ -15,147 +15,140 @@
  */
 package com.blockwithme.meta.beans.impl
 
-import com.blockwithme.meta.Property
-import com.blockwithme.meta.PropertyVisitor
-import com.blockwithme.meta.BooleanProperty
-import com.blockwithme.meta.ByteProperty
-import com.blockwithme.meta.CharacterProperty
-import com.blockwithme.meta.ShortProperty
-import com.blockwithme.meta.IntegerProperty
-import com.blockwithme.meta.FloatProperty
-import com.blockwithme.meta.DoubleProperty
-import com.blockwithme.meta.LongProperty
+import com.blockwithme.meta.beans._Bean
 import com.blockwithme.meta.ObjectProperty
-import com.blockwithme.meta.beans._BeanBase
+import com.blockwithme.meta.PrimitiveProperty
+import com.blockwithme.meta.Property
 import java.util.Objects
-import java.util.IdentityHashMap
+import com.blockwithme.meta.BooleanProperty
 
 /**
  * A PropertyVisitor that produces a JSON output for beans.
  *
  * @author monster
  */
-class JSONBeanSerializer implements PropertyVisitor {
+class JSONBeanSerializer extends AbstractPropertyVisitor {
 
-	/** Map the objects already appended to their path */
-	val beanToPath = new IdentityHashMap<_BeanBase,String>()
+	/** Property name for the type of an object/beans */
+	public static val CLASS = "class"
+
+	/** Property name for the "content" of an object of unknown type */
+	public static val CONTENT = "*"
 
 	/** Appendable */
 	val Appendable appendable
 
-	/** The top of the bean stack */
-	var _BeanBase bean
-
-	/** The path so far */
-	var String path = "/"
+	/** StringBuilder */
+	val buf = new StringBuilder()
 
 	/** Creates the JSONPropertyVisitor */
-	new (Appendable appendable, _BeanBase bean) {
+	new (Appendable appendable) {
 		this.appendable = Objects.requireNonNull(appendable, "appendable")
-		this.bean = Objects.requireNonNull(bean, "bean")
 	}
 
-	/** Visit all the properties of the Object */
-	def void visit() {
-		beanToPath.put(bean,path)
-		appendable.append('{class:"')
-		appendable.append(bean.class.name)
+	/** Append Object start */
+	protected def void appendObjectStart(Object obj) {
+		appendable.append('{"'+CLASS+'":"')
+		appendable.append(obj.class.name)
 		appendable.append('"')
-		for (p : bean.type.inheritedProperties) {
-			p.accept(this)
-		}
+	}
+
+	/** Append Object end */
+	protected def void appendObjectEnd() {
 		appendable.append('}')
 	}
 
-	/** Appends the property name */
-	private def appendName(Property<?, ?> prop) {
+	/** Called for beans */
+	public override void visit(_Bean bean) {
+		if (bean !== null) {
+			appendObjectStart(bean)
+			super.visit(bean)
+			appendObjectEnd()
+		} else {
+			appendable.append('null')
+		}
+	}
+
+	/** Called for all properties */
+	protected override void visit(Property prop) {
 		// We always assume there was some other property before this one
 		appendable.append(',"').append(prop.simpleName).append('"').append(":")
 	}
 
-	/** Appends a number */
-	private def appendNumber(double number) {
-		appendable.append(String.valueOf(number))
+	/** Visit ObjectProperty with null value */
+	protected override void visitNull(ObjectProperty prop) {
+		appendable.append('null')
 	}
 
-	/** Appends a value as String */
-	private def appendString(Object value) {
-		if (value === null) {
-			appendable.append('null')
+	/** Visit boolean properties */
+	protected override void visit(BooleanProperty prop, boolean value) {
+		if (value) appendable.append('true') else appendable.append('false')
+	}
+
+	/**
+	 * All integral primitive properties end up delegating here,
+	 * Including boolean.
+	 */
+	protected override void visitNumber(PrimitiveProperty prop, long value) {
+		buf.append(value)
+		appendable.append(buf)
+		buf.setLength(0)
+	}
+
+	/**
+	 * All floating-point primitive properties end up delegating here,
+	 */
+	protected override void visitNumber(PrimitiveProperty prop, double value) {
+		val lvalue = value as long
+		if (value === lvalue) {
+			// This prevents printing .0 ...
+			visitNumber(prop, lvalue)
 		} else {
-			appendable.append('"')
-			// TODO Probably needs escaping...
-			appendable.append(value.toString())
-			appendable.append('"')
+			buf.append(value)
+			appendable.append(buf)
+			buf.setLength(0)
 		}
 	}
 
-	override visit(BooleanProperty prop) {
-		appendName(prop)
-		appendable.append(if (prop.getBoolean(bean)) "true" else "false")
-	}
-
-	override visit(ByteProperty prop) {
-		appendName(prop)
-		appendNumber(prop.getByte(bean))
-	}
-
-	override visit(CharacterProperty prop) {
-		appendName(prop)
-		// char to String conversion is intentional
-		appendString(prop.getChar(bean))
-	}
-
-	override visit(ShortProperty prop) {
-		appendName(prop)
-		appendNumber(prop.getShort(bean))
-	}
-
-	override visit(IntegerProperty prop) {
-		appendName(prop)
-		appendNumber(prop.getInt(bean))
-	}
-
-	override visit(FloatProperty prop) {
-		appendName(prop)
-		appendNumber(prop.getFloat(bean))
-	}
-
-	override visit(DoubleProperty prop) {
-		appendName(prop)
-		appendNumber(prop.getDouble(bean))
-	}
-
-	override visit(LongProperty prop) {
-		appendName(prop)
-		appendable.append(String.valueOf(prop.getLong(bean)))
-	}
-
-	override visit(ObjectProperty prop) {
-		appendName(prop)
-		val obj = prop.getObject(bean)
-		if (obj === null) {
-			appendable.append("null")
-		} else if (obj instanceof _BeanBase) {
-			val done = beanToPath.get(obj)
-			if (done === null) {
-				val prev = bean
-				val prevPath = path
-				bean = obj as _BeanBase
-				if (path != "/") {
-					path = path + "/"
-				}
-				path = path + prop.simpleName
-				visit()
-				bean = prev
-				path = prevPath
+	/**
+	 * Visit ObjectProperty with Object value.
+	 *
+	 * All Object properties end up delegating here.
+	 */
+	protected override void visitObject(ObjectProperty prop, Object value) {
+		// Cannot be null!
+		if (value instanceof CharSequence) {
+			visitCharSequence(value)
+		} else if (value instanceof Class<?>) {
+			visitCharSequence(value.name)
+		} else if (value instanceof Boolean) {
+			if (value.booleanValue) appendable.append('true') else appendable.append('false')
+		} else if ((value instanceof Number) && (value.class.package.name == "java.lang")) {
+			val number = value as Number
+			val lvalue = number.longValue
+			val dvalue = number.doubleValue
+			if (dvalue === lvalue) {
+				visitNumber(null, lvalue)
 			} else {
-				appendable.append('{path:"')
-				appendable.append(done)
-				appendable.append('"}')
+				visitNumber(null, dvalue)
 			}
 		} else {
-			appendString(obj)
+			appendObjectStart(value)
+			appendable.append(',"'+CONTENT+'":')
+			visitCharSequence(value.toString())
+			appendObjectEnd()
 		}
+	}
+
+	/**
+	 * Visit ObjectProperty with CharSequence value.
+	 *
+	 * All Object properties end up delegating here.
+	 */
+	protected def void visitCharSequence(CharSequence value) {
+		appendable.append('"')
+		// TODO Probably needs escaping...
+		appendable.append(value)
+		appendable.append('"')
 	}
 }

@@ -1,37 +1,21 @@
 package test.com.blockwithme.meta
 
 import com.blockwithme.meta.Hierarchy
-import com.blockwithme.meta.Types
-import com.blockwithme.meta.Type
-import com.blockwithme.meta.MetaProperty
-import com.blockwithme.meta.TrueBooleanProperty
-import com.blockwithme.meta.TrueByteProperty
-import com.blockwithme.meta.TrueCharacterProperty
-import com.blockwithme.meta.TrueShortProperty
-import com.blockwithme.meta.TrueIntegerProperty
-import com.blockwithme.meta.TrueLongProperty
-import com.blockwithme.meta.TrueFloatProperty
-import com.blockwithme.meta.TrueDoubleProperty
-import com.blockwithme.meta.ObjectProperty
-import com.blockwithme.meta.Kind
-import com.blockwithme.meta.converter.IntConverter
-import com.blockwithme.meta.IntegerProperty
 import com.blockwithme.meta.HierarchyBuilder
+import com.blockwithme.meta.JavaMeta
+import com.blockwithme.meta.Kind
+import com.blockwithme.meta.MetaMeta
+import com.blockwithme.meta.MetaProperty
+import com.blockwithme.meta.Type
 import com.blockwithme.meta.TypePackage
+import com.blockwithme.meta.converter.IntConverter
+
 import static java.util.Objects.*
 
 enum MyEnum {
   A,
   B,
   C
-}
-
-class MyHierarchyBuilder {
-
-  /** Test Hierarchy Builder */
-  public static val TEST_BUILDER = new HierarchyBuilder(MyType)
-
-  public static val ENUM_TYPE = new Type<MyEnum>(MyHierarchyBuilder.TEST_BUILDER, MyEnum, null, Kind::Data)
 }
 
 class EnumConverter implements IntConverter<Object,MyEnum> {
@@ -102,99 +86,104 @@ class MyType {
 
   /** Non-Wrapper Integer Property, externally represented as a MyEnum */
   package var enumProp = 0
+}
 
-  public static val BOOL_PROP = new TrueBooleanProperty<MyType>(
-    MyHierarchyBuilder.TEST_BUILDER, MyType, "boolProp",
+class MySubType extends MyType {
+    /** Int property */
+    package var intProp2 = 0
+}
+
+class TestMeta {
+  /** Test Hierarchy Builder */
+  public static val BUILDER = new HierarchyBuilder(MyType)
+
+  public static val ENUM_TYPE = BUILDER.newType(MyEnum, null, Kind::Data)
+
+
+  public static val BOOL_PROP = BUILDER.newBooleanProperty(
+    MyType, "boolProp",
     [boolProp], [obj,value|obj.boolProp = value;obj]
   )
 
-  public static val BYTE_PROP = new TrueByteProperty<MyType>(
-    MyHierarchyBuilder.TEST_BUILDER, MyType, "byteProp",
+  public static val BYTE_PROP = BUILDER.newByteProperty(
+    MyType, "byteProp",
     [byteProp], [obj,value|obj.byteProp = value;obj]
   )
 
-  public static val CHAR_PROP = new TrueCharacterProperty<MyType>(
-    MyHierarchyBuilder.TEST_BUILDER, MyType, "charProp",
+  public static val CHAR_PROP = BUILDER.newCharacterProperty(
+    MyType, "charProp",
     [charProp], [obj,value|obj.charProp = value;obj]
   )
 
-  public static val SHORT_PROP = new TrueShortProperty<MyType>(
-    MyHierarchyBuilder.TEST_BUILDER, MyType, "shortProp",
+  public static val SHORT_PROP = BUILDER.newShortProperty(
+    MyType, "shortProp",
     [shortProp], [obj,value|obj.shortProp = value;obj]
   )
 
-  public static val INT_PROP = new TrueIntegerProperty<MyType>(
-    MyHierarchyBuilder.TEST_BUILDER, MyType, "intProp",
+  public static val INT_PROP = BUILDER.newIntegerProperty(
+    MyType, "intProp",
     [intProp], [obj,value|obj.intProp = value;obj]
   )
 
-  public static val LONG_PROP = new TrueLongProperty<MyType>(
-    MyHierarchyBuilder.TEST_BUILDER, MyType, "longProp",
+  public static val LONG_PROP = BUILDER.newLongProperty(
+    MyType, "longProp",
     [longProp], [obj,value|obj.longProp = value;obj]
   )
 
-  public static val FLOAT_PROP = new TrueFloatProperty<MyType>(
-    MyHierarchyBuilder.TEST_BUILDER, MyType, "floatProp",
+  public static val FLOAT_PROP = BUILDER.newFloatProperty(
+    MyType, "floatProp",
     [floatProp], [obj,value|obj.floatProp = value;obj]
   )
 
-  public static val DOUBLE_PROP = new TrueDoubleProperty<MyType>(
-    MyHierarchyBuilder.TEST_BUILDER, MyType, "doubleProp",
+  public static val DOUBLE_PROP = BUILDER.newDoubleProperty(
+    MyType, "doubleProp",
     [doubleProp], [obj,value|obj.doubleProp = value;obj]
   )
 
-  public static val OBJECT_PROP = new ObjectProperty<MyType, String>(
-    MyHierarchyBuilder.TEST_BUILDER, MyType, "objectProp",
+  public static val OBJECT_PROP = BUILDER.newObjectProperty(
+    MyType, "objectProp",
     String, true, true, true,
     [objectProp], [obj,value|obj.objectProp = value;obj]
   )
 
-  public static val ENUM_PROP = new IntegerProperty<MyType, MyEnum, IntConverter<MyType, MyEnum>>(
-    MyHierarchyBuilder.TEST_BUILDER, MyType, "enumProp",
-    EnumConverter.DEFAULT as IntConverter, 32,
+  public static val ENUM_PROP = BUILDER.newIntegerProperty(
+    MyType, "enumProp",
+    // Why does "EnumConverter.DEFAULT as IntConverter<MyType,MyEnum>" not compile *in Java*?
+    EnumConverter.DEFAULT as IntConverter as IntConverter<MyType,MyEnum>, 32,
     MyEnum,
     [enumProp], [obj,value|obj.enumProp = value;obj]
   )
-}
 
-class MySubType extends MyType {
-
-  /** Int property */
-  package var intProp2 = 0
-
-  public static val INT_PROP2 = new TrueIntegerProperty<MySubType>(
-    MyHierarchyBuilder.TEST_BUILDER, MySubType, "intProp2",
+  public static val INT_PROP2 = BUILDER.newIntegerProperty(
+    MySubType, "intProp2",
     [intProp2], [obj,value|obj.intProp2 = value;obj]
   )
 
-}
-
-class MyHierarchy {
     public static val META_PROP = Hierarchy.postCreateMetaProperty(
-      new MetaProperty<Type,Boolean>(Types.META_BUILDER,
-        Types.TYPE, "persistent", Boolean, Boolean.FALSE))
+      MetaMeta.BUILDER.newMetaProperty(
+        MetaMeta.TYPE, "persistent", Boolean, Boolean.FALSE))
 
-  public static val Type<MyType> MY_TYPE = new Type(MyHierarchyBuilder.TEST_BUILDER, MyType,
-    null/*[new MyType]*/, Kind.Implementation, MyType.BOOL_PROP, MyType.BYTE_PROP,
-      MyType.CHAR_PROP, MyType.SHORT_PROP, MyType.INT_PROP, MyType.LONG_PROP, MyType.FLOAT_PROP,
-      MyType.DOUBLE_PROP, MyType.OBJECT_PROP, MyType.ENUM_PROP)
+  public static val Type<MyType> MY_TYPE = BUILDER.newType(MyType,
+    null/*[new MyType]*/, Kind.Implementation, BOOL_PROP, BYTE_PROP,
+      CHAR_PROP, SHORT_PROP, INT_PROP, LONG_PROP, FLOAT_PROP,
+      DOUBLE_PROP, OBJECT_PROP, ENUM_PROP)
 
   public static val Type<MySubType> MY_SUB_TYPE
-    = new Type(MyHierarchyBuilder.TEST_BUILDER, MySubType, null /*[new MySubType]*/,
-      Kind.Implementation, #[MY_TYPE], MySubType.INT_PROP2)
+    = BUILDER.newType(MySubType, null /*[new MySubType]*/,
+      Kind.Implementation, #[MY_TYPE], INT_PROP2)
 
   /** The test.com.blockwithme.meta package */
-  public static val MY_PACKAGE = new TypePackage(MyHierarchyBuilder.TEST_BUILDER,
-    MY_TYPE, MyHierarchyBuilder.ENUM_TYPE, MY_SUB_TYPE)
+  public static val MY_PACKAGE = BUILDER.newTypePackage(
+    MY_TYPE, ENUM_TYPE, MY_SUB_TYPE)
 
-  public static val Type<Object> OBJECT2 = new Type(MyHierarchyBuilder.TEST_BUILDER, Object, null, Kind.Data)
+  public static val Type<Object> OBJECT2 = BUILDER.newType(Object, null, Kind.Data)
 
   /** The java.lang "other" package */
-  public static val MY_JAVA_LANG = new TypePackage(MyHierarchyBuilder.TEST_BUILDER,
+  public static val MY_JAVA_LANG = BUILDER.newTypePackage(
     OBJECT2)
 
   /** Test Hierarchy */
-  public static val TEST = new Hierarchy(MyHierarchyBuilder.TEST_BUILDER,
-    newArrayList(MY_PACKAGE, MY_JAVA_LANG), Types::JAVA
+  public static val TEST = BUILDER.newHierarchy(
+    newArrayList(MY_PACKAGE, MY_JAVA_LANG), JavaMeta.HIERARCHY
   )
 }

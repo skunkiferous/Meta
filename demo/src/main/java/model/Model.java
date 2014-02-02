@@ -9,11 +9,11 @@ import org.eclipse.xtext.xbase.lib.Functions;
 import com.blockwithme.meta.Hierarchy;
 import com.blockwithme.meta.HierarchyBuilder;
 import com.blockwithme.meta.IntPropertyAccessor;
+import com.blockwithme.meta.JavaMeta;
 import com.blockwithme.meta.Kind;
 import com.blockwithme.meta.ObjectPropertyAccessor;
 import com.blockwithme.meta.TrueIntegerProperty;
 import com.blockwithme.meta.TypePackage;
-import com.blockwithme.meta.Types;
 
 public interface Model {
     ////////////////////////////////////////////////////////////
@@ -456,7 +456,7 @@ public interface Model {
         public static final TypePackage PACKAGE = BUILDER.newTypePackage(
                 AGED_TYPE, NAMED_TYPE, PERSON_TYPE);
         public static final Hierarchy HIERARCHY = BUILDER.newHierarchy(
-                new TypePackage[] { PACKAGE }, Types.JAVA);
+                new TypePackage[] { PACKAGE }, JavaMeta.HIERARCHY);
     }
 
     //////////////////////////////////////////////////////////////////////////////

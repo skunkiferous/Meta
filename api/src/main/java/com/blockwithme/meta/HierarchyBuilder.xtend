@@ -40,6 +40,14 @@ import com.blockwithme.fn1.LongFuncObject
 import com.blockwithme.fn2.ObjectFuncObjectLong
 import com.blockwithme.fn1.ObjectFuncObject
 import com.blockwithme.fn2.ObjectFuncObjectObject
+import com.blockwithme.meta.converter.IntConverter
+import com.blockwithme.meta.converter.BooleanConverter
+import com.blockwithme.meta.converter.ByteConverter
+import com.blockwithme.meta.converter.CharConverter
+import com.blockwithme.meta.converter.ShortConverter
+import com.blockwithme.meta.converter.FloatConverter
+import com.blockwithme.meta.converter.DoubleConverter
+import com.blockwithme.meta.converter.LongConverter
 
 /**
  * HierarchyBuilder records the temporary information needed to construct
@@ -91,12 +99,12 @@ class HierarchyBuilder {
 		result
 	}
 
-	/** Constructor */
+	/** Constructor. Takes the hierarchy name as parameter. */
 	new(String theName) {
 		name = requireNonEmpty(theName, "theName")
 	}
 
-	/** Constructor */
+	/** Constructor. Takes a type specifying the hierarchy name as parameter. */
 	new(Class<?> theRoot) {
 		this(requireNonNull(theRoot, "theRoot").name)
 	}
@@ -140,7 +148,7 @@ class HierarchyBuilder {
 		list.set(theType.typeId, theType)
 		allTypes = list
 		allCounters.remove(theType)
-		LOG.info("Type "+theType.fullName+" registered in Hierarchy "+name)
+		LOG.info("Type "+theType.fullName+" registered in Hierarchy "+this.name)
 		for (p : theType.properties) {
 			doRegisterProperty(p)
 		}
@@ -228,7 +236,7 @@ class HierarchyBuilder {
 		}
 		list.set(prop.globalPropertyId, prop)
 		allProperties = list
-		LOG.info("Property "+prop.fullName+" registered in Hierarchy "+name)
+		LOG.info("Property "+prop.fullName+" registered in Hierarchy "+this.name)
 	}
 
 	/**
@@ -264,7 +272,13 @@ class HierarchyBuilder {
 		val list = newArrayList()
 		list.addAll(allPackages as List<TypePackage>)
 		val name = theTypePackage.fullName
-		if (list.exists[t|(t != null) && t.fullName.equals(name)]) {
+		val other = list.findFirst[t|(t != null) && t.fullName.equals(name)]
+		if (other !== null) {
+			if (other === theTypePackage) {
+				LOG.warn("TypePackage "+theTypePackage.fullName
+					+" ALREADY registered in Hierarchy "+this.name)
+				return
+			}
 			throw new IllegalArgumentException(name+" already registered")
 		}
 		while (list.size <= theTypePackage.packageId) {
@@ -272,7 +286,7 @@ class HierarchyBuilder {
 		}
 		list.set(theTypePackage.packageId, theTypePackage)
 		allPackages = list
-		LOG.info("TypePackage "+theTypePackage.fullName+" registered in Hierarchy "+name)
+		LOG.info("TypePackage "+theTypePackage.fullName+" registered in Hierarchy "+this.name)
 		for (t : theTypePackage.types) {
 			doRegisterType(t)
 		}
@@ -348,12 +362,7 @@ class HierarchyBuilder {
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, PropertyType thePropType,
 		int theBits, Class<PROPERTY_TYPE> dataType) {
-		var _meta = false
-		for (t : Types.META.allTypes) {
-			if (theOwner == t.type) {
-				_meta = true
-			}
-		}
+		val _meta = MetaBase.isAssignableFrom(theOwner)
 		preRegisterProperty(theOwner, theSimpleName, theConverter, thePropType, theBits, _meta, dataType)
 	}
 
@@ -422,6 +431,7 @@ class HierarchyBuilder {
 	}
 
 	// Now comes the factory methods
+	// TODO These should delegate to a *user-configurable* Factory
 
 	/** Creates a Boolean Property */
 	def <OWNER_TYPE> TrueBooleanProperty<OWNER_TYPE> newBooleanProperty(
@@ -436,6 +446,29 @@ class HierarchyBuilder {
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		BooleanPropertyAccessor<OWNER_TYPE> theAccessor) {
 		new TrueBooleanProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theAccessor, theAccessor)
+	}
+
+	/** Creates a Boolean Property */
+	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends BooleanConverter<OWNER_TYPE, PROPERTY_TYPE>>
+		BooleanProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> newBooleanProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		CONVERTER theConverter, Class<PROPERTY_TYPE> dataType,
+		BooleanPropertyAccessor<OWNER_TYPE> theAccessor) {
+		new BooleanProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(
+			this, theOwner, theSimpleName, theConverter, dataType,
+			theAccessor, theAccessor)
+	}
+
+	/** Creates a Boolean Property */
+	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends BooleanConverter<OWNER_TYPE, PROPERTY_TYPE>>
+		BooleanProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> newBooleanProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		CONVERTER theConverter, Class<PROPERTY_TYPE> dataType,
+		BooleanFuncObject<OWNER_TYPE> theGetter,
+		ObjectFuncObjectBoolean<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		new BooleanProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(
+			this, theOwner, theSimpleName, theConverter, dataType,
+			theGetter, theSetter)
 	}
 
 	/** Creates a Byte Property */
@@ -453,6 +486,29 @@ class HierarchyBuilder {
 		new TrueByteProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theAccessor, theAccessor)
 	}
 
+	/** Creates a Byte Property */
+	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends ByteConverter<OWNER_TYPE, PROPERTY_TYPE>>
+		ByteProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> newByteProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
+		BytePropertyAccessor<OWNER_TYPE> theAccessor) {
+		new ByteProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(
+			this, theOwner, theSimpleName, theConverter, theBits, dataType,
+			theAccessor, theAccessor)
+	}
+
+	/** Creates a Byte Property */
+	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends ByteConverter<OWNER_TYPE, PROPERTY_TYPE>>
+		ByteProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> newByteProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
+		ByteFuncObject<OWNER_TYPE> theGetter,
+		ObjectFuncObjectByte<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		new ByteProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(
+			this, theOwner, theSimpleName, theConverter, theBits, dataType,
+			theGetter, theSetter)
+	}
+
 	/** Creates a Character Property */
 	def <OWNER_TYPE> TrueCharacterProperty<OWNER_TYPE> newCharacterProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
@@ -466,6 +522,29 @@ class HierarchyBuilder {
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CharPropertyAccessor<OWNER_TYPE> theAccessor) {
 		new TrueCharacterProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theAccessor, theAccessor)
+	}
+
+	/** Creates a Character Property */
+	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends CharConverter<OWNER_TYPE, PROPERTY_TYPE>>
+		CharacterProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> newCharacterProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
+		CharPropertyAccessor<OWNER_TYPE> theAccessor) {
+		new CharacterProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(
+			this, theOwner, theSimpleName, theConverter, theBits, dataType,
+			theAccessor, theAccessor)
+	}
+
+	/** Creates a Character Property */
+	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends CharConverter<OWNER_TYPE, PROPERTY_TYPE>>
+		CharacterProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> newCharacterProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
+		CharFuncObject<OWNER_TYPE> theGetter,
+		ObjectFuncObjectChar<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		new CharacterProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(
+			this, theOwner, theSimpleName, theConverter, theBits, dataType,
+			theGetter, theSetter)
 	}
 
 	/** Creates a Short Property */
@@ -483,6 +562,29 @@ class HierarchyBuilder {
 		new TrueShortProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theAccessor, theAccessor)
 	}
 
+	/** Creates a Short Property */
+	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends ShortConverter<OWNER_TYPE, PROPERTY_TYPE>>
+		ShortProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> newShortProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
+		ShortPropertyAccessor<OWNER_TYPE> theAccessor) {
+		new ShortProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(
+			this, theOwner, theSimpleName, theConverter, theBits, dataType,
+			theAccessor, theAccessor)
+	}
+
+	/** Creates a Short Property */
+	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends ShortConverter<OWNER_TYPE, PROPERTY_TYPE>>
+		ShortProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> newShortProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
+		ShortFuncObject<OWNER_TYPE> theGetter,
+		ObjectFuncObjectShort<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		new ShortProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(
+			this, theOwner, theSimpleName, theConverter, theBits, dataType,
+			theGetter, theSetter)
+	}
+
 	/** Creates a Float Property */
 	def <OWNER_TYPE> TrueFloatProperty<OWNER_TYPE> newFloatProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
@@ -496,6 +598,29 @@ class HierarchyBuilder {
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		FloatPropertyAccessor<OWNER_TYPE> theAccessor) {
 		new TrueFloatProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theAccessor, theAccessor)
+	}
+
+	/** Creates a Float Property */
+	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends FloatConverter<OWNER_TYPE, PROPERTY_TYPE>>
+		FloatProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> newFloatProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		CONVERTER theConverter, Class<PROPERTY_TYPE> dataType,
+		FloatPropertyAccessor<OWNER_TYPE> theAccessor) {
+		new FloatProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(
+			this, theOwner, theSimpleName, theConverter, dataType,
+			theAccessor, theAccessor)
+	}
+
+	/** Creates a Float Property */
+	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends FloatConverter<OWNER_TYPE, PROPERTY_TYPE>>
+		FloatProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> newFloatProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		CONVERTER theConverter, Class<PROPERTY_TYPE> dataType,
+		FloatFuncObject<OWNER_TYPE> theGetter,
+		ObjectFuncObjectFloat<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		new FloatProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(
+			this, theOwner, theSimpleName, theConverter, dataType,
+			theGetter, theSetter)
 	}
 
 	/** Creates a Integer Property */
@@ -513,6 +638,29 @@ class HierarchyBuilder {
 		new TrueIntegerProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theAccessor, theAccessor)
 	}
 
+	/** Creates a Integer Property */
+	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends IntConverter<OWNER_TYPE, PROPERTY_TYPE>>
+		IntegerProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> newIntegerProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
+		IntPropertyAccessor<OWNER_TYPE> theAccessor) {
+		new IntegerProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(
+			this, theOwner, theSimpleName, theConverter, theBits, dataType,
+			theAccessor, theAccessor)
+	}
+
+	/** Creates a Integer Property */
+	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends IntConverter<OWNER_TYPE, PROPERTY_TYPE>>
+		IntegerProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> newIntegerProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
+		IntFuncObject<OWNER_TYPE> theGetter,
+		ObjectFuncObjectInt<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		new IntegerProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(
+			this, theOwner, theSimpleName, theConverter, theBits, dataType,
+			theGetter, theSetter)
+	}
+
 	/** Creates a Double Property */
 	def <OWNER_TYPE> TrueDoubleProperty<OWNER_TYPE> newDoubleProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
@@ -528,6 +676,29 @@ class HierarchyBuilder {
 		new TrueDoubleProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theAccessor, theAccessor)
 	}
 
+	/** Creates a Double Property */
+	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends DoubleConverter<OWNER_TYPE, PROPERTY_TYPE>>
+		DoubleProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> newDoubleProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		CONVERTER theConverter, Class<PROPERTY_TYPE> dataType,
+		DoublePropertyAccessor<OWNER_TYPE> theAccessor) {
+		new DoubleProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(
+			this, theOwner, theSimpleName, theConverter, dataType,
+			theAccessor, theAccessor)
+	}
+
+	/** Creates a Double Property */
+	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends DoubleConverter<OWNER_TYPE, PROPERTY_TYPE>>
+		DoubleProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> newDoubleProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		CONVERTER theConverter, Class<PROPERTY_TYPE> dataType,
+		DoubleFuncObject<OWNER_TYPE> theGetter,
+		ObjectFuncObjectDouble<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		new DoubleProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(
+			this, theOwner, theSimpleName, theConverter, dataType,
+			theGetter, theSetter)
+	}
+
 	/** Creates a Long Property */
 	def <OWNER_TYPE> TrueLongProperty<OWNER_TYPE> newLongProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
@@ -541,6 +712,29 @@ class HierarchyBuilder {
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		LongPropertyAccessor<OWNER_TYPE> theAccessor) {
 		new TrueLongProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theAccessor, theAccessor)
+	}
+
+	/** Creates a Long Property */
+	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends LongConverter<OWNER_TYPE, PROPERTY_TYPE>>
+		LongProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> newLongProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
+		LongPropertyAccessor<OWNER_TYPE> theAccessor) {
+		new LongProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(
+			this, theOwner, theSimpleName, theConverter, theBits, dataType,
+			theAccessor, theAccessor)
+	}
+
+	/** Creates a Long Property */
+	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends LongConverter<OWNER_TYPE, PROPERTY_TYPE>>
+		LongProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> newLongProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName,
+		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
+		LongFuncObject<OWNER_TYPE> theGetter,
+		ObjectFuncObjectLong<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		new LongProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(
+			this, theOwner, theSimpleName, theConverter, theBits, dataType,
+			theGetter, theSetter)
 	}
 
 	/** Creates a Object Property */

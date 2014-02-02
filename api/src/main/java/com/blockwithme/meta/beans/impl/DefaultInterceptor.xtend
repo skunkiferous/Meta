@@ -15,17 +15,19 @@
  */
 package com.blockwithme.meta.beans.impl
 
-import com.blockwithme.meta.beans.Interceptor
-import com.blockwithme.meta.beans._BeanBase
 import com.blockwithme.meta.BooleanProperty
 import com.blockwithme.meta.ByteProperty
 import com.blockwithme.meta.CharacterProperty
-import com.blockwithme.meta.ShortProperty
-import com.blockwithme.meta.IntegerProperty
-import com.blockwithme.meta.FloatProperty
 import com.blockwithme.meta.DoubleProperty
+import com.blockwithme.meta.FloatProperty
+import com.blockwithme.meta.IntegerProperty
 import com.blockwithme.meta.LongProperty
 import com.blockwithme.meta.ObjectProperty
+import com.blockwithme.meta.ShortProperty
+import com.blockwithme.meta.beans.Interceptor
+import com.blockwithme.meta.beans._Bean
+import java.util.HashSet
+import com.blockwithme.meta.beans.Entity
 
 /**
  * Singleton, used for all normal "beans".
@@ -34,105 +36,139 @@ import com.blockwithme.meta.ObjectProperty
  * @author monster
  */
 class DefaultInterceptor implements Interceptor {
+	/** Valid Object property types, beyond Beans. */
+	static val VALID_PROPERTY_TYPES = new HashSet<Class<?>>(newArrayList(
+		Boolean, Byte, Character, Short, Integer, Float, Double, Long, String, Class
+		// Mutable types, like int[], cause issues, because we cannot track the changes.
+	))
+
     /** Default instance */
     public static val INSTANCE = new DefaultInterceptor()
 
-	override getBooleanProperty(_BeanBase instance, BooleanProperty<?, ?, ?> prop, boolean value) {
+	override getBooleanProperty(_Bean instance, BooleanProperty<?, ?, ?> prop, boolean value) {
         value
 	}
 
-	override setBooleanProperty(_BeanBase instance, BooleanProperty<?, ?, ?> prop, boolean oldValue, boolean newValue) {
+	override setBooleanProperty(_Bean instance, BooleanProperty<?, ?, ?> prop, boolean oldValue, boolean newValue) {
         if (oldValue !== newValue) {
-            instance.setDirty(prop)
+            instance.setSelected(prop)
         }
         newValue
 	}
 
-	override getByteProperty(_BeanBase instance, ByteProperty<?, ?, ?> prop, byte value) {
+	override getByteProperty(_Bean instance, ByteProperty<?, ?, ?> prop, byte value) {
         value
 	}
 
-	override setByteProperty(_BeanBase instance, ByteProperty<?, ?, ?> prop, byte oldValue, byte newValue) {
+	override setByteProperty(_Bean instance, ByteProperty<?, ?, ?> prop, byte oldValue, byte newValue) {
         if (oldValue !== newValue) {
-            instance.setDirty(prop)
+            instance.setSelected(prop)
         }
         newValue
 	}
 
-	override getCharacterProperty(_BeanBase instance, CharacterProperty<?, ?, ?> prop, char value) {
+	override getCharacterProperty(_Bean instance, CharacterProperty<?, ?, ?> prop, char value) {
         value
 	}
 
-	override setCharacterProperty(_BeanBase instance, CharacterProperty<?, ?, ?> prop, char oldValue, char newValue) {
+	override setCharacterProperty(_Bean instance, CharacterProperty<?, ?, ?> prop, char oldValue, char newValue) {
         if (oldValue !== newValue) {
-            instance.setDirty(prop)
+            instance.setSelected(prop)
         }
         newValue
 	}
 
-	override getShortProperty(_BeanBase instance, ShortProperty<?, ?, ?> prop, short value) {
+	override getShortProperty(_Bean instance, ShortProperty<?, ?, ?> prop, short value) {
         value
 	}
 
-	override setShortProperty(_BeanBase instance, ShortProperty<?, ?, ?> prop, short oldValue, short newValue) {
+	override setShortProperty(_Bean instance, ShortProperty<?, ?, ?> prop, short oldValue, short newValue) {
         if (oldValue !== newValue) {
-            instance.setDirty(prop)
+            instance.setSelected(prop)
         }
         newValue
 	}
 
-	override getIntegerProperty(_BeanBase instance, IntegerProperty<?, ?, ?> prop, int value) {
+	override getIntegerProperty(_Bean instance, IntegerProperty<?, ?, ?> prop, int value) {
         value
 	}
 
-	override setIntegerProperty(_BeanBase instance, IntegerProperty<?, ?, ?> prop, int oldValue, int newValue) {
+	override setIntegerProperty(_Bean instance, IntegerProperty<?, ?, ?> prop, int oldValue, int newValue) {
         if (oldValue !== newValue) {
-            instance.setDirty(prop)
+            instance.setSelected(prop)
         }
         newValue
 	}
 
-	override getFloatProperty(_BeanBase instance, FloatProperty<?, ?, ?> prop, float value) {
+	override getFloatProperty(_Bean instance, FloatProperty<?, ?, ?> prop, float value) {
         value
 	}
 
-	override setFloatProperty(_BeanBase instance, FloatProperty<?, ?, ?> prop, float oldValue, float newValue) {
+	override setFloatProperty(_Bean instance, FloatProperty<?, ?, ?> prop, float oldValue, float newValue) {
         if (oldValue !== newValue) {
-            instance.setDirty(prop)
+            instance.setSelected(prop)
         }
         newValue
 	}
 
-	override getDoubleProperty(_BeanBase instance, DoubleProperty<?, ?, ?> prop, double value) {
+	override getDoubleProperty(_Bean instance, DoubleProperty<?, ?, ?> prop, double value) {
         value
 	}
 
-	override setDoubleProperty(_BeanBase instance, DoubleProperty<?, ?, ?> prop, double oldValue, double newValue) {
+	override setDoubleProperty(_Bean instance, DoubleProperty<?, ?, ?> prop, double oldValue, double newValue) {
         if (oldValue !== newValue) {
-            instance.setDirty(prop)
+            instance.setSelected(prop)
         }
         newValue
 	}
 
-	override getLongProperty(_BeanBase instance, LongProperty<?, ?, ?> prop, long value) {
+	override getLongProperty(_Bean instance, LongProperty<?, ?, ?> prop, long value) {
         value
 	}
 
-	override setLongProperty(_BeanBase instance, LongProperty<?, ?, ?> prop, long oldValue, long newValue) {
+	override setLongProperty(_Bean instance, LongProperty<?, ?, ?> prop, long oldValue, long newValue) {
         if (oldValue !== newValue) {
-            instance.setDirty(prop)
+            instance.setSelected(prop)
         }
         newValue
 	}
 
-	override <E> getObjectProperty(_BeanBase instance, ObjectProperty<?, E> prop, E value) {
+	override <E> getObjectProperty(_Bean instance, ObjectProperty<?, E> prop, E value) {
         value
 	}
 
-	override <E> setObjectProperty(_BeanBase instance, ObjectProperty<?, E> prop, E oldValue, E newValue) {
-        if (oldValue != newValue) {
-            instance.setDirty(prop)
+	override <E> setObjectProperty(_Bean instance, ObjectProperty<?, E> prop, E oldValue, E newValue) {
+        if (oldValue !== newValue) {
+            // Note: oldValue must be cleared *before* checking for cycles.
+            if (oldValue instanceof _Bean) {
+            	oldValue.setParent(null)
+            }
+            if (newValue instanceof _Bean) {
+            	if (!(newValue instanceof Entity)) {
+	            	if (instance.hasSameRoot(newValue)) {
+	            		// Undo changes
+			            if (oldValue instanceof _Bean) {
+			            	oldValue.setParent(null)
+			            }
+			            throw new IllegalStateException("Cycles not permitted on "
+			            	+prop.fullName+" of "+instance.class.name)
+	            	}
+	            	newValue.setParent(instance)
+	            	newValue.setSelectionRecursive()
+				}
+            } else if (newValue !== null) {
+            	validateObjectType(newValue)
+            }
+            instance.setSelected(prop)
         }
         newValue
 	}
+
+	def validateObjectType(Object e) {
+		if (!(e.class.enum || VALID_PROPERTY_TYPES.contains(e.class))) {
+			throw new IllegalArgumentException("Property values of type "
+				+e.class+" not supported")
+		}
+	}
+
 }

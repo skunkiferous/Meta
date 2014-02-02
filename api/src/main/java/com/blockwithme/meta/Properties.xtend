@@ -33,7 +33,6 @@ import org.slf4j.LoggerFactory
 
 import static com.blockwithme.util.Preconditions.*
 import static com.blockwithme.traits.util.SyncUtil.*
-import static com.blockwithme.meta.Types.*
 import static java.util.Objects.*
 import com.blockwithme.fn1.ObjectFuncObject
 import com.blockwithme.fn2.ObjectFuncObjectObject
@@ -57,6 +56,8 @@ import de.oehme.xtend.contrib.Volatile
 import java.util.HashMap
 import java.util.HashSet
 import java.util.Set
+import java.util.concurrent.atomic.AtomicReference
+import java.util.Arrays
 
 /**
  * Hierarchy represents a Type hierarchy. It is not limited to types in the
@@ -128,7 +129,7 @@ public class Hierarchy {
 	        for (h : all) {
 	        	postCreateHierarchy(h, listener)
 	        }
-	        val metas = Types.META_BUILDER.allProperties()
+	        val metas = MetaMeta.BUILDER.allProperties()
 	    	for (m : metas) {
 	    		postCreateMetaProperty(m as MetaProperty<?,?>, listener)
 	    	}
@@ -147,7 +148,9 @@ public class Hierarchy {
      * (Initialization of the subclasses happens *after* registration).
      */
     package static def postCreateHierarchy(Hierarchy hierarchy) {
+    	requireNonNull(hierarchy, "hierarchy")
 		for (p : hierarchy.allPackages) {
+			LOG.info("Setting Hierarchy "+hierarchy+" in Package "+p)
 			p.hierarchy = hierarchy
 		}
         for (listener : listeners) {
@@ -199,7 +202,7 @@ public class Hierarchy {
      */
     static def <M extends MetaProperty<?,?>> postCreateMetaProperty(M metaProperty) {
     	synch(Hierarchy) [
-    		Types.META_BUILDER.doRegisterProperty(metaProperty)
+    		MetaMeta.BUILDER.doRegisterProperty(metaProperty)
 	        for (listener : listeners) {
 	        	postCreateMetaProperty(metaProperty, listener)
 	        }
@@ -249,21 +252,21 @@ public class Hierarchy {
     	]
 	}
 
-	new (HierarchyBuilder builder, TypePackage[] packages, Hierarchy ... theDependencies) {
+	protected new (HierarchyBuilder builder, TypePackage[] packages, Hierarchy ... theDependencies) {
 		this(requireNonNull(builder, "builder").name, builder.registerPackage(packages),
 			builder.allTypes(), builder.allProperties(), theDependencies)
 		builder.close()
 	}
 
-	new (HierarchyBuilder builder, Hierarchy ... theDependencies) {
+	protected new (HierarchyBuilder builder, Hierarchy ... theDependencies) {
 		this(builder, newArrayOfSize(0), theDependencies)
 	}
 
-	new (HierarchyBuilder builder, TypePackage... packages) {
+	protected new (HierarchyBuilder builder, TypePackage... packages) {
 		this(builder, packages, newArrayOfSize(0))
 	}
 
-	new (HierarchyBuilder builder) {
+	protected new (HierarchyBuilder builder) {
 		this(builder, newArrayOfSize(0), newArrayOfSize(0))
 	}
 
@@ -406,6 +409,7 @@ abstract class MetaBase<PARENT> implements Comparable<MetaBase<?>> {
 	    	}
 	    	requireNonNull(hierarchy, "hierarchy")
     	}
+    	hierarchy
     }
 }
 
@@ -520,9 +524,12 @@ package class NoConstructor<JAVA_TYPE> implements Functions.Function0<JAVA_TYPE>
  */
 class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 
+	/** When a Type has no parents */
+	public static val Type<?>[] NO_PARENT = <Type>newArrayOfSize(0)
+
 	/** Helper to detect primitive wrappers. */
-	private static val primTypes = newHashSet(
-		Boolean, Byte, Character, Short, Integer, Long,Float, Double)
+	package static val primTypes = newHashSet(
+		Boolean, Byte, Character, Short, Integer, Long, Float, Double)
 
 	/** The Java Class represented by this type. */
 	// TODO Allow fully generic types (no Class?)
@@ -627,11 +634,6 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	/** Map property name to property (immutable) */
 	public val Map<String,Property<?,?>> simpleNameToProperty
 
-	/**
-	 * Maps the inheritedProperties to their index in that array
-	 */
-	public val Map<Property<?,?>,Integer> inheritedPropertiesToIndex
-
     /** The kind of type, that this class/interface is. */
     public val Kind kind
 
@@ -644,14 +646,14 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	}
 
 	/** Constructor */
-	public new(HierarchyBuilder builder, Class<JAVA_TYPE> theType,
+	protected new(HierarchyBuilder builder, Class<JAVA_TYPE> theType,
 		Functions.Function0<JAVA_TYPE> theConstructor, Kind theKind,
 		Property<JAVA_TYPE,?> ... theProperties) {
-		this(builder.preRegisterType(theType), theType, theConstructor, theKind, Types::NO_PARENT, theProperties)
+		this(builder.preRegisterType(theType), theType, theConstructor, theKind, Type::NO_PARENT, theProperties)
 	}
 
 	/** Constructor */
-	public new(HierarchyBuilder builder, Class<JAVA_TYPE> theType,
+	protected new(HierarchyBuilder builder, Class<JAVA_TYPE> theType,
 		Functions.Function0<JAVA_TYPE> theConstructor, Kind theKind, Type<?>[] theParents,
 		Property<JAVA_TYPE,?> ... theProperties) {
 		this(builder.preRegisterType(theType), theType, theConstructor, theKind, theParents, theProperties)
@@ -699,7 +701,17 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 		}
 		parents = pset
 
-		val TreeSet<Property<JAVA_TYPE,?>> ownset = new TreeSet
+		val TreeSet<Property<JAVA_TYPE,?>> ownset = new TreeSet([a,b|
+			val MetaBase ma = a
+			val MetaBase mb = b
+			val sna = ma.simpleName
+			val snb = mb.simpleName
+			var result = sna.compareTo(snb)
+			if (result === 0) {
+				result = a.fullName.compareTo(b.fullName)
+			}
+			result
+		])
 		ownset.addAll(checkArray(theProperties, "theOwnProperties"))
 		val Type me = this
 		for (prop : ownset) {
@@ -749,7 +761,6 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	    var _doublePrimitivePropertyCount = 0
 
 	    val Map<String,Property<?,?>> _simpleNameToProperty = newHashMap()
-	    val Map<Property<?,?>,Integer> _inheritedPropertiesToIndex = newHashMap()
 		for (prop : properties as Property<?,?>[]) {
 			if (prop instanceof PrimitiveProperty<?,?,?>) {
 				_primitivePropertyBitsTotal = _primitivePropertyBitsTotal + prop.bits
@@ -781,7 +792,6 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 				}
 			}
 		}
-		var int index = 0
 		for (prop : inheritedProperties) {
 			// Property name clash is not allowed between parent either
 			val other = _simpleNameToProperty.put(prop.simpleName, prop)
@@ -790,8 +800,6 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 					+" inherits multiple properties with simpleName "+prop.simpleName
 					+" (at least "+prop.fullName+" and "+other.fullName+")")
 			}
-			_inheritedPropertiesToIndex.put(prop, index)
-			index = index + 1
 		}
 	    propertyCount = properties.length
 	    primitivePropertyCount = primitiveProperties.length
@@ -810,7 +818,6 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	    floatPrimitivePropertyCount = _floatPrimitivePropertyCount
 	    doublePrimitivePropertyCount = _doublePrimitivePropertyCount
 	    simpleNameToProperty = Collections::unmodifiableMap(_simpleNameToProperty)
-	    inheritedPropertiesToIndex = Collections::unmodifiableMap(_inheritedPropertiesToIndex)
 
 		footprint = Footprint.round(_primitivePropertyByteTotal + Footprint.REFERENCE * objectPropertyCount)
 	    var total = footprint
@@ -876,14 +883,14 @@ interface PropertyVisitor {
 	/** Visits a Integer Property */
 	def void visit(IntegerProperty<?,?,?> prop)
 
+	/** Visits a Long Property */
+	def void visit(LongProperty<?,?,?> prop)
+
 	/** Visits a Float Property */
 	def void visit(FloatProperty<?,?,?> prop)
 
 	/** Visits a Double Property */
 	def void visit(DoubleProperty<?,?,?> prop)
-
-	/** Visits a Long Property */
-	def void visit(LongProperty<?,?,?> prop)
 
 	/** Visits a Object Property */
 	def void visit(ObjectProperty<?,?> prop)
@@ -910,12 +917,17 @@ interface PropertyVisitor {
  */
 abstract class Property<OWNER_TYPE, PROPERTY_TYPE>
 extends MetaBase<Type<OWNER_TYPE>> {
+	/** When a Type has no properties */
+	public static val Property<?,?>[] NO_PROPERTIES = <Property>newArrayOfSize(0)
+
 	/** Only for internal validation ... */
 	package val Class<OWNER_TYPE> ownerClass
 	/** The content/data Type of this property */
 	val Class<PROPERTY_TYPE> contentTypeClass
 	/** The content/data Type of this property */
 	var Type<PROPERTY_TYPE> contentType
+	/** Maps a type ID to an "inherited Property ID" */
+	val inheritedIndex = new AtomicReference<byte[]>()
 	/** The zero-based global property ID */
 	public val int globalPropertyId
 	/** The zero-based property ID, within the owner type */
@@ -946,18 +958,12 @@ extends MetaBase<Type<OWNER_TYPE>> {
 		requireNonNull(theData.converter.type, "theData.converter.type)")
 		contentTypeClass = requireNonNull(theData.dataType, "theData.dataType")
 		ownerClass = theData.owner
-		primitive = contentType.primitive && !(this instanceof ObjectProperty)
+		primitive = !(this instanceof ObjectProperty) && Type.primTypes.contains(contentTypeClass)
 		globalPropertyId = theData.globalPropertyId
 		propertyId = theData.propertyId
 		longOrObjectPropertyId = theData.longOrObjectPropertyId
 		type = theData.type
-		var _meta = false
-		for (t : Types.META.allTypes) {
-			if (theData.owner == t.type) {
-				_meta = true
-			}
-		}
-		meta = _meta
+		meta = MetaBase.isAssignableFrom(theData.owner)
 		// Only not-null at this point for meta-properties
 		// (which never get registered as part of the Type instantiation)
 		parent = theData.ownerType.get(0)
@@ -994,9 +1000,34 @@ extends MetaBase<Type<OWNER_TYPE>> {
 	 * given type. -1 when not found.
 	 */
 	def final int inheritedPropertyId(Type<?> type) {
-		val result = requireNonNull(type, "type").inheritedPropertiesToIndex.get(this)
-		if (result === null) {
-			return -1
+		// TODO This can probably be improved ...
+		val typeID = requireNonNull(type, "type").typeId
+		val oldArray = inheritedIndex.get
+		var array = oldArray
+		if (array === null) {
+			array = newByteArrayOfSize(0)
+		}
+		if (array.length <= typeID) {
+			val newArray = newByteArrayOfSize(typeID*2)
+			System.arraycopy(array, 0, newArray, 0, array.length)
+			array = newArray
+		}
+		var result = array.get(typeID)
+		if (result === 0) {
+			result = (-2) as byte
+			var index = 0
+			for (p : type.inheritedProperties) {
+				if (p === this) {
+					result = index as byte
+				}
+				index = index + 1
+			}
+			array.set(typeID, (result + 1) as byte)
+			if (!inheritedIndex.compareAndSet(oldArray, array)) {
+				return inheritedPropertyId(type)
+			}
+		} else if (result !== -1) {
+			result = (result - 1) as byte
 		}
 		result
 	}
@@ -1080,7 +1111,7 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
 	}
 
 	/** Constructor */
-	new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
+	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
 		Class<PROPERTY_TYPE> theContentType, boolean theShared, boolean theActualInstance,
 		boolean theExactType, ObjectFuncObject<PROPERTY_TYPE,OWNER_TYPE> theGetter,
 		ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> theSetter) {
@@ -1173,8 +1204,7 @@ extends ObjectProperty<OWNER_TYPE, PROPERTY_TYPE> {
 
 	/** Check the owner type, and make sure all "system" instances are already properly initialized */
 	private static def checkOwnerType(Type<?> theOwner) {
-		requireNonNull(theOwner, "theOwner")
-		if (!Types.META.allTypes.contains(theOwner)) {
+		if (!MetaBase.isAssignableFrom(requireNonNull(theOwner, "theOwner").type)) {
 			throw new IllegalArgumentException(theOwner+" is not a meta-type")
 		}
 		theOwner
@@ -1195,13 +1225,13 @@ extends ObjectProperty<OWNER_TYPE, PROPERTY_TYPE> {
 	}
 
 	/** Constructor */
-	public new(HierarchyBuilder builder, Type<OWNER_TYPE> theOwner, String theSimpleName,
+	protected new(HierarchyBuilder builder, Type<OWNER_TYPE> theOwner, String theSimpleName,
 		Class<PROPERTY_TYPE> theContentType) {
 		this(builder, theOwner, theSimpleName, theContentType, null)
 	}
 
 	/** Constructor */
-	public new(HierarchyBuilder builder, Type<OWNER_TYPE> theOwner, String theSimpleName,
+	protected new(HierarchyBuilder builder, Type<OWNER_TYPE> theOwner, String theSimpleName,
 		Class<PROPERTY_TYPE> theContentType, PROPERTY_TYPE theDefaultValue) {
 		this(builder.preRegisterProperty(checkOwnerType(theOwner).type as Class<OWNER_TYPE>,
 			theSimpleName, new DummyConverter(theContentType),
@@ -1267,7 +1297,7 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
 		sixtyFourBitPropertyId = theData.sixtyFourBitPropertyId
 		nonLongPropertyId = theData.nonLongPropertyId
 		signed = (theData.type != PropertyType::BOOLEAN) && (theData.type != PropertyType::CHARACTER)
-		val tp = contentType.type
+		val tp = theData.dataType
 		wrapper = (tp == Boolean) || (tp == Byte)
 			|| (tp == Short) || (tp == Character)
 			|| (tp == Integer) || (tp == Long)
@@ -1334,7 +1364,7 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	}
 
 	/** Constructor */
-	public new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner,
+	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner,
 		String theSimpleName, CONVERTER theConverter, Class<PROPERTY_TYPE> dataType,
 		BooleanFuncObject<OWNER_TYPE> theGetter,
 		ObjectFuncObjectBoolean<OWNER_TYPE,OWNER_TYPE> theSetter) {
@@ -1378,7 +1408,7 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 class TrueBooleanProperty<OWNER_TYPE>
 extends BooleanProperty<OWNER_TYPE, Boolean, BooleanConverter<OWNER_TYPE, Boolean>> {
 	/** Constructor */
-	new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
+	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
 		BooleanFuncObject<OWNER_TYPE> theGetter,
 		ObjectFuncObjectBoolean<OWNER_TYPE,OWNER_TYPE> theSetter) {
 		super(builder, theOwner, theSimpleName,
@@ -1416,7 +1446,7 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	}
 
 	/** Constructor */
-	new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
+	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
 		ByteFuncObject<OWNER_TYPE> theGetter,
 		ObjectFuncObjectByte<OWNER_TYPE,OWNER_TYPE> theSetter) {
@@ -1460,7 +1490,7 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 class TrueByteProperty<OWNER_TYPE>
 extends ByteProperty<OWNER_TYPE, Byte, ByteConverter<OWNER_TYPE, Byte>> {
 	/** Constructor */
-	new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
+	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
 		ByteFuncObject<OWNER_TYPE> theGetter,
 		ObjectFuncObjectByte<OWNER_TYPE,OWNER_TYPE> theSetter) {
 		super(builder, theOwner, theSimpleName,
@@ -1498,7 +1528,7 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	}
 
 	/** Constructor */
-	new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
+	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
 		CharFuncObject<OWNER_TYPE> theGetter,
 		ObjectFuncObjectChar<OWNER_TYPE,OWNER_TYPE> theSetter) {
@@ -1542,7 +1572,7 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 class TrueCharacterProperty<OWNER_TYPE>
 extends CharacterProperty<OWNER_TYPE, Character, CharConverter<OWNER_TYPE, Character>> {
 	/** Constructor */
-	new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner,
+	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner,
 		String theSimpleName, CharFuncObject<OWNER_TYPE> theGetter,
 		ObjectFuncObjectChar<OWNER_TYPE,OWNER_TYPE> theSetter) {
 		super(builder, theOwner, theSimpleName,
@@ -1558,7 +1588,7 @@ extends CharacterProperty<OWNER_TYPE, Character, CharConverter<OWNER_TYPE, Chara
  *
  * @author monster
  */
-abstract class ShortProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER
+class ShortProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER
 extends ShortConverter<OWNER_TYPE, PROPERTY_TYPE>>
 extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** The zero-based Short property ID, within the owner type */
@@ -1625,7 +1655,7 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
  class TrueShortProperty<OWNER_TYPE>
 extends ShortProperty<OWNER_TYPE, Short, ShortConverter<OWNER_TYPE, Short>> {
 	/** Constructor */
-	new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
+	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
 		ShortFuncObject<OWNER_TYPE> theGetter,
 		ObjectFuncObjectShort<OWNER_TYPE,OWNER_TYPE> theSetter) {
 		super(builder, theOwner, theSimpleName,
@@ -1663,7 +1693,7 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	}
 
 	/** Constructor */
-	new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
+	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
 		IntFuncObject<OWNER_TYPE> theGetter,
 		ObjectFuncObjectInt<OWNER_TYPE,OWNER_TYPE> theSetter) {
@@ -1707,7 +1737,7 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 class TrueIntegerProperty<OWNER_TYPE>
 extends IntegerProperty<OWNER_TYPE, Integer, IntConverter<OWNER_TYPE, Integer>> {
 	/** Constructor */
-	new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner,
+	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner,
 		String theSimpleName, IntFuncObject<OWNER_TYPE> theGetter,
 		ObjectFuncObjectInt<OWNER_TYPE,OWNER_TYPE> theSetter) {
 		super(builder, theOwner, theSimpleName,
@@ -1723,7 +1753,7 @@ extends IntegerProperty<OWNER_TYPE, Integer, IntConverter<OWNER_TYPE, Integer>> 
  *
  * @author monster
  */
-abstract class FloatProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends FloatConverter<OWNER_TYPE, PROPERTY_TYPE>>
+class FloatProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends FloatConverter<OWNER_TYPE, PROPERTY_TYPE>>
 extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** The zero-based Float property ID, within the owner type */
 	public val int floatPropertyId
@@ -1789,7 +1819,7 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 class TrueFloatProperty<OWNER_TYPE>
 extends FloatProperty<OWNER_TYPE, Float, FloatConverter<OWNER_TYPE, Float>> {
 	/** Constructor */
-	new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
+	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
 		FloatFuncObject<OWNER_TYPE> theGetter,
 		ObjectFuncObjectFloat<OWNER_TYPE,OWNER_TYPE> theSetter) {
 		super(builder, theOwner, theSimpleName,
@@ -1827,7 +1857,7 @@ extends SixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	}
 
 	/** Constructor */
-	new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
+	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
 		LongFuncObject<OWNER_TYPE> theGetter,
 		ObjectFuncObjectLong<OWNER_TYPE,OWNER_TYPE> theSetter) {
@@ -1871,7 +1901,7 @@ extends SixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 class TrueLongProperty<OWNER_TYPE>
 extends LongProperty<OWNER_TYPE, Long, LongConverter<OWNER_TYPE, Long>> {
 	/** Constructor */
-	new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
+	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
 		LongFuncObject<OWNER_TYPE> theGetter,
 		ObjectFuncObjectLong<OWNER_TYPE,OWNER_TYPE> theSetter) {
 		super(builder, theOwner, theSimpleName,
@@ -1887,7 +1917,7 @@ extends LongProperty<OWNER_TYPE, Long, LongConverter<OWNER_TYPE, Long>> {
  *
  * @author monster
  */
-abstract class DoubleProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER
+class DoubleProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER
 extends DoubleConverter<OWNER_TYPE, PROPERTY_TYPE>>
 extends SixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** The zero-based Double property ID, within the owner type */
@@ -1954,7 +1984,7 @@ extends SixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 class TrueDoubleProperty<OWNER_TYPE>
 extends DoubleProperty<OWNER_TYPE, Double, DoubleConverter<OWNER_TYPE, Double>> {
 	/** Constructor */
-	new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner,
+	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner,
 		String theSimpleName, DoubleFuncObject<OWNER_TYPE> theGetter,
 		ObjectFuncObjectDouble<OWNER_TYPE,OWNER_TYPE> theSetter) {
 		super(builder, theOwner, theSimpleName,
@@ -1969,13 +1999,19 @@ extends DoubleProperty<OWNER_TYPE, Double, DoubleConverter<OWNER_TYPE, Double>> 
  *
  * @author monster
  */
-package class MetaHierarchyBuilder extends HierarchyBuilder {
+public class MetaHierarchyBuilder extends HierarchyBuilder {
     private static val LOG = LoggerFactory.getLogger(MetaHierarchyBuilder)
+
+	/** Makes sure all the constants are initialized. Can always be called safely. */
+	static def init() {
+		if (MetaMeta.HIERARCHY.allTypes.length !== 4) {
+			throw new IllegalStateException("META: "+MetaMeta.HIERARCHY.allTypes.toList)
+		}
+	}
 
 	/** Constructor */
 	new() {
 		super(MetaBase)
-		JAVA.toString
 	}
 
 	package override void checkNotClosed() {
@@ -1995,17 +2031,28 @@ package class MetaHierarchyBuilder extends HierarchyBuilder {
 		val result = super.doPreRegisterProperty(theOwner, theSimpleName, theConverter,
 			thePropType, theBits, theMeta, dataType)
 		// Meta properties are never actually registered as part of the (meta) type creation
-		var Type metaType = null
-		for (t : Types.META.allTypes) {
-			if (theOwner == t.type) {
-				metaType = t
-			}
-		}
+		val Type metaType = MetaMeta.HIERARCHY.findType(theOwner as Class)
 		// metaType must be found, since theMeta is true
 		result.ownerType.set(0, metaType)
 		LOG.info("Registering meta-property "+theOwner.name+"."+theSimpleName
 			+"("+dataType.name+")")
 		result
+	}
+
+	/** Creates a Meta Property */
+	def <OWNER_TYPE extends MetaBase<?>, PROPERTY_TYPE> MetaProperty<OWNER_TYPE, PROPERTY_TYPE>
+		newMetaProperty(
+		Type<OWNER_TYPE> theOwner, String theSimpleName,
+		Class<PROPERTY_TYPE> theContentType) {
+		new MetaProperty(this, theOwner, theSimpleName, theContentType, null)
+	}
+
+	/** Creates a Meta Property */
+	def <OWNER_TYPE extends MetaBase<?>, PROPERTY_TYPE> MetaProperty<OWNER_TYPE, PROPERTY_TYPE>
+		newMetaProperty(
+		Type<OWNER_TYPE> theOwner, String theSimpleName,
+		Class<PROPERTY_TYPE> theContentType, PROPERTY_TYPE theDefaultValue) {
+		new MetaProperty(this, theOwner, theSimpleName, theContentType, theDefaultValue)
 	}
 }
 
@@ -2067,119 +2114,109 @@ class TypePackage extends MetaBase<Hierarchy> {
 	}
 
 	/** Constructor */
-	new(HierarchyBuilder builder, Type<?> ... theTypes) {
+	protected new(HierarchyBuilder builder, Type<?> ... theTypes) {
 		this(builder.preRegisterPackage(theTypes))
 	}
 }
 
 /**
- * Offers direct access to the meta-types, and the usual Java types,
- * as well as some other constants.
+ * The "Meta" constant-holding interface for the java.* types.
  */
  @SuppressWarnings("rawtypes")
-public final class Types {
-	private new() {
-		// Cannot be instantiated
-	}
-
-	/** When a Type has no parents */
-	public static val Type<?>[] NO_PARENT = <Type>newArrayOfSize(0)
-
-	/** When a Type has no properties */
-	public static val Property<?,?>[] NO_PROPERTIES = <Property>newArrayOfSize(0)
-
-	// The types belonging to Java itself
+public interface JavaMeta {
 
 	/** The Hierarchy of Java's Runtime Types */
-	private static val JAVA_BUILDER = new HierarchyBuilder(Object)
+	public static val BUILDER = new HierarchyBuilder(Object)
 
 	/** The primitive Serializable Type */
-	public static val SERIALIZABLE = new Type(JAVA_BUILDER, Serializable, null, Kind.Trait)
+	public static val SERIALIZABLE = BUILDER.newType(Serializable, null, Kind.Trait)
 
 	/** The primitive Object Type */
-	public static val OBJECT = new Type(JAVA_BUILDER, Object, null /*[|new Object]*/, Kind.Data)
+	public static val OBJECT = BUILDER.newType(Object, null /*[|new Object]*/, Kind.Data)
 
 	/** The primitive Void Type */
-	public static val VOID = new Type(JAVA_BUILDER, Void, null, Kind.Data)
+	public static val VOID = BUILDER.newType(Void, null, Kind.Data)
 
 	/** The primitive Comparable Type */
-	public static val COMPARABLE = new Type(JAVA_BUILDER, Comparable, null, Kind.Trait)
+	public static val COMPARABLE = BUILDER.newType(Comparable, null, Kind.Trait)
 
 	/** The primitive Number Type */
-	public static val NUMBER = new Type(JAVA_BUILDER, Number, null, Kind.Data, #[SERIALIZABLE])
+	public static val NUMBER = BUILDER.newType(Number, null, Kind.Data, #[SERIALIZABLE])
 
 	/** The primitive Boolean Type */
-	public static val BOOLEAN = new Type(JAVA_BUILDER, Boolean, null /*[|Boolean.FALSE]*/, Kind.Data, #[SERIALIZABLE, COMPARABLE])
+	public static val BOOLEAN = BUILDER.newType(Boolean, null /*[|Boolean.FALSE]*/, Kind.Data, #[SERIALIZABLE, COMPARABLE])
 
 	/** The primitive Byte Type */
-	public static val BYTE = new Type(JAVA_BUILDER, Byte, null /*[|new Byte(0 as byte)]*/, Kind.Data, #[NUMBER, COMPARABLE])
+	public static val BYTE = BUILDER.newType(Byte, null /*[|new Byte(0 as byte)]*/, Kind.Data, #[NUMBER, COMPARABLE])
 
 	/** The primitive Character Type */
-	public static val CHARACTER = new Type(JAVA_BUILDER, Character, null /*[|new Character(0 as char)]*/, Kind.Data, #[SERIALIZABLE, COMPARABLE])
+	public static val CHARACTER = BUILDER.newType(Character, null /*[|new Character(0 as char)]*/, Kind.Data, #[SERIALIZABLE, COMPARABLE])
 
 	/** The primitive Short Type */
-	public static val SHORT = new Type(JAVA_BUILDER, Short, null /*[|new Short(0 as short)]*/, Kind.Data, #[NUMBER, COMPARABLE])
+	public static val SHORT = BUILDER.newType(Short, null /*[|new Short(0 as short)]*/, Kind.Data, #[NUMBER, COMPARABLE])
 
 	/** The primitive Integer Type */
-	public static val INTEGER = new Type(JAVA_BUILDER, Integer, null /*[|new Integer(0)]*/, Kind.Data, #[NUMBER, COMPARABLE])
+	public static val INTEGER = BUILDER.newType(Integer, null /*[|new Integer(0)]*/, Kind.Data, #[NUMBER, COMPARABLE])
 
 	/** The primitive Long Type */
-	public static val LONG = new Type(JAVA_BUILDER, Long, null /*[|new Long(0)]*/, Kind.Data, #[NUMBER, COMPARABLE])
+	public static val LONG = BUILDER.newType(Long, null /*[|new Long(0)]*/, Kind.Data, #[NUMBER, COMPARABLE])
 
 	/** The primitive Float Type */
-	public static val FLOAT = new Type(JAVA_BUILDER, Float, null /*[|new Float(0)]*/, Kind.Data, #[NUMBER, COMPARABLE])
+	public static val FLOAT = BUILDER.newType(Float, null /*[|new Float(0)]*/, Kind.Data, #[NUMBER, COMPARABLE])
 
 	/** The primitive Double Type */
-	public static val DOUBLE = new Type(JAVA_BUILDER, Double, null /*[|new Double(0)]*/, Kind.Data, #[NUMBER, COMPARABLE])
+	public static val DOUBLE = BUILDER.newType(Double, null /*[|new Double(0)]*/, Kind.Data, #[NUMBER, COMPARABLE])
 
 	/** The primitive CharSequence Type */
-	public static val CHAR_SEQUENCE = new Type(JAVA_BUILDER, CharSequence, null, Kind.Trait)
+	public static val CHAR_SEQUENCE = BUILDER.newType(CharSequence, null, Kind.Trait)
 
 	/** The primitive String Type */
-	public static val STRING = new Type(JAVA_BUILDER, String,
+	public static val STRING = BUILDER.newType(String,
 		null /*[|""]*/, Kind.Data, #[SERIALIZABLE, CHAR_SEQUENCE, COMPARABLE])
 
 	/** The java.lang package */
-	public static val JAVA_LANG = new TypePackage(JAVA_BUILDER, OBJECT, VOID,
+	public static val JAVA_LANG_PACKAGE = BUILDER.newTypePackage(OBJECT, VOID,
 		COMPARABLE, NUMBER, BOOLEAN, BYTE, CHARACTER, SHORT, INTEGER, LONG,
 		FLOAT, DOUBLE, CHAR_SEQUENCE, STRING
 	)
 
 	/** The java.io package */
-	public static val JAVA_IO = new TypePackage(JAVA_BUILDER, SERIALIZABLE)
+	public static val JAVA_IO_PACKAGE = BUILDER.newTypePackage(SERIALIZABLE)
 
 	/** The Hierarchy of Java's Runtime Types */
-	public static val JAVA = new Hierarchy(JAVA_BUILDER, JAVA_LANG, JAVA_IO)
+	public static val HIERARCHY = new Hierarchy(BUILDER, JAVA_LANG_PACKAGE, JAVA_IO_PACKAGE)
 
+}
 
-	// The Meta-Types
-
+/**
+ * The "Meta" constant-holding interface for the meta-types themselves.
+ *
+ * The call to JavaMeta.HIERARCHY.findType() in META_BASE forces the Java
+ * Hierarchy to be initialized before the Meta Hierarchy.
+ */
+ @SuppressWarnings("rawtypes")
+public interface MetaMeta {
 	/** The Hierarchy of Meta Types */
-	public static val META_BUILDER = new MetaHierarchyBuilder()
+	public static val BUILDER = new MetaHierarchyBuilder()
 
 	/** The MetaBase Type */
-	public static val META_BASE = new Type(META_BUILDER, MetaBase, null, Kind.Data, #[COMPARABLE])
+	public static val META_BASE = BUILDER.newType(MetaBase, null, Kind.Data,
+		#[JavaMeta.HIERARCHY.findType(Comparable)]
+	)
 
 	/** The TypePackage Type */
-	public static val TYPE_PACKAGE = new Type(META_BUILDER, TypePackage, null, Kind.Data, #[META_BASE])
+	public static val TYPE_PACKAGE = BUILDER.newType(TypePackage, null, Kind.Data, #[META_BASE])
 
 	/** The Type Type */
-	public static val TYPE = new Type(META_BUILDER, Type, null, Kind.Data, #[META_BASE])
+	public static val TYPE = BUILDER.newType(Type, null, Kind.Data, #[META_BASE])
 
 	/** The Property Type */
-	public static val PROPERTY = new Type(META_BUILDER, Property, null, Kind.Data, #[META_BASE])
+	public static val PROPERTY = BUILDER.newType(Property, null, Kind.Data, #[META_BASE])
 
-	/** The java.io package */
-	public static val META_PKG = new TypePackage(META_BUILDER,
+	/** The meta package */
+	public static val COM_BLOCKWITHME_META_PACKAGE = BUILDER.newTypePackage(
 		META_BASE, TYPE_PACKAGE, TYPE, PROPERTY)
 
 	/** The Hierarchy of Meta Types */
-	public static val META = new Hierarchy(META_BUILDER, META_PKG)
-
-	/** Makes sure all the constants are initialized. Can always be called safely. */
-	public static def init() {
-		if (META.allTypes.length !== 4) {
-			throw new IllegalStateException("META: "+META.allTypes.toList)
-		}
-	}
+	public static val HIERARCHY = BUILDER.newHierarchy(COM_BLOCKWITHME_META_PACKAGE)
 }

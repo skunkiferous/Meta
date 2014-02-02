@@ -29,48 +29,43 @@ import com.blockwithme.meta.Type
 import java.util.Collection
 
 /** Base for all data/bean objects */
-public interface BeanBase {
-	/** Returns the Type of the instance */
-    def Type<?> getType()
-
+public interface Bean {
 	/** Returns the true if the instance is immutable */
     def boolean isImmutable()
 
-	/** Returns the 64-bit hashcode */
-    def long hashCode64()
-
 //    /** Returns a full mutable copy */
-//    def BeanBase copy()
+//    def Bean copy()
 //
 //    /** Returns an immutable copy */
-//    def BeanBase snapshot()
+//    def Bean snapshot()
 //
 //    /** Returns a lightweight mutable copy */
-//    def BeanBase wrapper()
+//    def Bean wrapper()
 }
 
-/** "Internal" base for all data/bean objects */
-public interface _BeanBase extends BeanBase {
-	/** Returns true, if some property was changed */
-    def boolean isDirty()
+/**
+ * "Internal" base for all data/bean objects.
+ *
+ * The "selected" state is usually used to keep track of the "dirty" state.
+ */
+public interface _Bean extends Bean {
+	/** Returns the Type of the instance */
+    def Type<?> getMetaType()
 
-	/** Returns true, if the specified property was changed */
-    def boolean isDirty(Property<?,?> prop)
+	/** Returns the 64-bit hashcode */
+    def long getHashCode64()
 
-	/** Marks the specified property as changed */
-    def void setDirty(Property<?,?> prop)
+	/** Returns the current value of the change counter */
+	def int getChangeCounter()
 
-	/** Adds all the changed properties to "changed" */
-    def void getChangedProperty(Collection<Property<?,?>> changed)
-
-	/** Cleans all dirty flags */
-    def void clean()
+	/** Sets the current value of the change counter */
+	def void setChangeCounter(int newValue)
 
 	/** Returns the delegate, if any */
-    def _BeanBase getDelegate()
+    def _Bean getDelegate()
 
 	/** Sets the delegate (can be null) */
-    def void setDelegate(_BeanBase delegate)
+    def void setDelegate(_Bean delegate)
 
 	/** Returns the interceptor (cannot be null) */
     def Interceptor getInterceptor()
@@ -78,73 +73,154 @@ public interface _BeanBase extends BeanBase {
 	/** Sets the interceptor (cannot be null) */
     def void setInterceptor(Interceptor newInterceptor)
 
+    /** Returns the "parent" Bean, if any. */
+    def _Bean getParent()
+
+    /** Sets the "parent" Bean, if any. */
+    def void setParent(_Bean parent)
+
+	/** Returns true, if some property was selected */
+    def boolean isSelected()
+
+	/** Returns true, if some property was selected, either in self, or in children */
+    def boolean isSelectedRecursive()
+
+	/** Returns true, if the specified property was selected */
+    def boolean isSelected(Property<?,?> prop)
+
+	/** Marks the specified property as selected */
+    def void setSelected(Property<?,?> prop)
+
+	/** Adds all the selected properties to "selected" */
+    def void getSelectedProperty(Collection<Property<?,?>> selected)
+
+	/** Cleans all selected flags */
+    def void clearSelection()
+
+	/** Sets all selected flags to true, including the children */
+    def void setSelectionRecursive()
+
     /** Computes the JSON representation */
     def void toJSON(Appendable appendable)
+
+    /** Returns the "root" Bean, if any. */
+    def _Bean getRoot()
+
+    /** Returns true, if this Bean has the same root as the Bean passed as parameter */
+    def boolean hasSameRoot(_Bean other)
+}
+
+
+/**
+ * The "context" within which an Entity exists.
+ * It could be a JPA table, or anything that contains entities.
+ */
+public interface EntityContext {
+	/**
+	 * Returns the unique ID (within this context) of the entity.
+	 * Null maps to null.
+	 */
+	def String getIDAsString(Entity entity)
+
+	/** Finds/loads/creates/.. and entity, based on it's ID. */
+	def Entity getEntityFromID(String idAsString)
+}
+
+/**
+ * Entities are beans that have a "independent lifecycle".
+ * If an Entity is the root of a Bean tree, it "owns" that tree.
+ * Otherwise, it is just "referenced" by the tree.
+ */
+public interface Entity extends Bean {
+	// NOP
+}
+
+/**
+ * "Internal" Entity interface.
+ */
+public interface _Entity extends Entity, _Bean {
+	/** Return the context owning this entity. */
+	def EntityContext getEntityContext()
+
+	/** Sets the context owning this entity. */
+	def void setEntityContext(EntityContext entityContext)
+
+	/** Returns the creation time in milliseconds */
+	def long getCreationTime()
+
+	/** Sets the creation time in milliseconds */
+	def void setCreationTime(long creationTime)
+
+	/** Returns the last modification time in milliseconds */
+	def long getLastModificationTime()
+
+	/** Sets the last modification time in milliseconds */
+	def void setLastModificationTime(long lastModificationTime)
 }
 
 /** Interceptor allows "delegation", "validation", ... */
 public interface Interceptor {
 	/** Intercept the read access to a boolean property */
-    def boolean getBooleanProperty(_BeanBase instance, BooleanProperty<?,?,?> prop, boolean value)
+    def boolean getBooleanProperty(_Bean instance, BooleanProperty<?,?,?> prop, boolean value)
 
 	/** Intercept the write access to a boolean property */
-    def boolean setBooleanProperty(_BeanBase instance, BooleanProperty<?,?,?> prop, boolean oldValue,
+    def boolean setBooleanProperty(_Bean instance, BooleanProperty<?,?,?> prop, boolean oldValue,
             boolean newValue)
 
 	/** Intercept the read access to a byte property */
-    def byte getByteProperty(_BeanBase instance, ByteProperty<?,?,?> prop, byte value)
+    def byte getByteProperty(_Bean instance, ByteProperty<?,?,?> prop, byte value)
 
 	/** Intercept the write access to a boolean property */
-    def byte setByteProperty(_BeanBase instance, ByteProperty<?,?,?> prop, byte oldValue,
+    def byte setByteProperty(_Bean instance, ByteProperty<?,?,?> prop, byte oldValue,
             byte newValue)
 
 	/** Intercept the read access to a char property */
-    def char getCharacterProperty(_BeanBase instance, CharacterProperty<?,?,?> prop, char value)
+    def char getCharacterProperty(_Bean instance, CharacterProperty<?,?,?> prop, char value)
 
 	/** Intercept the write access to a char property */
-    def char setCharacterProperty(_BeanBase instance, CharacterProperty<?,?,?> prop, char oldValue,
+    def char setCharacterProperty(_Bean instance, CharacterProperty<?,?,?> prop, char oldValue,
             char newValue)
 
 	/** Intercept the read access to a short property */
-    def short getShortProperty(_BeanBase instance, ShortProperty<?,?,?> prop, short value)
+    def short getShortProperty(_Bean instance, ShortProperty<?,?,?> prop, short value)
 
 	/** Intercept the write access to a short property */
-    def short setShortProperty(_BeanBase instance, ShortProperty<?,?,?> prop, short oldValue,
+    def short setShortProperty(_Bean instance, ShortProperty<?,?,?> prop, short oldValue,
             short newValue)
 
 	/** Intercept the read access to a int property */
-    def int getIntegerProperty(_BeanBase instance, IntegerProperty<?,?,?> prop, int value)
+    def int getIntegerProperty(_Bean instance, IntegerProperty<?,?,?> prop, int value)
 
 	/** Intercept the write access to a int property */
-    def int setIntegerProperty(_BeanBase instance, IntegerProperty<?,?,?> prop, int oldValue,
+    def int setIntegerProperty(_Bean instance, IntegerProperty<?,?,?> prop, int oldValue,
             int newValue)
 
 	/** Intercept the read access to a float property */
-    def float getFloatProperty(_BeanBase instance, FloatProperty<?,?,?> prop, float value)
+    def float getFloatProperty(_Bean instance, FloatProperty<?,?,?> prop, float value)
 
 	/** Intercept the write access to a float property */
-    def float setFloatProperty(_BeanBase instance, FloatProperty<?,?,?> prop, float oldValue,
+    def float setFloatProperty(_Bean instance, FloatProperty<?,?,?> prop, float oldValue,
             float newValue)
 
 	/** Intercept the read access to a double property */
-    def double getDoubleProperty(_BeanBase instance, DoubleProperty<?,?,?> prop, double value)
+    def double getDoubleProperty(_Bean instance, DoubleProperty<?,?,?> prop, double value)
 
 	/** Intercept the write access to a double property */
-    def double setDoubleProperty(_BeanBase instance, DoubleProperty<?,?,?> prop, double oldValue,
+    def double setDoubleProperty(_Bean instance, DoubleProperty<?,?,?> prop, double oldValue,
             double newValue)
 
 	/** Intercept the read access to a long property */
-    def long getLongProperty(_BeanBase instance, LongProperty<?,?,?> prop, long value)
+    def long getLongProperty(_Bean instance, LongProperty<?,?,?> prop, long value)
 
 	/** Intercept the write access to a long property */
-    def long setLongProperty(_BeanBase instance, LongProperty<?,?,?> prop, long oldValue,
+    def long setLongProperty(_Bean instance, LongProperty<?,?,?> prop, long oldValue,
             long newValue)
 
 	/** Intercept the read access to a Object property */
-    def <E> E getObjectProperty(_BeanBase instance, ObjectProperty<?,E> prop, E value)
+    def <E> E getObjectProperty(_Bean instance, ObjectProperty<?,E> prop, E value)
 
 	/** Intercept the write access to a Object property */
-    def <E> E setObjectProperty(_BeanBase instance, ObjectProperty<?,E> prop, E oldValue,
+    def <E> E setObjectProperty(_Bean instance, ObjectProperty<?,E> prop, E oldValue,
             E newValue)
 
 }

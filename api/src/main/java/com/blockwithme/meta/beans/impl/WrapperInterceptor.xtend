@@ -24,7 +24,7 @@ import com.blockwithme.meta.IntegerProperty
 import com.blockwithme.meta.LongProperty
 import com.blockwithme.meta.ObjectProperty
 import com.blockwithme.meta.ShortProperty
-import com.blockwithme.meta.beans._BeanBase
+import com.blockwithme.meta.beans._Bean
 
 /**
  * Interceptor for "wrapper" beans.
@@ -35,73 +35,73 @@ class WrapperInterceptor extends DefaultInterceptor {
     /** Default instance */
     public static val INSTANCE = new WrapperInterceptor()
 
-	override getBooleanProperty(_BeanBase instance, BooleanProperty prop, boolean value) {
+	override getBooleanProperty(_Bean instance, BooleanProperty prop, boolean value) {
         val delegate = instance.getDelegate()
-        if ((delegate === null) || instance.isDirty(prop)) {
+        if ((delegate === null) || instance.isSelected(prop)) {
             return value
         }
         return prop.getBoolean(delegate)
 	}
 
-	override getByteProperty(_BeanBase instance, ByteProperty prop, byte value) {
+	override getByteProperty(_Bean instance, ByteProperty prop, byte value) {
         val delegate = instance.getDelegate()
-        if ((delegate === null) || instance.isDirty(prop)) {
+        if ((delegate === null) || instance.isSelected(prop)) {
             return value
         }
         return prop.getByte(delegate)
 	}
 
-	override getCharacterProperty(_BeanBase instance, CharacterProperty prop, char value) {
+	override getCharacterProperty(_Bean instance, CharacterProperty prop, char value) {
         val delegate = instance.getDelegate()
-        if ((delegate === null) || instance.isDirty(prop)) {
+        if ((delegate === null) || instance.isSelected(prop)) {
             return value
         }
         return prop.getChar(delegate)
 	}
 
-	override getShortProperty(_BeanBase instance, ShortProperty prop, short value) {
+	override getShortProperty(_Bean instance, ShortProperty prop, short value) {
         val delegate = instance.getDelegate()
-        if ((delegate === null) || instance.isDirty(prop)) {
+        if ((delegate === null) || instance.isSelected(prop)) {
             return value
         }
         return prop.getShort(delegate)
 	}
 
-	override getIntegerProperty(_BeanBase instance, IntegerProperty prop, int value) {
+	override getIntegerProperty(_Bean instance, IntegerProperty prop, int value) {
         val delegate = instance.getDelegate()
-        if ((delegate === null) || instance.isDirty(prop)) {
+        if ((delegate === null) || instance.isSelected(prop)) {
             return value
         }
         return prop.getInt(delegate)
 	}
 
-	override getFloatProperty(_BeanBase instance, FloatProperty prop, float value) {
+	override getFloatProperty(_Bean instance, FloatProperty prop, float value) {
         val delegate = instance.getDelegate()
-        if ((delegate === null) || instance.isDirty(prop)) {
+        if ((delegate === null) || instance.isSelected(prop)) {
             return value
         }
         return prop.getFloat(delegate)
 	}
 
-	override getDoubleProperty(_BeanBase instance, DoubleProperty prop, double value) {
+	override getDoubleProperty(_Bean instance, DoubleProperty prop, double value) {
         val delegate = instance.getDelegate()
-        if ((delegate === null) || instance.isDirty(prop)) {
+        if ((delegate === null) || instance.isSelected(prop)) {
             return value
         }
         return prop.getDouble(delegate)
 	}
 
-	override getLongProperty(_BeanBase instance, LongProperty prop, long value) {
+	override getLongProperty(_Bean instance, LongProperty prop, long value) {
         val delegate = instance.getDelegate()
-        if ((delegate === null) || instance.isDirty(prop)) {
+        if ((delegate === null) || instance.isSelected(prop)) {
             return value
         }
         return prop.getLong(delegate)
 	}
 
-	override <E> getObjectProperty(_BeanBase instance, ObjectProperty<?, E> prop, E value) {
+	override <E> getObjectProperty(_Bean instance, ObjectProperty<?, E> prop, E value) {
         val delegate = instance.getDelegate()
-        if ((delegate === null) || instance.isDirty(prop)) {
+        if ((delegate === null) || instance.isSelected(prop)) {
             return value
         }
         val p = prop as ObjectProperty

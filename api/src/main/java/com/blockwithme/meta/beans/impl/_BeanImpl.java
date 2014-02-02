@@ -15,27 +15,32 @@
  */
 package com.blockwithme.meta.beans.impl;
 
+import java.io.IOException;
+import java.lang.reflect.UndeclaredThrowableException;
 import java.util.Collection;
+import java.util.Objects;
 
+import com.blockwithme.meta.ObjectProperty;
 import com.blockwithme.meta.Property;
 import com.blockwithme.meta.Type;
+import com.blockwithme.meta.beans.Entity;
 import com.blockwithme.meta.beans.Interceptor;
-import com.blockwithme.meta.beans._BeanBase;
+import com.blockwithme.meta.beans._Bean;
 import com.blockwithme.murmur.MurmurHash;
 
 /**
- * BeanBase impl for all data/bean objects (maybe remove requirement later)
+ * Bean impl for all data/bean objects (maybe remove requirement later)
  *
  * This class is written in Java, due to the inability of Xtend to
  * use bitwise operators!
  *
  * @author monster
  */
-public abstract class BeanBaseImpl implements _BeanBase {
+public class _BeanImpl implements _Bean {
     /** Are we immutable? */
     private boolean immutable;
-    /** 64 "dirty" flags; maximum 64 properties! */
-    private long dirty;
+    /** 64 "selected" flags; maximum 64 properties! */
+    private long selected;
     /** Our meta type */
     private Type<?> type;
     /** Lazily cached toString result (null == not computed yet) */
@@ -46,12 +51,18 @@ public abstract class BeanBaseImpl implements _BeanBase {
      * Optional "delegate"; must have the same type as "this".
      * Allows re-using the same generated code for "wrappers" ...
      */
-    protected _BeanBase delegate;
+    protected _Bean delegate;
     /**
      * The required interceptor. It allows customizing the behavior of Beans
      * while only generating a single implementation per type.
      */
-    protected Interceptor interceptor;
+    protected Interceptor interceptor = DefaultInterceptor.INSTANCE;
+
+    /** The "parent" Bean, if any. */
+    private _Bean parent;
+
+    /** The change counter */
+    private int changeCounter;
 
     /** Resets the cached state */
     private void resetCachedState() {
@@ -60,7 +71,7 @@ public abstract class BeanBaseImpl implements _BeanBase {
     }
 
     /** Returns our type */
-    public final Type<?> getType() {
+    public final Type<?> getMetaType() {
         return type;
     }
 
@@ -69,14 +80,30 @@ public abstract class BeanBaseImpl implements _BeanBase {
         return immutable;
     }
 
-    /** Returns true if some property changed */
-    public final boolean isDirty() {
-        return dirty != 0;
+    /** Returns true if some property selected */
+    public final boolean isSelected() {
+        return selected != 0;
+    }
+
+    /** Returns true, if some property was selected, either in self, or in children */
+    public final boolean isSelectedRecursive() {
+        if (isSelected()) {
+            return true;
+        }
+        for (final ObjectProperty p : type.objectProperties) {
+            final Object value = p.getObject(this);
+            if (value instanceof _Bean) {
+                if (((_Bean) value).isSelectedRecursive()) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /** Returns true if the specified property change */
-    public final boolean isDirty(final Property<?, ?> prop) {
-        return (dirty & (1L >> indexOf(prop))) != 0;
+    public final boolean isSelected(final Property<?, ?> prop) {
+        return (selected & (1L >> indexOf(prop))) != 0;
     }
 
     /** Returns the index to use for this property. */
@@ -89,25 +116,26 @@ public abstract class BeanBaseImpl implements _BeanBase {
         return result;
     }
 
-    /** Marks the specified property as changed */
-    public final void setDirty(final Property<?, ?> prop) {
+    /** Marks the specified property as selected */
+    public final void setSelected(final Property<?, ?> prop) {
         if (immutable) {
             throw new UnsupportedOperationException(this + " is immutable!");
         }
-        dirty |= (1L >> indexOf(prop));
-        // Setting the dirty flag also means the content will propably change
+        changeCounter++;
+        selected |= (1L >> indexOf(prop));
+        // Setting the selected flag also means the content will probably change
         // so we reset the cached state.
         resetCachedState();
     }
 
-    /** Clears all the dirty flags */
-    public final void clean() {
+    /** Clears all the selected flags */
+    public final void clearSelection() {
         if (immutable) {
             throw new UnsupportedOperationException(this + " is immutable!");
         }
-        if (dirty != 0) {
-            dirty = 0;
-            // dirty has a special meaning, when used wit a delegate.
+        if (selected != 0) {
+            selected = 0;
+            // selected has a special meaning, when used wit a delegate.
             // This could cause the apparent "content" of the bean to change.
             if (delegate != null) {
                 resetCachedState();
@@ -115,21 +143,32 @@ public abstract class BeanBaseImpl implements _BeanBase {
         }
     }
 
-    /** Adds all the changed properties to "changed" */
-    public final void getChangedProperty(
-            final Collection<Property<?, ?>> changed) {
-        changed.clear();
-        if (isDirty()) {
+    /** Adds all the selected properties to "selected" */
+    public final void getSelectedProperty(
+            final Collection<Property<?, ?>> selected) {
+        selected.clear();
+        if (isSelected()) {
             for (final Property<?, ?> p : type.properties) {
-                if (isDirty(p)) {
-                    changed.add(p);
+                if (isSelected(p)) {
+                    selected.add(p);
                 }
             }
         }
     }
 
+    /** Sets all selected flags to true, including the children */
+    public final void setSelectionRecursive() {
+        selected = -1L;
+        for (final ObjectProperty p : type.objectProperties) {
+            final Object value = p.getObject(this);
+            if (value instanceof _Bean) {
+                ((_Bean) value).setSelectionRecursive();
+            }
+        }
+    }
+
     /** Returns the 64 bit hashcode */
-    public final long hashCode64() {
+    public final long getHashCode64() {
         if (hashCode64 == 0) {
             hashCode64 = MurmurHash.hash64(toString());
             if (hashCode64 == 0) {
@@ -142,13 +181,21 @@ public abstract class BeanBaseImpl implements _BeanBase {
     /** Returns the 32 bit hashcode */
     @Override
     public final int hashCode() {
-        final long value = hashCode64();
+        final long value = getHashCode64();
         return (int) (value ^ (value >>> 32));
     }
 
     /** Computes the JSON representation */
     public final void toJSON(final Appendable appendable) {
-        new JSONBeanSerializer(appendable, this).visit();
+        try {
+            final JacksonSerializer j = JacksonSerializer
+                    .newSerializer(appendable);
+            j.visit(this);
+            j.generator.flush();
+            j.generator.close();
+        } catch (final IOException e) {
+            throw new UndeclaredThrowableException(e);
+        }
     }
 
     /** Returns the String representation */
@@ -172,8 +219,8 @@ public abstract class BeanBaseImpl implements _BeanBase {
         if (obj == this) {
             return true;
         }
-        final BeanBaseImpl other = (BeanBaseImpl) obj;
-        if (hashCode64() != other.hashCode64()) {
+        final _BeanImpl other = (_BeanImpl) obj;
+        if (getHashCode64() != other.getHashCode64()) {
             return false;
         }
         // Inequality here is very unlikely.
@@ -183,12 +230,12 @@ public abstract class BeanBaseImpl implements _BeanBase {
     }
 
     /** Returns the delegate */
-    public final _BeanBase getDelegate() {
+    public final _Bean getDelegate() {
         return delegate;
     }
 
     /** Sets the delegate */
-    public final void setDelegate(final _BeanBase delegate) {
+    public final void setDelegate(final _Bean delegate) {
         if (this.delegate != delegate) {
             if ((delegate != null) && (delegate.getClass() != getClass())) {
                 throw new IllegalArgumentException("Expected type: "
@@ -198,10 +245,15 @@ public abstract class BeanBaseImpl implements _BeanBase {
                 throw new IllegalArgumentException(
                         "Self-reference not allowed!");
             }
-            // Does NOT affect "dirty state"
+            // Does NOT affect "selected state"
             this.delegate = delegate;
             // This could cause the apparent "content" of the bean to change.
             resetCachedState();
+            if (delegate == null) {
+                interceptor = DefaultInterceptor.INSTANCE;
+            } else {
+                interceptor = WrapperInterceptor.INSTANCE;
+            }
         }
     }
 
@@ -216,15 +268,63 @@ public abstract class BeanBaseImpl implements _BeanBase {
             if (interceptor == null) {
                 throw new IllegalArgumentException("interceptor cannot be null");
             }
-            // Does NOT affect "dirty state"
+            // Does NOT affect "selected state"
             this.interceptor = interceptor;
             // This could cause the apparent "content" of the bean to change.
             resetCachedState();
         }
     }
 
+    /** Returns the "parent" Bean, if any. */
+    public final _Bean getParent() {
+        return parent;
+    }
+
+    /** Sets the "parent" Bean, if any. */
+    public final void setParent(final _Bean parent) {
+        if (this instanceof Entity) {
+            if (parent != null) {
+                throw new UnsupportedOperationException(getClass().getName()
+                        + ": Entities do not have parents");
+            }
+        }
+        this.parent = parent;
+    }
+
+    /** Returns the "root" Bean, if any. */
+    public final _Bean getRoot() {
+        _Bean result = null;
+        // parent is always null for Entities
+        if (parent != null) {
+            result = parent;
+            _Bean p = result.getParent();
+            while (p != null) {
+                result = p;
+                p = result.getParent();
+            }
+        }
+        return result;
+    }
+
+    /** Returns true, if this Bean has the same root as the Bean passed as parameter */
+    public final boolean hasSameRoot(final _Bean other) {
+        return (this == other)
+                || (getRoot() == Objects.requireNonNull(other, "other")
+                        .getRoot());
+    }
+
+    /** Returns the current value of the change counter */
+    public final int getChangeCounter() {
+        return changeCounter;
+    }
+
+    /** Sets the current value of the change counter */
+    public final void setChangeCounter(final int newValue) {
+        changeCounter = newValue;
+    }
+
 //    /** Copies the content of another instance of the same type. */
-//    private void copyFrom(final BeanBaseImpl other) {
+//    private void copyFrom(final BeanImpl other) {
 //        if (other == null) {
 //            throw new IllegalArgumentException("other cannot be null");
 //        }
