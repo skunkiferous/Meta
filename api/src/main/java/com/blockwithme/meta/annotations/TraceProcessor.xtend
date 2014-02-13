@@ -45,7 +45,7 @@ annotation Trace {}
  *
  * @author monster
  */
-class TraceProcessor extends TypeProcessor {
+class TraceProcessor extends Processor {
 
 	new() {
 		super(null)
@@ -56,14 +56,14 @@ class TraceProcessor extends TypeProcessor {
 		warn(TraceProcessor, "register", td, td.qualifiedName)
 	}
 
-	/** Generate new types, registered earlier. */
-	override void generate(TypeDeclaration td, CodeGenerationContext context) {
-		warn(TraceProcessor, "generate", td, td.qualifiedName)
-	}
-
 	/** Transform types, new or old. */
 	override void transform(MutableTypeDeclaration mtd, TransformationContext context) {
 		warn(TraceProcessor, "transform", mtd, "transform: "+mtd.qualifiedName+"\n "
 			+mtd.describeTypeDeclaration(context))
+	}
+
+	/** Generate new types, registered earlier. */
+	override void generate(TypeDeclaration td, CodeGenerationContext context) {
+		warn(TraceProcessor, "generate", td, td.qualifiedName)
 	}
 }

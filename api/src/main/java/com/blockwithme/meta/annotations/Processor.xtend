@@ -23,18 +23,22 @@ import org.eclipse.xtend.lib.macro.RegisterGlobalsContext
 import org.eclipse.xtend.lib.macro.TransformationContext
 import org.eclipse.xtend.lib.macro.declaration.MutableTypeDeclaration
 import org.eclipse.xtend.lib.macro.declaration.TypeDeclaration
+import org.eclipse.xtend.lib.macro.declaration.AnnotationTypeDeclaration
+import org.eclipse.xtend.lib.macro.declaration.ClassDeclaration
+import org.eclipse.xtend.lib.macro.declaration.EnumerationTypeDeclaration
+import org.eclipse.xtend.lib.macro.declaration.InterfaceDeclaration
+
+interface Filter extends BooleanFuncObjectObject<ProcessorUtil,TypeDeclaration> {
+	// NOP
+}
 
 /**
  * Filter for Annotations, that take the (optional) inherited nature of annotations into account.
  */
-package final class AnnotationFilter implements BooleanFuncObjectObject<ProcessorUtil,TypeDeclaration> {
-	val String name
-	val boolean inherited
-
-	new(String name, boolean inherited) {
-		this.name = name
-		this.inherited = inherited
-	}
+@Data
+package class AnnotatedFilter implements Filter {
+	String name
+	boolean inherited
 
 	private static def check(extension ProcessorUtil processorUtil, TypeDeclaration orig, TypeDeclaration td, String name) {
 		hasDirectAnnotation(td, name)
@@ -51,9 +55,69 @@ package final class AnnotationFilter implements BooleanFuncObjectObject<Processo
 		}
 		check(processorUtil, td, td, name)
 	}
+}
 
-	override final toString() {
-		"AnnotationFilter(name="+name+",inherited="+inherited+")"
+/**
+ * Combines Filters using the AND logic operator
+ */
+@Data
+package class AndFilter implements Filter {
+	Filter[] others
+
+	override apply(extension ProcessorUtil processorUtil, TypeDeclaration td) {
+		for (f : others) {
+			if (!f.apply(processorUtil, td)) {
+				return false
+			}
+		}
+		true
+	}
+}
+
+/**
+ * Combines Filters using the OR logic operator
+ */
+@Data
+package class OrFilter implements Filter {
+	Filter[] others
+
+	override apply(extension ProcessorUtil processorUtil, TypeDeclaration td) {
+		for (f : others) {
+			if (f.apply(processorUtil, td)) {
+				return true
+			}
+		}
+		false
+	}
+}
+
+/**
+ * Negates the result of another Filter
+ */
+@Data
+package class NotFilter implements Filter {
+	Filter other
+
+	override apply(extension ProcessorUtil processorUtil, TypeDeclaration td) {
+		!other.apply(processorUtil, td)
+	}
+}
+
+/**
+ * Accepts, if the validated type has the desired type as parent
+ * (either base class or implemented interface)
+ */
+@Data
+package class ParentFilter implements Filter {
+	String parent
+
+	override apply(extension ProcessorUtil processorUtil, TypeDeclaration td) {
+		for (p : processorUtil.findParents(td)) {
+			if (p.qualifiedName == parent) {
+				return true
+			}
+		}
+		false
 	}
 }
 
@@ -65,22 +129,50 @@ package final class AnnotationFilter implements BooleanFuncObjectObject<Processo
  * @author monster
  */
 class Processor<T extends TypeDeclaration, M extends MutableTypeDeclaration> {
-	val BooleanFuncObjectObject<ProcessorUtil,TypeDeclaration> filter
+	val Filter filter
 	protected var extension ProcessorUtil processorUtil
 
-	protected static def BooleanFuncObjectObject<ProcessorUtil,TypeDeclaration> withAnnotation(String name, boolean inherited) {
-		new AnnotationFilter(name, inherited)
+	protected static def Filter withAnnotation(String name, boolean inherited) {
+		new AnnotatedFilter(name, inherited)
 	}
 
-	protected static def BooleanFuncObjectObject<ProcessorUtil,TypeDeclaration> withAnnotation(Class<? extends Annotation> type) {
+	protected static def Filter withAnnotation(Class<? extends Annotation> type) {
 		withAnnotation(type.name, type.annotations.exists[annotationType === Inherited])
 	}
+
+	protected static def Filter and(Filter ... filters) {
+		new AndFilter(filters)
+	}
+
+	protected static def Filter or(Filter ... filters) {
+		new OrFilter(filters)
+	}
+
+	protected static def Filter not(Filter filter) {
+		new NotFilter(filter)
+	}
+
+	protected static def Filter hasParent(String qualifiedName) {
+		new ParentFilter(qualifiedName)
+	}
+
+	protected static def Filter hasParent(Class<?> parent) {
+		new ParentFilter(parent.name)
+	}
+
+	protected static val Filter isAnnotation = [pu,td|td instanceof AnnotationTypeDeclaration]
+
+	protected static val Filter isClass = [pu,td|td instanceof ClassDeclaration]
+
+	protected static val Filter isEnum = [pu,td|td instanceof EnumerationTypeDeclaration]
+
+	protected static val Filter isInterface = [pu,td|td instanceof InterfaceDeclaration]
 
 	/**
 	 * Creates a processor with an *optional* filter.
 	 * If specified, the filter must return *true* to accept a type.
 	 */
-	protected new(BooleanFuncObjectObject<ProcessorUtil,TypeDeclaration> filter) {
+	protected new(Filter filter) {
 		this.filter = filter
 	}
 
@@ -123,13 +215,13 @@ class Processor<T extends TypeDeclaration, M extends MutableTypeDeclaration> {
 		// NOP
 	}
 
-	/** Generate new types, registered earlier. */
-	def void generate(T td, CodeGenerationContext context) {
+	/** Transform types, new or old. */
+	def void transform(M mtd, TransformationContext context) {
 		// NOP
 	}
 
-	/** Transform types, new or old. */
-	def void transform(M mtd, TransformationContext context) {
+	/** Generate new types, registered earlier. */
+	def void generate(T td, CodeGenerationContext context) {
 		// NOP
 	}
 }

@@ -48,6 +48,7 @@ import com.blockwithme.meta.converter.ShortConverter
 import com.blockwithme.meta.converter.FloatConverter
 import com.blockwithme.meta.converter.DoubleConverter
 import com.blockwithme.meta.converter.LongConverter
+import javax.inject.Provider
 
 /**
  * HierarchyBuilder records the temporary information needed to construct
@@ -422,12 +423,12 @@ class HierarchyBuilder {
 	}
 
 	/* Helper method, to completely hide the implementation of interfaces */
-	def <JAVA_TYPE> Functions.Function0<JAVA_TYPE> createProvider(Class<JAVA_TYPE> interfaze) {
+	def <JAVA_TYPE> Provider<JAVA_TYPE> createProvider(Class<JAVA_TYPE> interfaze) {
 		val pkg = requireNonNull(interfaze, "interfaze").package.name
 		val name = interfaze.simpleName
 		val providerName = pkg+".impl."+name+"ImplProvider"
 		val impl = Class.forName(providerName)
-		impl.newInstance as Functions.Function0<JAVA_TYPE>
+		impl.newInstance as Provider<JAVA_TYPE>
 	}
 
 	// Now comes the factory methods
@@ -759,14 +760,14 @@ class HierarchyBuilder {
 
 	/** Creates a new Type */
 	def <JAVA_TYPE> Type<JAVA_TYPE> newType(Class<JAVA_TYPE> theType,
-		Functions.Function0<JAVA_TYPE> theConstructor, Kind theKind,
+		Provider<JAVA_TYPE> theConstructor, Kind theKind,
 		Property<JAVA_TYPE,?> ... theProperties) {
 		new Type(this, theType, theConstructor, theKind, theProperties)
 	}
 
 	/** Creates a new Type */
 	def <JAVA_TYPE> Type<JAVA_TYPE> newType(Class<JAVA_TYPE> theType,
-		Functions.Function0<JAVA_TYPE> theConstructor, Kind theKind, Type<?>[] theParents,
+		Provider<JAVA_TYPE> theConstructor, Kind theKind, Type<?>[] theParents,
 		Property<JAVA_TYPE,?> ... theProperties) {
 		new Type(this, theType, theConstructor, theKind, theParents, theProperties)
 	}

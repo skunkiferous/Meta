@@ -117,7 +117,7 @@ package class FieldInfo {
  * Register Global phase registers two new classes for each Trait interface XYATrait class and XYZTemplate class.
  * Transformation phase generates the implementation of these classes.
  */
-class TraitProcessor extends InterfaceProcessor {
+class TraitProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDeclaration> {
 	/** The following type references are resolved at the setup time */
 	var Type traitAnnotation
 	var TypeReference builderType
@@ -132,7 +132,7 @@ class TraitProcessor extends InterfaceProcessor {
 
 	/** Public constructor for this class. */
 	new() {
-		super(withAnnotation(Trait))
+		super(and(withAnnotation(Trait),isInterface))
 	}
 
 	/** Returns true, if this type is an Interface that should be processed. */

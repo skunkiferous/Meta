@@ -58,6 +58,7 @@ import java.util.HashSet
 import java.util.Set
 import java.util.concurrent.atomic.AtomicReference
 import java.util.Arrays
+import javax.inject.Provider
 
 /**
  * Hierarchy represents a Type hierarchy. It is not limited to types in the
@@ -475,7 +476,7 @@ interface Typed<JAVA_TYPE> {
 }
 
 /** Dummy constructor object */
-package class NoConstructor<JAVA_TYPE> implements Functions.Function0<JAVA_TYPE> {
+package class NoConstructor<JAVA_TYPE> implements Provider<JAVA_TYPE> {
 	val String type
 	new(String theTypeName) {
 		type = requireNonNull(theTypeName, "theTypeName")
@@ -483,7 +484,7 @@ package class NoConstructor<JAVA_TYPE> implements Functions.Function0<JAVA_TYPE>
 	new(Class<JAVA_TYPE> theType) {
 		type = requireNonNull(theType, "theType").name
 	}
-	override apply() {
+	override get() {
 		throw new UnsupportedOperationException("Instances of type "+type
 			+" cannot be created (without parameters?)")
 	}
@@ -638,30 +639,30 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
     public val Kind kind
 
     /** The default builder instance */
-    public val Functions.Function0<JAVA_TYPE> constructor
+    public val Provider<JAVA_TYPE> constructor
 
-	private static def <JAVA_TYPE> Functions.Function0<JAVA_TYPE> asFunction0(Class<JAVA_TYPE> theType) {
+	private static def <JAVA_TYPE> Provider<JAVA_TYPE> asProvider(Class<JAVA_TYPE> theType) {
 		val NoConstructor<JAVA_TYPE> tmp = new NoConstructor<JAVA_TYPE>(theType)
-		tmp as Functions.Function0<JAVA_TYPE>
+		tmp as Provider<JAVA_TYPE>
 	}
 
 	/** Constructor */
 	protected new(HierarchyBuilder builder, Class<JAVA_TYPE> theType,
-		Functions.Function0<JAVA_TYPE> theConstructor, Kind theKind,
+		Provider<JAVA_TYPE> theConstructor, Kind theKind,
 		Property<JAVA_TYPE,?> ... theProperties) {
 		this(builder.preRegisterType(theType), theType, theConstructor, theKind, Type::NO_PARENT, theProperties)
 	}
 
 	/** Constructor */
 	protected new(HierarchyBuilder builder, Class<JAVA_TYPE> theType,
-		Functions.Function0<JAVA_TYPE> theConstructor, Kind theKind, Type<?>[] theParents,
+		Provider<JAVA_TYPE> theConstructor, Kind theKind, Type<?>[] theParents,
 		Property<JAVA_TYPE,?> ... theProperties) {
 		this(builder.preRegisterType(theType), theType, theConstructor, theKind, theParents, theProperties)
 	}
 
 	/** Constructor */
 	private new(TypeRegistration registration, Class<JAVA_TYPE> theType,
-		Functions.Function0<JAVA_TYPE> theConstructor, Kind theKind,
+		Provider<JAVA_TYPE> theConstructor, Kind theKind,
 		Type<?>[] theParents, Property<JAVA_TYPE,?>[] theProperties) {
 		super(requireNonNull(theType, "theType").name,
 			theType.simpleName, requireNonNull(registration, "registration").globalId)
@@ -671,7 +672,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 		}
 		primitive = primTypes.contains(theType)
 		type = theType
-		constructor = if (theConstructor == null) asFunction0(theType) else theConstructor
+		constructor = if (theConstructor == null) asProvider(theType) else theConstructor
 		kind = requireNonNull(theKind, "theKind")
 		val TreeSet<Type<?>> pset = new TreeSet(checkArray(theParents, "theParents"))
 		val TreeSet<Type<?>> pallset = new TreeSet(pset)
@@ -859,7 +860,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 
 	/** Delegates to "constructor" to allow the creation of instances of the type. */
 	def final JAVA_TYPE create() {
-		constructor.apply()
+		constructor.get()
 	}
 }
 

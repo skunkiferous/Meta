@@ -827,6 +827,33 @@ class ProcessorUtil implements TypeReferenceProvider {
 		false
 	}
 
+	/** Utility method that removes generics type arguments from the class.qualifiedName */
+	final def removeGeneric(String className) {
+		val index = className.indexOf("<")
+		if (index > 0)
+			className.substring(0, index)
+		else
+			className
+	}
+
+	/** Utility method checks if a type is a Functor type. */
+	final def isFunctor(TypeReference fieldType) {
+		(getFunctor()).isAssignableFrom(fieldType)
+	}
+
+	/** Utility method checks if a type is a String type. */
+	final def isString(TypeReference fieldType) {
+		getString().isAssignableFrom(fieldType)
+	}
+
+	/** Checks if fieldType is of 'java.util.List' type. */
+	final def isList(TypeReference fieldType) {
+		if (fieldType.actualTypeArguments.size > 0) {
+			getList().isAssignableFrom(fieldType.name.removeGeneric.newTypeReference)
+		} else
+			getList().isAssignableFrom(fieldType)
+	}
+
 	final def Type findTypeGlobally(Class<?> type) {
 		compilationUnit.typeLookup.findTypeGlobally(type)
 	}
@@ -965,6 +992,10 @@ class ProcessorUtil implements TypeReferenceProvider {
 
 	override getString() {
 		compilationUnit.typeReferenceProvider.getString()
+	}
+
+	def getClassTypeRef() {
+		compilationUnit.typeReferenceProvider.newTypeReference(Class)
 	}
 
 	override newArrayTypeReference(TypeReference componentType) {
