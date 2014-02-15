@@ -15,7 +15,6 @@
  */
 package com.blockwithme.meta.annotations
 
-import com.blockwithme.fn2.BooleanFuncObjectObject
 import java.lang.annotation.Annotation
 import java.lang.annotation.Inherited
 import org.eclipse.xtend.lib.macro.CodeGenerationContext
@@ -27,9 +26,11 @@ import org.eclipse.xtend.lib.macro.declaration.AnnotationTypeDeclaration
 import org.eclipse.xtend.lib.macro.declaration.ClassDeclaration
 import org.eclipse.xtend.lib.macro.declaration.EnumerationTypeDeclaration
 import org.eclipse.xtend.lib.macro.declaration.InterfaceDeclaration
+import java.util.Map
 
-interface Filter extends BooleanFuncObjectObject<ProcessorUtil,TypeDeclaration> {
-	// NOP
+/** Filter used to allow composition of "requirements" in the accept() method of a Processor */
+interface Filter {
+	def boolean apply(Map<String,Object> processingContext, ProcessorUtil processorUtil, TypeDeclaration typeDeclaration)
 }
 
 /**
@@ -44,7 +45,7 @@ package class AnnotatedFilter implements Filter {
 		hasDirectAnnotation(td, name)
 	}
 
-	override apply(extension ProcessorUtil processorUtil, TypeDeclaration td) {
+	override apply(Map<String,Object> processingContext, extension ProcessorUtil processorUtil, TypeDeclaration td) {
 		if (inherited) {
 			for (parent : findParents(td)) {
 				if (check(processorUtil, td, parent, name)) {
@@ -64,9 +65,9 @@ package class AnnotatedFilter implements Filter {
 package class AndFilter implements Filter {
 	Filter[] others
 
-	override apply(extension ProcessorUtil processorUtil, TypeDeclaration td) {
+	override apply(Map<String,Object> processingContext, extension ProcessorUtil processorUtil, TypeDeclaration td) {
 		for (f : others) {
-			if (!f.apply(processorUtil, td)) {
+			if (!f.apply(processingContext, processorUtil, td)) {
 				return false
 			}
 		}
@@ -81,9 +82,9 @@ package class AndFilter implements Filter {
 package class OrFilter implements Filter {
 	Filter[] others
 
-	override apply(extension ProcessorUtil processorUtil, TypeDeclaration td) {
+	override apply(Map<String,Object> processingContext, extension ProcessorUtil processorUtil, TypeDeclaration td) {
 		for (f : others) {
-			if (f.apply(processorUtil, td)) {
+			if (f.apply(processingContext, processorUtil, td)) {
 				return true
 			}
 		}
@@ -98,8 +99,8 @@ package class OrFilter implements Filter {
 package class NotFilter implements Filter {
 	Filter other
 
-	override apply(extension ProcessorUtil processorUtil, TypeDeclaration td) {
-		!other.apply(processorUtil, td)
+	override apply(Map<String,Object> processingContext, extension ProcessorUtil processorUtil, TypeDeclaration td) {
+		!other.apply(processingContext, processorUtil, td)
 	}
 }
 
@@ -111,7 +112,7 @@ package class NotFilter implements Filter {
 package class ParentFilter implements Filter {
 	String parent
 
-	override apply(extension ProcessorUtil processorUtil, TypeDeclaration td) {
+	override apply(Map<String,Object> processingContext, extension ProcessorUtil processorUtil, TypeDeclaration td) {
 		for (p : processorUtil.findParents(td)) {
 			if (p.qualifiedName == parent) {
 				return true
@@ -129,7 +130,34 @@ package class ParentFilter implements Filter {
  * @author monster
  */
 class Processor<T extends TypeDeclaration, M extends MutableTypeDeclaration> {
+	/** processingContext key for the complete list of types in the compilation unit.  */
+	public static val PC_ALL_FILE_TYPES = "PC_ALL_FILE_TYPES"
+
+	/** processingContext key for the list of not-yet-processed types in the compilation unit.  */
+	public static val PC_TODO_TYPES = "PC_TODO_TYPES"
+
+	/** processingContext key for the list of processed types in the compilation unit.  */
+	public static val PC_DONE_TYPES = "PC_DONE_TYPES"
+
+	/** processingContext key for the currently processed type in the compilation unit.  */
+	public static val PC_PROCESSED_TYPE = "PC_PROCESSED_TYPE"
+
+	/** processingContext key for the complete list of processors.  */
+	public static val PC_ALL_PROCESSORS = "PC_ALL_PROCESSORS"
+
+	/** processingContext key for the list of not-yet-called processors for the currently processed type.  */
+	public static val PC_TODO_PROCESSORS = "PC_TODO_PROCESSORS"
+
+	/** processingContext key for the list of called processors for the currently processed type.  */
+	public static val PC_DONE_PROCESSORS = "PC_DONE_PROCESSORS"
+
+	/** processingContext key for the currently called processor for the currently processed type.  */
+	public static val PC_CURRENT_PROCESSOR = "PC_CURRENT_PROCESSOR"
+
+	/** The optional FIlter, used in accept() */
 	val Filter filter
+
+	/** The "shared" ProcessorUtil instance */
 	protected var extension ProcessorUtil processorUtil
 
 	protected static def Filter withAnnotation(String name, boolean inherited) {
@@ -160,13 +188,13 @@ class Processor<T extends TypeDeclaration, M extends MutableTypeDeclaration> {
 		new ParentFilter(parent.name)
 	}
 
-	protected static val Filter isAnnotation = [pu,td|td instanceof AnnotationTypeDeclaration]
+	protected static val Filter isAnnotation = [pc,pu,td|td instanceof AnnotationTypeDeclaration]
 
-	protected static val Filter isClass = [pu,td|td instanceof ClassDeclaration]
+	protected static val Filter isClass = [pc,pu,td|td instanceof ClassDeclaration]
 
-	protected static val Filter isEnum = [pu,td|td instanceof EnumerationTypeDeclaration]
+	protected static val Filter isEnum = [pc,pu,td|td instanceof EnumerationTypeDeclaration]
 
-	protected static val Filter isInterface = [pu,td|td instanceof InterfaceDeclaration]
+	protected static val Filter isInterface = [pc,pu,td|td instanceof InterfaceDeclaration]
 
 	/**
 	 * Creates a processor with an *optional* filter.
@@ -206,22 +234,22 @@ class Processor<T extends TypeDeclaration, M extends MutableTypeDeclaration> {
 	}
 
 	/** Returns true, if this type should be processed. */
-	def boolean accept(TypeDeclaration td) {
-		(filter === null) || filter.apply(processorUtil,td)
+	def boolean accept(Map<String,Object> processingContext, TypeDeclaration td) {
+		(filter === null) || filter.apply(processingContext, processorUtil,td)
 	}
 
 	/** Register new types, to be generated later. */
-	def void register(T td, RegisterGlobalsContext context) {
+	def void register(Map<String,Object> processingContext, T td, RegisterGlobalsContext context) {
 		// NOP
 	}
 
 	/** Transform types, new or old. */
-	def void transform(M mtd, TransformationContext context) {
+	def void transform(Map<String,Object> processingContext, M mtd, TransformationContext context) {
 		// NOP
 	}
 
 	/** Generate new types, registered earlier. */
-	def void generate(T td, CodeGenerationContext context) {
+	def void generate(Map<String,Object> processingContext, T td, CodeGenerationContext context) {
 		// NOP
 	}
 }

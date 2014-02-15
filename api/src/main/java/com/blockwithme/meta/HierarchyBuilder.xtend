@@ -795,7 +795,7 @@ class HierarchyBuilder {
 	}
 
 	/** Creates a new Hierarchy */
-	def Hierarchy newHierarchy(HierarchyBuilder builder) {
+	def Hierarchy newHierarchy() {
 		newHierarchy(newArrayOfSize(0), newArrayOfSize(0))
 	}
 }

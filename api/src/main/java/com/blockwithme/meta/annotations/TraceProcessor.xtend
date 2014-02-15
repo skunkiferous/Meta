@@ -28,6 +28,7 @@ import java.lang.annotation.Retention
 import java.lang.annotation.RetentionPolicy
 import java.lang.annotation.Inherited
 import org.eclipse.xtend.lib.macro.Active
+import java.util.Map
 
 /**
  * Annotation for "traits"
@@ -45,25 +46,25 @@ annotation Trace {}
  *
  * @author monster
  */
-class TraceProcessor extends Processor {
+class TraceProcessor extends Processor<TypeDeclaration, MutableTypeDeclaration> {
 
 	new() {
 		super(null)
 	}
 
 	/** Register new types, to be generated later. */
-	override void register(TypeDeclaration td, RegisterGlobalsContext context) {
+	override void register(Map<String,Object> processingContext, TypeDeclaration td, RegisterGlobalsContext context) {
 		warn(TraceProcessor, "register", td, td.qualifiedName)
 	}
 
 	/** Transform types, new or old. */
-	override void transform(MutableTypeDeclaration mtd, TransformationContext context) {
+	override void transform(Map<String,Object> processingContext, MutableTypeDeclaration mtd, TransformationContext context) {
 		warn(TraceProcessor, "transform", mtd, "transform: "+mtd.qualifiedName+"\n "
 			+mtd.describeTypeDeclaration(context))
 	}
 
 	/** Generate new types, registered earlier. */
-	override void generate(TypeDeclaration td, CodeGenerationContext context) {
+	override void generate(Map<String,Object> processingContext, TypeDeclaration td, CodeGenerationContext context) {
 		warn(TraceProcessor, "generate", td, td.qualifiedName)
 	}
 }

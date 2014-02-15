@@ -55,6 +55,7 @@ import com.google.inject.Provider
 import org.eclipse.xtend.lib.macro.declaration.MutableFieldDeclaration
 import org.eclipse.xtend2.lib.StringConcatenationClient
 import org.eclipse.xtend2.lib.StringConcatenationClient.TargetStringConcatenation
+import java.util.Map
 
 /**
  * Annotation for "traits"
@@ -136,8 +137,8 @@ class TraitProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecl
 	}
 
 	/** Returns true, if this type is an Interface that should be processed. */
-	override boolean accept(TypeDeclaration td) {
-		super.accept(td) && isValidTrait(td)
+	override boolean accept(Map<String,Object> processingContext, TypeDeclaration td) {
+		super.accept(processingContext, td) && isValidTrait(td)
 	}
 
 	/** Called before processing a file. */
@@ -1411,7 +1412,7 @@ class TraitProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecl
 	}
 
 	/** Register new types, to be generated later. */
-	override void register(InterfaceDeclaration td, RegisterGlobalsContext context) {
+	override void register(Map<String,Object> processingContext, InterfaceDeclaration td, RegisterGlobalsContext context) {
 		val traitName = td.qualifiedName + "Trait"
 		if (findTypeGlobally(traitName) === null) {
 			context.registerClass(traitName)
@@ -1422,7 +1423,7 @@ class TraitProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecl
 	}
 
 	/** Transform types, new or old. */
-	override void transform(MutableInterfaceDeclaration mtd, TransformationContext context) {
+	override void transform(Map<String,Object> processingContext, MutableInterfaceDeclaration mtd, TransformationContext context) {
 		//Add getters and Setters to interface.
 		// TODO If using inheritance, we should return the "update" the return-type
 		// of the generated property setters. Either through re-declaration, or
