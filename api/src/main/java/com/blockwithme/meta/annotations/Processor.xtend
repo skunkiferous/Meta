@@ -123,6 +123,46 @@ package class ParentFilter implements Filter {
 }
 
 /**
+ * Returns true, if the TypeDeclaration is an annotation
+ */
+@Data
+package class IsAnnotationFilter implements Filter {
+	override apply(Map<String,Object> processingContext, extension ProcessorUtil processorUtil, TypeDeclaration td) {
+		td instanceof AnnotationTypeDeclaration
+	}
+}
+
+/**
+ * Returns true, if the TypeDeclaration is a class
+ */
+@Data
+package class IsClassFilter implements Filter {
+	override apply(Map<String,Object> processingContext, extension ProcessorUtil processorUtil, TypeDeclaration td) {
+		td instanceof ClassDeclaration
+	}
+}
+
+/**
+ * Returns true, if the TypeDeclaration is an Enum
+ */
+@Data
+package class IsEnumFilter implements Filter {
+	override apply(Map<String,Object> processingContext, extension ProcessorUtil processorUtil, TypeDeclaration td) {
+		td instanceof EnumerationTypeDeclaration
+	}
+}
+
+/**
+ * Returns true, if the TypeDeclaration is an Interface
+ */
+@Data
+package class IsInterfaceFilter implements Filter {
+	override apply(Map<String,Object> processingContext, extension ProcessorUtil processorUtil, TypeDeclaration td) {
+		td instanceof InterfaceDeclaration
+	}
+}
+
+/**
  * Base class for our own Processors (annotation-bound or not).
  *
  * The actual processor instances must have a public no-argument constructor.
@@ -188,13 +228,13 @@ class Processor<T extends TypeDeclaration, M extends MutableTypeDeclaration> {
 		new ParentFilter(parent.name)
 	}
 
-	protected static val Filter isAnnotation = [pc,pu,td|td instanceof AnnotationTypeDeclaration]
+	protected static val Filter isAnnotation = new IsAnnotationFilter
 
-	protected static val Filter isClass = [pc,pu,td|td instanceof ClassDeclaration]
+	protected static val Filter isClass = new IsClassFilter
 
-	protected static val Filter isEnum = [pc,pu,td|td instanceof EnumerationTypeDeclaration]
+	protected static val Filter isEnum = new IsEnumFilter
 
-	protected static val Filter isInterface = [pc,pu,td|td instanceof InterfaceDeclaration]
+	protected static val Filter isInterface = new IsInterfaceFilter
 
 	/**
 	 * Creates a processor with an *optional* filter.

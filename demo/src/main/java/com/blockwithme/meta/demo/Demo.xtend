@@ -15,10 +15,10 @@
  */
 package com.blockwithme.meta.demo
 
+import com.blockwithme.meta.annotations.Bean
 import com.blockwithme.meta.annotations.Trace
-import com.blockwithme.meta.annotations.Trait
 
-@Trait
+@Bean
 interface DemoType {
 
   /** Boolean property */
@@ -49,7 +49,7 @@ interface DemoType {
   String objectProp
 }
 
-@Trait
+@Bean
 //@Trace
 interface DemoTypeChild extends DemoType {
 

@@ -45,6 +45,8 @@ import java.util.HashSet
 import com.blockwithme.meta.Hierarchy
 import com.blockwithme.meta.beans.impl._EntityImpl
 import com.blockwithme.meta.beans.impl._BeanImpl
+import static java.util.Objects.*;
+import com.blockwithme.meta.Kind
 
 /**
  * Annotates an interface declared in a C-style-struct syntax
@@ -73,7 +75,6 @@ package class BeanInfo {
 	PropertyInfo[] properties
 	List<String> validity
 	boolean isBean
-	Map<BeanInfo,PropertyInfo[]> _allProperties
 	def pkgName() {
 		qualifiedName.substring(0,qualifiedName.lastIndexOf('.'))
 	}
@@ -82,14 +83,34 @@ package class BeanInfo {
 	}
 	// STEP 21
 	// If we have more then one parent, find out all missing properties
-	def Map<BeanInfo,PropertyInfo[]> allProperties() {
-		if (_allProperties.empty) {
-			_allProperties.put(this, properties)
-			for (p : parents) {
-				_allProperties.putAll(p.allProperties)
-			}
+	def Map<String,PropertyInfo[]> allProperties() {
+		val result = new HashMap<String,PropertyInfo[]>
+		for (p : properties) {
+			requireNonNull(p, qualifiedName+".properties[?]")
 		}
-		_allProperties
+		result.put(qualifiedName, properties)
+		for (p : parents) {
+			result.putAll(p.allProperties)
+		}
+		result
+	}
+	/** Check the BeanInfo is fully initialized */
+	public def void check() {
+		requireNonNull(qualifiedName, "qualifiedName")
+		requireNonNull(allProperties, "allProperties")
+		requireNonNull(parents, "parents")
+		requireNonNull(properties, "properties")
+		for (p : parents) {
+			requireNonNull(p, "parents[?]")
+		}
+		for (p : properties) {
+			requireNonNull(p, "properties[?]")
+			requireNonNull(p.name, "properties[?].name")
+			requireNonNull(p.type, "properties[?].type")
+		}
+		for (p : validity) {
+			requireNonNull(p, "validity[?]")
+		}
 	}
 }
 
@@ -130,21 +151,18 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	static val NO_PROPERTIES = <PropertyInfo>newArrayOfSize(0)
 	static val DUPLICATE = 'Duplicate simple name'
 	static val BP_ALL_DEPENDENCIES = 'BP_ALL_DEPENDENCIES'
-
-	/** The "transient" cache */
-	static var CACHE = new HashMap<String,Object>
+	static val BEAN_QUALIFIED_NAME = com.blockwithme.meta.beans.Bean.name
+	static val ENTITY_QUALIFIED_NAME = Entity.name
+	static val String BEAN_KEY = cacheKey(BEAN_QUALIFIED_NAME)
+	static val String ENTITY_KEY = cacheKey(ENTITY_QUALIFIED_NAME)
+//
+//	/** The "transient" cache */
+//	static var CACHE = new HashMap<String,Object>
 
 	/** Public constructor for this class. */
 	new() {
 		// Step 0, make sure we have an interface, annotated with @Bean
 		super(and(isInterface,withAnnotation(Bean)))
-		var qualifiedName = com.blockwithme.meta.beans.Bean.name
-		var key = cacheKey(qualifiedName)
-		val b = new BeanInfo(qualifiedName,NO_PARENTS,NO_PROPERTIES, newArrayList(), true, new HashMap)
-		CACHE.put(key, b)
-		qualifiedName = Entity.name
-		key = cacheKey(qualifiedName)
-		CACHE.put(key, new BeanInfo(qualifiedName,newArrayList(b),NO_PROPERTIES, newArrayList(), true, new HashMap))
 	}
 
 	/** Returns the internal API name */
@@ -212,7 +230,8 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	private def registerInterface(InterfaceDeclaration td, RegisterGlobalsContext context, String name) {
 		if (findTypeGlobally(name) === null) {
 			context.registerInterface(name)
-			warn(TraitProcessor, "register", td, "Registering Interface: "+name)
+			warn(BeanProcessor, "register", td, "Registering Interface: "+name)
+			setShouldBeInterface(name)
 		}
 	}
 
@@ -220,7 +239,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	private def registerClass(InterfaceDeclaration td, RegisterGlobalsContext context, String name) {
 		if (findTypeGlobally(name) === null) {
 			context.registerClass(name)
-			warn(TraitProcessor, "register", td, "Registering Class: "+name)
+			warn(BeanProcessor, "register", td, "Registering Class: "+name)
 		}
 	}
 
@@ -273,20 +292,21 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		false
 	}
 
-	private def cacheKey(String qualifiedName) {
+	private static def cacheKey(String qualifiedName) {
 		"BeanInfo:"+qualifiedName
 	}
 
-	private def noSameSimpleNameKey(String simpleName) {
+	private static def noSameSimpleNameKey(String simpleName) {
 		"noSameSimpleNameKey:"+simpleName.toLowerCase
 	}
 
-	private def putInCache(String key, String noSameSimpleNameKey, BeanInfo beanInfo) {
-		CACHE.put(key, beanInfo)
-		var list = CACHE.get(noSameSimpleNameKey) as List
+	private def putInCache(Map<String,Object> processingContext, String key, String noSameSimpleNameKey, BeanInfo beanInfo) {
+		requireNonNull(beanInfo, "beanInfo")
+		processingContext.put(key, beanInfo)
+		var list = processingContext.get(noSameSimpleNameKey) as List
 		if (list === null) {
 			list = newArrayList()
-			CACHE.put(noSameSimpleNameKey, list)
+			processingContext.put(noSameSimpleNameKey, list)
 			list.add(beanInfo)
 		} else {
 			list.add(beanInfo)
@@ -301,18 +321,28 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	// STEP 1/2
 	/** Scans the Type hierarchy for compatibility */
 	private def BeanInfo beanInfo(Map<String,Object> processingContext, TypeDeclaration td) {
+		// Lazy init
+		if (!processingContext.containsKey(BEAN_KEY)) {
+			val b = new BeanInfo(BEAN_QUALIFIED_NAME,NO_PARENTS,NO_PROPERTIES, newArrayList(), true)
+			b.check()
+			processingContext.put(BEAN_KEY, b)
+			val bi = new BeanInfo(ENTITY_QUALIFIED_NAME,newArrayList(b),NO_PROPERTIES, newArrayList(), true)
+			bi.check()
+			processingContext.put(ENTITY_KEY, bi)
+		}
 		val qualifiedName = td.qualifiedName
 		val simpleName = td.simpleName
 		val key = cacheKey(qualifiedName)
 		val noSameSimpleNameKey = noSameSimpleNameKey(simpleName)
-		var result = CACHE.get(key) as BeanInfo
+		var result = processingContext.get(key) as BeanInfo
 		if (result === null) {
 			val type = findTypeGlobally(qualifiedName)
 			if (type === null) {
 				// Unknown/undefined type (too early to query?)
 				result = new BeanInfo(qualifiedName,NO_PARENTS,NO_PROPERTIES,
-					newArrayList("Undefined: "+qualifiedName), false, new HashMap)
-				putInCache(key, noSameSimpleNameKey, result)
+					newArrayList("Undefined: "+qualifiedName), false)
+				result.check()
+				putInCache(processingContext, key, noSameSimpleNameKey, result)
 			} else {
 				val check = checkIsBeanOrMarker(processingContext, td)
 				if (check !== null) {
@@ -322,37 +352,44 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 						msg = msg + " because of "+check
 					}
 					result = new BeanInfo(qualifiedName,NO_PARENTS,NO_PROPERTIES,
-						newArrayList(msg), false, new HashMap)
-					putInCache(key, noSameSimpleNameKey, result)
+						newArrayList(msg), false)
+					result.check()
+					putInCache(processingContext, key, noSameSimpleNameKey, result)
 				} else {
 					// Could be OK type ...
 					val parentsTD = findParents(td)
 					val fields = td.declaredFields
 					// Add early in cache, to prevent infinite loops
-					val parents = <BeanInfo>newArrayOfSize(parentsTD.size)
+					val parents = <BeanInfo>newArrayOfSize(parentsTD.size - 1)
 					val properties = <PropertyInfo>newArrayOfSize(fields.size)
 					result = new BeanInfo(qualifiedName,parents,properties,
-						newArrayList(), accept(processingContext, td), new HashMap)
-					putInCache(key, noSameSimpleNameKey, result)
+						newArrayList(), accept(processingContext, td))
+					putInCache(processingContext, key, noSameSimpleNameKey, result)
 					// Find parents
 					var index = 0
 					val parentFields = <String>newArrayList()
 					for (p : parentsTD) {
-						val b = beanInfo(processingContext, p)
-						parents.set(index, b)
-						index = index + 1
-						if (!b.validity.isEmpty) {
-							result.validity.add("Parent "+p.qualifiedName+" is not valid")
-						}
-						for (pp : b.properties) {
-							parentFields.add(pp.name.toLowerCase)
+						if (p !== td) {
+							val b = beanInfo(processingContext, p)
+							parents.set(index, b)
+							index = index + 1
+							if (!b.validity.isEmpty) {
+								result.validity.add("Parent "+p.qualifiedName+" is not valid")
+							}
+							for (pp : b.properties) {
+								requireNonNull(pp, b.qualifiedName+".properties[?]")
+								requireNonNull(pp.name, b.qualifiedName+".properties[?].name")
+								parentFields.add(pp.name.toLowerCase)
+							}
 						}
 					}
 					// Find properties
 					index = 0
 					for (f : fields) {
 						val ftypeName = f.type.name
-						properties.set(index, new PropertyInfo(f.simpleName, ftypeName))
+						properties.set(index, new PropertyInfo(
+							requireNonNull(f.simpleName, "f.simpleName"),
+							requireNonNull(ftypeName, "ftypeName")))
 						index = index + 1
 						if (!validPropertyType(processingContext, f.type)) {
 							result.validity.add("Property "+f.simpleName+" is not valid")
@@ -368,8 +405,12 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 					if (methods.iterator.hasNext) {
 						result.validity.add("Has methods: "+methods.toList)
 					}
+					result.check()
 				}
 			}
+		}
+		if (result !== null) {
+			result.check()
 		}
 		result
 	}
@@ -383,13 +424,20 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 
 		// TODO Move _name to the "internal interface"
 		val getter = 'get' + toFirstUpper
-		interf.addMethod(getter) [
-			returnType = fieldType
-		]
-		interf.addMethod('set' + toFirstUpper) [
-			addParameter(fieldName, fieldType)
-			returnType = interf.newTypeReference
-		]
+		if (interf.findDeclaredMethod(getter) === null) {
+			interf.addMethod(getter) [
+				returnType = fieldType
+			]
+			warn(BeanProcessor, "transform", interf, "Adding "+getter+" to "+interf.qualifiedName)
+		}
+		val setter = 'set' + toFirstUpper
+		if (interf.findDeclaredMethod(setter, fieldType) === null) {
+			interf.addMethod(setter) [
+				addParameter(fieldName, fieldType)
+				returnType = interf.newTypeReference
+			]
+			warn(BeanProcessor, "transform", interf, "Adding " + setter+" to "+interf.qualifiedName)
+		}
 //		if (fieldType.array) {
 //			interf.addMethod('get' + toFirstUpper) [
 //				addParameter('index', primitiveInt)
@@ -412,6 +460,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 //				returnType = interf.newTypeReference
 //			]
 //		}
+		warn(BeanProcessor, "transform", interf, "Removing "+fieldName+" from "+interf.qualifiedName)
 		fieldDeclaration.remove()
 	}
 
@@ -429,16 +478,19 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 					'''new «HierarchyBuilder.name»("«pkgName»")'''
 				]
 			]
+			warn(BeanProcessor, "transform", meta, "Adding BUILDER to "+meta.qualifiedName)
 		}
 	}
 
 	/** Implements the required Property accessor interface */
 	private def String implementPropertyAccessor(BeanInfo beanInfo, PropertyInfo propInfo) {
+		warn(BeanProcessor, "transform", findTypeGlobally(beanInfo.qualifiedName), "Implementing BUILDER to "+beanInfo.qualifiedName)
 		val pkgName = beanInfo.pkgName
 		val simpleName = beanInfo.simpleName
 		val accessorName = propertyAccessorName(pkgName, simpleName, propInfo.name)
-		val accessor = findClass(accessorName)
+		val accessor = getClass(accessorName)
 		val propType = propInfo.type
+		val propTypeRef = newTypeReference(propType)
 		// Make accessor extend <Type>PropertyAccessor
 		val propertyAccessorPrefix = switch (propType) {
 			case "boolean": "Boolean"
@@ -452,35 +504,41 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 			default: "Object"
 		}
 		val pkg = BooleanPropertyAccessor.package.name
-		val propertyAccessorIntf = newTypeReference(pkg+'.'+propertyAccessorPrefix+"PropertyAccessor")
+		val beanType = newTypeReference(beanInfo.qualifiedName)
+		val typeRef = if ("Object" == propertyAccessorPrefix) #[beanType, propTypeRef] else #[beanType]
+		val propertyAccessorIntf = newTypeReference(pkg+'.'+propertyAccessorPrefix+"PropertyAccessor", typeRef)
 		accessor.setImplementedInterfaces(newArrayList(propertyAccessorIntf))
 		accessor.visibility = Visibility.PUBLIC
 		accessor.final = true
 		// Add getter
-		accessor.addMethod("apply") [
-			visibility = Visibility.PUBLIC
-			final = true
-			static = false
-			returnType = newTypeReference(propType)
-			val getterInstanceType = newTypeReference(beanInfo.qualifiedName)
-			addParameter("instance", getterInstanceType)
-			body = [
-				'''return instance.get«propInfo.name.toFirstUpper»();'''
+		val getterInstanceType = newTypeReference(beanInfo.qualifiedName)
+		if (accessor.findDeclaredMethod("apply", getterInstanceType) === null) {
+			accessor.addMethod("apply") [
+				visibility = Visibility.PUBLIC
+				final = true
+				static = false
+				returnType = propTypeRef
+				addParameter("instance", getterInstanceType)
+				body = [
+					'''return instance.get«propInfo.name.toFirstUpper»();'''
+				]
 			]
-		]
+		}
 		// Add setter
-		accessor.addMethod("apply") [
-			visibility = Visibility.PUBLIC
-			final = true
-			static = false
-			returnType = newTypeReference(beanInfo.qualifiedName)
-			val getterInstanceType = newTypeReference(beanInfo.qualifiedName)
-			addParameter("instance", getterInstanceType)
-			addParameter("newValue", newTypeReference(propType))
-			body = [
-				'''return instance.set«propInfo.name.toFirstUpper»(newValue);'''
+		val valueType = newTypeReference(propType)
+		if (accessor.findDeclaredMethod("apply", getterInstanceType, valueType) === null) {
+			accessor.addMethod("apply") [
+				visibility = Visibility.PUBLIC
+				final = true
+				static = false
+				returnType = newTypeReference(beanInfo.qualifiedName)
+				addParameter("instance", getterInstanceType)
+				addParameter("newValue", valueType)
+				body = [
+					'''return instance.set«propInfo.name.toFirstUpper»(newValue);'''
+				]
 			]
-		]
+		}
 		accessorName
 	}
 
@@ -506,19 +564,34 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 
 	/** Creates a Property constant in meta */
 	private def String createPropertyConstant(MutableClassDeclaration meta,
-		String simpleName, String accessorName, PropertyInfo propInfo) {
+		BeanInfo beanInfo, String accessorName, PropertyInfo propInfo) {
 		val metaPkg = BooleanProperty.package.name
 		val propName = propertyMethodName(propInfo)
-		val name = getPropertyFieldNameInMeta(simpleName, propInfo)
-		meta.addField(name) [
-			visibility = Visibility.PUBLIC
-			final = true
-			static = true
-			type = newTypeReference(metaPkg+".True"+propName)
-			initializer = [
-				'''BUILDER.new«propName»(«simpleName».class, «propInfo.name», new «accessorName»())'''
+		val name = getPropertyFieldNameInMeta(beanInfo.simpleName, propInfo)
+		if (meta.findDeclaredField(name) === null) {
+			val beanType = newTypeReference(beanInfo.qualifiedName)
+			val TypeReference retTypeRef = if ("ObjectProperty" == propName) {
+				newTypeReference(metaPkg+"."+propName, beanType, newTypeReference(propInfo.type))
+			} else {
+				newTypeReference(metaPkg+".True"+propName, beanType)
+			}
+			warn(BeanProcessor, "transform", meta, "Adding "+name+" to "+meta.qualifiedName)
+			meta.addField(name) [
+				visibility = Visibility.PUBLIC
+				final = true
+				static = true
+				type = retTypeRef
+				initializer = [
+					if ("ObjectProperty" == propName) {
+						// TODO Work out the real value for the boolean flags!
+						'''BUILDER.new«propName»(«beanInfo.simpleName».class, "«propInfo.name»", «propInfo.type».class,
+						true, true, false, new «accessorName»())'''
+					} else {
+						'''BUILDER.new«propName»(«beanInfo.simpleName».class, "«propInfo.name»", new «accessorName»())'''
+					}
+				]
 			]
-		]
+		}
 		name
 	}
 
@@ -526,20 +599,24 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	private def void createProvider(BeanInfo beanInfo) {
 		val pkgName = beanInfo.pkgName
 		val simpleName = beanInfo.simpleName
-		val provider = findClass(providerName(pkgName, simpleName))
-		val providerIntf = newTypeReference(Provider)
+		val provider = getClass(providerName(pkgName, simpleName))
+		warn(BeanProcessor, "transform", provider, "Implementing "+beanInfo.qualifiedName)
+		val beanType = newTypeReference(beanInfo.qualifiedName)
+		val providerIntf = newTypeReference(Provider, beanType)
 		provider.setImplementedInterfaces(newArrayList(providerIntf))
 		provider.visibility = Visibility.PUBLIC
 		provider.final = true
-		provider.addMethod("get") [
-			visibility = Visibility.PUBLIC
-			final = true
-			static = false
-			returnType = newTypeReference(beanInfo.qualifiedName)
-			body = [
-				'''return new «implName(pkgName, simpleName)»();'''
+		if (provider.findDeclaredMethod("get") === null) {
+			provider.addMethod("get") [
+				visibility = Visibility.PUBLIC
+				final = true
+				static = false
+				returnType = newTypeReference(beanInfo.qualifiedName)
+				body = [
+					'''return new «implName(pkgName, simpleName)»();'''
+				]
 			]
-		]
+		}
 	}
 
 	/** Adds the Type field */
@@ -547,43 +624,50 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		String allProps, Set<String> allDependencies) {
 		val pkg = beanInfo.pkgName
 		val simpleName = beanInfo.simpleName
-		val parents = new StringBuilder
-		for (p : beanInfo.parents) {
-			if (p.pkgName == pkg) {
-				parents.append(p.simpleName.toUpperCase)
-				parents.append(', ')
-			} else if (p.isBean) {
-				parents.append(p.pkgName+".Meta."+p.simpleName.toUpperCase)
-				parents.append(', ')
-				allDependencies.add(p.pkgName+".Meta.HIERARCHY")
-			} else {
-				val java = JavaMeta.HIERARCHY.findType(p.qualifiedName)
-				if (java !== null) {
-					parents.append(JavaMeta.name+"."+java.simpleName.toUpperCase)
+		if (meta.findDeclaredField(simpleName.toUpperCase) === null) {
+			val parents = new StringBuilder
+			for (p : beanInfo.parents) {
+				if (p.pkgName == pkg) {
+					parents.append(p.simpleName.toUpperCase)
 					parents.append(', ')
-					allDependencies.add(JavaMeta.name+".HIERARCHY")
+				} else if (p.isBean) {
+					parents.append(p.pkgName+".Meta."+p.simpleName.toUpperCase)
+					parents.append(', ')
+					allDependencies.add(p.pkgName+".Meta.HIERARCHY")
 				} else {
-					val msg = p.qualifiedName+" unknown; not adding as parent of "
-						+beanInfo.qualifiedName
-					val pTD = findTypeGlobally(p.qualifiedName)
-					if ((pTD !== null) && isMarker(pTD)) {
-						warn(BeanProcessor, "transform", meta, msg)
+					val java = JavaMeta.HIERARCHY.findType(p.qualifiedName)
+					if (java !== null) {
+						parents.append(JavaMeta.name+"."+java.simpleName.toUpperCase)
+						parents.append(', ')
+						allDependencies.add(JavaMeta.name+".HIERARCHY")
 					} else {
-						error(BeanProcessor, "transform", meta, msg)
+						val msg = p.qualifiedName+" unknown; not adding as parent of "
+							+beanInfo.qualifiedName
+						val pTD = findTypeGlobally(p.qualifiedName)
+						if ((pTD !== null) && isMarker(pTD)) {
+							warn(BeanProcessor, "transform", meta, msg)
+						} else {
+							error(BeanProcessor, "transform", meta, msg)
+						}
 					}
 				}
 			}
-		}
-		meta.addField(simpleName.toUpperCase) [
-			visibility = Visibility.PUBLIC
-			final = true
-			static = true
-			type = newTypeReference(com.blockwithme.meta.Type)
-			initializer = [
-				'''BUILDER.newType(«simpleName».class, new «providerName(pkg, simpleName)», Kind.Trait,
-				«parents», «allProps»)'''
+			if (parents.length > 0) {
+				parents.length = parents.length - 2
+			}
+			val beanType = newTypeReference(beanInfo.qualifiedName)
+			meta.addField(simpleName.toUpperCase) [
+				visibility = Visibility.PUBLIC
+				final = true
+				static = true
+				type = newTypeReference(com.blockwithme.meta.Type, beanType)
+				initializer = [
+					'''BUILDER.newType(«simpleName».class, new «providerName(pkg, simpleName)»(), «Kind.name».Trait,
+					new Type[] {«parents»}, «allProps»)'''
+				]
 			]
-		]
+			warn(BeanProcessor, "transform", meta, "Adding "+simpleName.toUpperCase+" to "+meta.qualifiedName)
+		}
 	}
 
 	/** Returns the name of the package field */
@@ -594,18 +678,22 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	/** Adds the package */
 	private def void addPackageField(MutableClassDeclaration meta, List<TypeDeclaration> allTypes,
 		String pkgName) {
-		val allTypesStr = allTypes.join(', ') [
-			simpleName.toUpperCase
-		]
-		meta.addField(packageFieldName(pkgName)) [
-			visibility = Visibility.PUBLIC
-			final = true
-			static = true
-			type = newTypeReference(TypePackage)
-			initializer = [
-				'''BUILDER.newTypePackage(«allTypesStr»)'''
+		val name = packageFieldName(pkgName)
+		if (meta.findDeclaredField(name) === null) {
+			val allTypesStr = allTypes.join(', ') [
+				simpleName.toUpperCase
 			]
-		]
+			meta.addField(name) [
+				visibility = Visibility.PUBLIC
+				final = true
+				static = true
+				type = newTypeReference(TypePackage)
+				initializer = [
+					'''BUILDER.newTypePackage(«allTypesStr»)'''
+				]
+			]
+			warn(BeanProcessor, "transform", meta, "Adding "+name+" to "+meta.qualifiedName)
+		}
 	}
 
 	/** Returns the hierarchy dependencies */
@@ -623,19 +711,22 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	/** Adds the Hierarchy */
 	private def void addHierarchyField(MutableClassDeclaration meta,
 		String pkgName, Set<String> allDependencies) {
-		meta.addField("HIERARCHY") [
-			visibility = Visibility.PUBLIC
-			final = true
-			static = true
-			type = newTypeReference(Hierarchy)
-			initializer = [
-				if (allDependencies.empty) {
-					'''BUILDER.newHierarchy(«packageFieldName(pkgName)»)'''
-				} else {
-					'''BUILDER.newHierarchy(«packageFieldName(pkgName)», «allDependencies.join(', ')»)'''
-				}
+		if (meta.findDeclaredField("HIERARCHY") === null) {
+			meta.addField("HIERARCHY") [
+				visibility = Visibility.PUBLIC
+				final = true
+				static = true
+				type = newTypeReference(Hierarchy)
+				initializer = [
+					if (allDependencies.empty) {
+						'''BUILDER.newHierarchy(«packageFieldName(pkgName)»)'''
+					} else {
+						'''BUILDER.newHierarchy(new «TypePackage.name»[] { «packageFieldName(pkgName)» }, «allDependencies.join(', ')»)'''
+					}
+				]
 			]
-		]
+			warn(BeanProcessor, "transform", meta, "Adding HIERARCHY to "+meta.qualifiedName)
+		}
 	}
 
 	/** Creates the implementation class for a type */
@@ -646,7 +737,8 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		val simpleName = qualifiedName.substring(index+1)
 		val implName = implName(pkgName, simpleName)
 		val beanInfo = beanInfo(processingContext, mtd)
-		val impl = findClass(implName)
+		val impl = getClass(implName)
+		warn(BeanProcessor, "transform", impl, implName+" will be implemented")
 		val first = beanInfo.parents.head()
 		val entity = findTypeGlobally(Entity)
 		if ((first !== null) && first.isBean) {
@@ -665,34 +757,46 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	/** Generates the getter, setter and field for the given property */
 	private def void generateProperty(Map<String, Object> processingContext,
 		MutableClassDeclaration impl, BeanInfo beanInfo, PropertyInfo propInfo) {
-		impl.addField(propInfo.name) [
-			visibility = Visibility.PRIVATE
-			final = false
-			static = false
-			type = newTypeReference(propInfo.type)
-		]
+		if (impl.findDeclaredField(propInfo.name) === null) {
+			impl.addField(propInfo.name) [
+				visibility = Visibility.PRIVATE
+				final = false
+				static = false
+				type = newTypeReference(propInfo.type)
+			]
+			warn(BeanProcessor, "transform", impl, propInfo.name+" added to "+impl.qualifiedName)
+		}
 		val propertyMethodName = propertyMethodName(propInfo);
 		val propertyFieldName = beanInfo.pkgName+".Meta."+getPropertyFieldNameInMeta(beanInfo.simpleName, propInfo)
-		impl.addMethod("get"+propInfo.name.toFirstUpper) [
-			visibility = Visibility.PUBLIC
-			final = true
-			static = false
-			returnType = newTypeReference(propInfo.type)
-			body = [
-				'''return interceptor.get«propertyMethodName»(this, «propertyFieldName», «propInfo.name»);'''
+		val getter = "get"+propInfo.name.toFirstUpper
+		if (impl.findDeclaredMethod(getter) === null) {
+			impl.addMethod(getter) [
+				visibility = Visibility.PUBLIC
+				final = true
+				static = false
+				returnType = newTypeReference(propInfo.type)
+				body = [
+					'''return interceptor.get«propertyMethodName»(this, «propertyFieldName», «propInfo.name»);'''
+				]
 			]
-		]
-		impl.addMethod("set"+propInfo.name.toFirstUpper) [
-			visibility = Visibility.PUBLIC
-			final = true
-			static = false
-			returnType = newTypeReference(beanInfo.qualifiedName)
-			addParameter("$newValue", newTypeReference(propInfo.type))
-			body = [
-				'''«propInfo.name» = interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», $newValue);
-				return this;'''
+			warn(BeanProcessor, "transform", impl, getter+" added to "+impl.qualifiedName)
+		}
+		val setter = "set"+propInfo.name.toFirstUpper
+		val valueType = newTypeReference(propInfo.type)
+		if (impl.findDeclaredMethod(setter, valueType) === null) {
+			impl.addMethod(setter) [
+				visibility = Visibility.PUBLIC
+				final = true
+				static = false
+				returnType = newTypeReference(beanInfo.qualifiedName)
+				addParameter("$newValue", valueType)
+				body = [
+					'''«propInfo.name» = interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», $newValue);
+					return this;'''
+				]
 			]
-		]
+			warn(BeanProcessor, "transform", impl, setter+" added to "+impl.qualifiedName)
+		}
 	}
 
 	/** Register new types, to be generated later. */
@@ -716,7 +820,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 
 			// STEP 7
 			// Registering the Meta, if needed
-			registerInterface(td, context, metaName(pkgName, simpleName))
+			registerClass(td, context, metaName(pkgName, simpleName))
 
 			// STEP 8
 			// Registering the internal API interface, if needed
@@ -736,7 +840,9 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	/** Transform types, new or old. */
 	override void transform(Map<String,Object> processingContext, MutableInterfaceDeclaration mtd, TransformationContext context) {
 		val beanInfo = beanInfo(processingContext, mtd)
+		val qualifiedName = beanInfo.qualifiedName
 		if (beanInfo.validity.empty) {
+			warn(BeanProcessor, "transform", mtd, qualifiedName+" will be transformed")
 			val pkgName = beanInfo.pkgName
 			val simpleName = beanInfo.simpleName
 
@@ -748,7 +854,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 
 			// STEP 11
 			// A builder is created in Meta for that package
-			val meta = findClass(metaName(pkgName, simpleName))
+			val meta = getClass(metaName(pkgName, simpleName))
 			addBuilderField(meta, pkgName)
 
 			// STEP 12
@@ -758,7 +864,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 				val accessorName = implementPropertyAccessor(beanInfo, propInfo)
 				// STEP 13
 				// For each type property, a property object in the "Meta" interface is generated.
-				val name = createPropertyConstant(meta, simpleName, accessorName, propInfo)
+				val name = createPropertyConstant(meta, beanInfo, accessorName, propInfo)
 				allProps = if (allProps.empty) name else allProps+", "+name
 			}
 
@@ -805,13 +911,16 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 			}
 			for (e : beanInfo.allProperties.entrySet) {
 				val key = e.key
-				if ((key !== beanInfo) && ((firstParent === null) || !firstParent.allProperties.containsKey(key))) {
+				if ((key != qualifiedName) && ((firstParent === null) || !firstParent.allProperties.containsKey(key))) {
 					// Missing properties!
 					for (p : e.value) {
-						generateProperty(processingContext, impl, key, p)
+						generateProperty(processingContext, impl, processingContext.get(cacheKey(key)) as BeanInfo, p)
 					}
 				}
 			}
+		} else {
+			warn(BeanProcessor, "transform", mtd, qualifiedName
+				+" will NOT be transformed, because: "+beanInfo.validity)
 		}
 		// else we already told the user mtd is bugged
 	}

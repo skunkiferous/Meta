@@ -23,6 +23,8 @@ import org.eclipse.xtend.lib.macro.declaration.TypeDeclaration
 import org.eclipse.xtext.xbase.lib.Procedures.Procedure3
 import java.util.HashMap
 import java.util.Map
+import java.util.Comparator
+import java.util.Collections
 
 /**
  * Marks that *all types in this file* should be processed.
@@ -53,6 +55,8 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 	static var Processor<?,?>[] PROCESSORS
 
 	static val processorUtil = new ProcessorUtil
+
+	static val ACCEPT = new HashMap<String,Boolean>
 
 	private def <TD extends TypeDeclaration> void loop(
 		// Somehow, some of my code is executed *outside* of the active annotation processor
@@ -85,12 +89,12 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 			if (!generate) {
 				AntiClassLoaderCache.clear(pathName+".generate.")
 			}
-			val cache = AntiClassLoaderCache.getCache()
 			// Lookup processors
 			val processors = getProcessors(annotatedSourceElements)
 			val allProcessors = newArrayList(processors)
 			// Extract types to process from compilation unit (file)
 			val allTypes = (if (transform) processorUtil.allMutableTypes else processorUtil.allXtendTypes).toList
+			processorUtil.warn(MagicAnnotationProcessor, "loop", null,"allTypes: "+allTypes)
 			val types = allTypes.toArray(<TypeDeclaration>newArrayOfSize(allTypes.size))
 			val todoTypes = newArrayList(types)
 			val doneTypes = <TypeDeclaration>newArrayList()
@@ -109,37 +113,40 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 				val doneProcessors = <Processor>newArrayList()
 				processingContext.put(Processor.PC_TODO_PROCESSORS, todoProcessors)
 				processingContext.put(Processor.PC_DONE_PROCESSORS, doneProcessors)
-				// Do not process type more then once per phase
-				// (THAT is the main reason for the "persistent" cache)
-				val unprocessed = (cache.put(pathName+"."+phase+"."+td.qualifiedName, "") === null) || register
-				processorUtil.debug(MagicAnnotationProcessor, "loop", td,
-					td.qualifiedName+" UNPROCESSED: "+unprocessed)
-				if (unprocessed) {
-					// If unprocessed (for this phase), check all processors
-					for (p : processors) {
-						todoProcessors.remove(p)
-						processingContext.put(Processor.PC_CURRENT_PROCESSOR, p)
-						p.setProcessorUtil(processorUtil)
-						try {
-							// Check if the processor is interested
-							if (p.accept(processingContext, td)) {
-								processorUtil.debug(MagicAnnotationProcessor, "loop", td,
-										"Calling: "+p+"."+phase+"("+td.qualifiedName+")")
-								// Yes? Then call processor.
-								lambda.apply(processingContext, p, td as TD)
-							} else {
-								processorUtil.debug(MagicAnnotationProcessor, "loop", td,
+				// If unprocessed (for this phase), check all processors
+				for (p : processors) {
+					todoProcessors.remove(p)
+					processingContext.put(Processor.PC_CURRENT_PROCESSOR, p)
+					p.setProcessorUtil(processorUtil)
+					try {
+						// Check if the processor is interested
+						val acceptKey = p.class.name+':'+td.qualifiedName
+						var accept = ACCEPT.get(acceptKey)
+						if (accept === null) {
+							accept = p.accept(processingContext, td)
+							ACCEPT.put(acceptKey, accept)
+							if (!accept) {
+								processorUtil.warn(MagicAnnotationProcessor, "loop", td,
 										"NOT Calling: "+p+"."+phase+"("+td.qualifiedName+")")
+if (("transform" == phase) && ("com.blockwithme.meta.demo.DemoType" == td.qualifiedName)) {
+processorUtil.warn(MagicAnnotationProcessor, "loop", td,
+		td.qualifiedName+": isInterface="+Processor.isInterface.apply(null,processorUtil,td)+" "+td.class)
+processorUtil.warn(MagicAnnotationProcessor, "loop", td,
+		td.qualifiedName+": withAnnotation(Bean)="+Processor.withAnnotation(Bean).apply(null,processorUtil,td))
+}
 							}
-						} catch (Throwable t) {
-							processorUtil.error(MagicAnnotationProcessor, "loop", td, p+": "
-								+td.qualifiedName, t)
-						} finally {
-							// Causes error due to "delayed" method compilation
-//							p.setProcessorUtil(null)
 						}
-						doneProcessors.add(p)
+						if (accept) {
+							processorUtil.debug(MagicAnnotationProcessor, "loop", td,
+									"Calling: "+p+"."+phase+"("+td.qualifiedName+")")
+							// Yes? Then call processor.
+							lambda.apply(processingContext, p, td as TD)
+						}
+					} catch (Throwable t) {
+						processorUtil.error(MagicAnnotationProcessor, "loop", td, p+": "
+						+td.qualifiedName, t)
 					}
+					doneProcessors.add(p)
 				}
 				doneTypes.add(td)
 			}

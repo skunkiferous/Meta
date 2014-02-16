@@ -2209,10 +2209,10 @@ public interface MetaMeta {
 	public static val TYPE_PACKAGE = BUILDER.newType(TypePackage, null, Kind.Data, #[META_BASE])
 
 	/** The Type Type */
-	public static val TYPE = BUILDER.newType(Type, null, Kind.Data, #[META_BASE])
+	public static val Type<Type<?>> TYPE = BUILDER.newType(Type as Class, null, Kind.Data, #[META_BASE])
 
 	/** The Property Type */
-	public static val PROPERTY = BUILDER.newType(Property, null, Kind.Data, #[META_BASE])
+	public static val Type<Property<?,?>> PROPERTY = BUILDER.newType(Property as Class, null, Kind.Data, #[META_BASE])
 
 	/** The meta package */
 	public static val COM_BLOCKWITHME_META_PACKAGE = BUILDER.newTypePackage(

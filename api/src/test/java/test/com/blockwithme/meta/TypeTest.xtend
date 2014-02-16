@@ -269,8 +269,7 @@ class TypeTest {
 
     @Test
     public def void testMetaBaseHierarchy() {
-     	assertEquals(TestMeta.TEST, TestMeta.MY_TYPE.pkg.hierarchy
-     	)
+     	assertEquals(TestMeta.TEST, TestMeta.MY_TYPE.pkg.hierarchy)
      	assertEquals(TestMeta.TEST, TestMeta.MY_TYPE.hierarchy)
      	assertEquals(TestMeta.TEST, TestMeta.BOOL_PROP.hierarchy)
      	assertEquals(MetaMeta.HIERARCHY, TestMeta.META_PROP.hierarchy)

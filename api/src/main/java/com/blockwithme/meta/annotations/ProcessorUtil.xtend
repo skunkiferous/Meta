@@ -70,6 +70,9 @@ import org.eclipse.xtext.common.types.impl.JvmGenericTypeImpl
 import org.eclipse.xtext.xbase.XBlockExpression
 import org.eclipse.xtext.xbase.lib.Functions.Function1
 import de.oehme.xtend.contrib.macro.CommonQueries
+import java.util.HashSet
+import org.eclipse.xtext.common.types.JvmGenericType
+import org.eclipse.xtext.xbase.lib.util.ReflectExtensions
 
 /**
  * Helper methods for active annotation processing.
@@ -80,7 +83,7 @@ class ProcessorUtil implements TypeReferenceProvider {
 	static val TIME_FORMAT = new SimpleDateFormat("HH:mm:ss.SSS ")
 
 	/** Debug output? */
-	private static val DEBUG = true
+	private static val DEBUG = false
 
 	/**
 	 * The processed NamedElement
@@ -105,7 +108,7 @@ class ProcessorUtil implements TypeReferenceProvider {
 	var String prefix
 
 	/** The anti-class-loader cache */
-	var Map<String,Object> cache
+//	var Map<String,Object> cache
 
 	/** The Functor TypeReference */
 	var TypeReference functor
@@ -122,7 +125,6 @@ class ProcessorUtil implements TypeReferenceProvider {
 	/** The Override Annotation type */
 	var Type _override
 
-
 	/** The type cache */
 	val types = new HashMap<String,TypeDeclaration>
 
@@ -137,6 +139,12 @@ class ProcessorUtil implements TypeReferenceProvider {
 
 	/** The XtendTypeDeclarations cache */
 	var Iterable<? extends TypeDeclaration> xtendTypeDeclarations
+
+	/** The identityCache of the compilationUnit */
+	var Map<EObject, Object> identityCache = null
+
+	/** Remembers what type should be an interface */
+	static val SHOULD_BE_INTERFACE = new HashSet<String>
 
 	/** Sets the NamedElement currently being processed. */
 	package final def void setElement(String phase, NamedElement element) {
@@ -159,19 +167,18 @@ class ProcessorUtil implements TypeReferenceProvider {
 				if (element != null) {
 					problemSupport = compilationUnit.problemSupport
 					file = compilationUnit.filePath.toString
-					cache = AntiClassLoaderCache.getCache()
+//					cache = AntiClassLoaderCache.getCache()
 					prefix = file+"/"+element.qualifiedName+"/"
 					val typeReferenceProvider = compilationUnit.typeReferenceProvider
-					functor = typeReferenceProvider.newTypeReference(Functor)
-					Objects.requireNonNull(functor,"functor")
-					list = typeReferenceProvider.newTypeReference(List)
-					arrays = typeReferenceProvider.newTypeReference(Arrays)
-					objects = typeReferenceProvider.newTypeReference(Objects)
-					_override = compilationUnit.typeLookup.findTypeGlobally(Override)
+					functor = Objects.requireNonNull(typeReferenceProvider.newTypeReference(Functor),"newTypeReference(Functor)")
+					list = Objects.requireNonNull(typeReferenceProvider.newTypeReference(List), "newTypeReference(List)")
+					arrays = Objects.requireNonNull(typeReferenceProvider.newTypeReference(Arrays), "newTypeReference(Arrays)")
+					objects = Objects.requireNonNull(typeReferenceProvider.newTypeReference(Objects), "newTypeReference(Objects)")
+					_override = Objects.requireNonNull(compilationUnit.typeLookup.findTypeGlobally(Override), "typeLookup.findTypeGlobally(Override)")
 				} else {
 					problemSupport = null
 					file = null
-					cache = null
+//					cache = null
 					prefix = null
 					functor = null
 					list = null
@@ -231,11 +238,28 @@ class ProcessorUtil implements TypeReferenceProvider {
 		phase
 	}
 
+	/** Should this type be an interface? */
+	def getShouldBeInterface(String qualifiedName) {
+		SHOULD_BE_INTERFACE.contains(qualifiedName)
+	}
+
+	/** Should this type be an interface? */
+	def setShouldBeInterface(String qualifiedName) {
+		if (SHOULD_BE_INTERFACE.add(qualifiedName)) {
+			warn(ProcessorUtil, "setShouldBeInterface", null, "setShouldBeInterface("+qualifiedName+")")
+		}
+	}
+
 	/** Returns the top-level Xtend types of this CompilationUnit */
 	final def Iterable<? extends TypeDeclaration> getXtendTypes() {
 		if (xtendTypeDeclarations === null) {
 			xtendTypeDeclarations = compilationUnit.xtendFile.xtendTypes
 				.map[compilationUnit.toXtendTypeDeclaration(it)]
+			for (x : xtendTypeDeclarations) {
+				if (x instanceof InterfaceDeclaration) {
+					setShouldBeInterface(x.qualifiedName)
+				}
+			}
 		}
 		xtendTypeDeclarations
 	}
@@ -243,8 +267,40 @@ class ProcessorUtil implements TypeReferenceProvider {
 	/** Returns the top-level mutable types of this CompilationUnit */
 	final def Iterable<? extends MutableTypeDeclaration> getMutableTypes() {
 		if (jvmDeclaredTypes === null) {
-			jvmDeclaredTypes = compilationUnit.xtendFile.eResource.contents
-				.filter(JvmDeclaredType).map[compilationUnit.toTypeDeclaration(it)]
+			// For the side-effect of initializing SHOULD_BE_INTERFACE
+			getXtendTypes()
+
+			val tmp = compilationUnit.xtendFile.eResource.contents.filter(JvmDeclaredType)
+			jvmDeclaredTypes = tmp.map[
+				var triedToFix = false
+				var Boolean isInterface = null
+				if (it instanceof JvmGenericType) {
+					isInterface = it.interface
+					if (!it.interface) {
+						if (getShouldBeInterface(it.qualifiedName)) {
+							it.interface = true
+							triedToFix = true
+						}
+					} else {
+						setShouldBeInterface(it.qualifiedName)
+					}
+				}
+				var td = compilationUnit.toTypeDeclaration(it)
+				if (getShouldBeInterface(td.qualifiedName) && !(td instanceof InterfaceDeclaration)) {
+					if (identityCache === null) {
+						identityCache = new ReflectExtensions().get(compilationUnit, "identityCache")
+							as Map<EObject, Object>
+					}
+					identityCache.remove(it)
+					td = compilationUnit.toTypeDeclaration(it)
+					if (!(td instanceof InterfaceDeclaration)) {
+						error(ProcessorUtil, "getMutableTypes", null, "ShouldBeInterfaceButIsnt: "
+							+td.qualifiedName+" triedToFix: "+triedToFix+" it.interface: "
+							+isInterface+" it.qualifiedName: "+it.qualifiedName)
+					}
+				}
+				td
+			]
 		}
 		jvmDeclaredTypes
 	}
@@ -252,15 +308,15 @@ class ProcessorUtil implements TypeReferenceProvider {
 	/** Recursively returns the Xtend types of this CompilationUnit */
 	final def Iterable<? extends TypeDeclaration> getAllXtendTypes() {
 		doRecursivelyN(getXtendTypes()) [
-			(it.declaredClasses + it.declaredInterfaces) as Iterable<? extends TypeDeclaration>
+			((it.declaredClasses + it.declaredInterfaces) as Iterable) as Iterable<? extends TypeDeclaration>
 		]
 	}
 
 	/** Recursively returns the top-level mutable types of this CompilationUnit */
 	final def Iterable<? extends MutableTypeDeclaration> getAllMutableTypes() {
-		doRecursivelyN(getMutableTypes()) [
-			(it.declaredClasses + it.declaredInterfaces) as Iterable<? extends TypeDeclaration>
-		] as Iterable<? extends MutableTypeDeclaration>
+		(doRecursivelyN(getMutableTypes()) [
+			((it.declaredClasses + it.declaredInterfaces) as Iterable) as Iterable<? extends TypeDeclaration>
+		] as Iterable) as Iterable<? extends MutableTypeDeclaration>
 	}
 
 	/** Sometimes, Xtend "forgets" to set the "isInterface" flag on types! */
@@ -401,7 +457,7 @@ class ProcessorUtil implements TypeReferenceProvider {
 		val done = <TypeDeclaration>newArrayList()
 		todo.addAll(tds)
 		while (!todo.empty) {
-			val next = todo.remove(todo.size-1)
+			val next = todo.remove(0)
 			done.add(next)
 			for (parent : lambda.apply(next)) {
 				if (!todo.contains(parent) && !done.contains(parent)) {
@@ -780,34 +836,34 @@ class ProcessorUtil implements TypeReferenceProvider {
 			problemSupport.addWarning(logElem, buildMessage(true, who, where, message, t))
 		}
 	}
-
-	/** Reads from the cache, using a specified prefix. */
-	final def Object get(String prefix, String key) {
-		cache.get(prefix+key)
-	}
-
-	/** Writes to the cache, using a specified prefix. */
-	final def Object put(String prefix, String key, Object newValue) {
-		if (newValue === null) {
-			cache.remove(prefix+key)
-		} else {
-			cache.put(prefix+key, newValue)
-		}
-	}
-
-	/** Reads from the cache, using the default prefix. */
-	final def Object get(String key) {
-		cache.get(prefix+key)
-	}
-
-	/** Writes to the cache, using the default prefix. */
-	final def Object put(String key, Object newValue) {
-		if (newValue === null) {
-			cache.remove(prefix+key)
-		} else {
-			cache.put(prefix+key, newValue)
-		}
-	}
+//
+//	/** Reads from the cache, using a specified prefix. */
+//	final def Object get(String prefix, String key) {
+//		cache.get(prefix+key)
+//	}
+//
+//	/** Writes to the cache, using a specified prefix. */
+//	final def Object put(String prefix, String key, Object newValue) {
+//		if (newValue === null) {
+//			cache.remove(prefix+key)
+//		} else {
+//			cache.put(prefix+key, newValue)
+//		}
+//	}
+//
+//	/** Reads from the cache, using the default prefix. */
+//	final def Object get(String key) {
+//		cache.get(prefix+key)
+//	}
+//
+//	/** Writes to the cache, using the default prefix. */
+//	final def Object put(String key, Object newValue) {
+//		if (newValue === null) {
+//			cache.remove(prefix+key)
+//		} else {
+//			cache.put(prefix+key, newValue)
+//		}
+//	}
 
 	/** Returns true, if the given element is a marker interface */
 	final def boolean isMarker(Element element) {
@@ -872,12 +928,17 @@ class ProcessorUtil implements TypeReferenceProvider {
 	}
 
 	/** Utility method that finds a class in the global context, returns null if not found */
-	def findClass(String name) {
+	def MutableClassDeclaration findClass(String name) {
 		val found = findTypeGlobally(name)
 		if (found instanceof MutableClassDeclaration)
 			found as MutableClassDeclaration
 		else
 			null
+	}
+
+	/** Utility method that finds a class in the global context, fails if not found */
+	def MutableClassDeclaration getClass(String name) {
+		Objects.requireNonNull(findClass(name), "findClass("+name+")")
 	}
 
 	/** Searches for the *default* constructor. */
@@ -939,91 +1000,91 @@ class ProcessorUtil implements TypeReferenceProvider {
 	}
 
 	override getAnyType() {
-		compilationUnit.typeReferenceProvider.getAnyType()
+		Objects.requireNonNull(compilationUnit.typeReferenceProvider.getAnyType(), "getAnyType()")
 	}
 
 	override getList(TypeReference param) {
-		compilationUnit.typeReferenceProvider.getList(param)
+		Objects.requireNonNull(compilationUnit.typeReferenceProvider.getList(param), "getList(param)")
 	}
 
 	override getObject() {
-		compilationUnit.typeReferenceProvider.getObject()
+		Objects.requireNonNull(compilationUnit.typeReferenceProvider.getObject(), "getObject()")
 	}
 
 	override getPrimitiveBoolean() {
-		compilationUnit.typeReferenceProvider.getPrimitiveBoolean()
+		Objects.requireNonNull(compilationUnit.typeReferenceProvider.getPrimitiveBoolean(), "getPrimitiveBoolean()")
 	}
 
 	override getPrimitiveByte() {
-		compilationUnit.typeReferenceProvider.getPrimitiveByte()
+		Objects.requireNonNull(compilationUnit.typeReferenceProvider.getPrimitiveByte(), "getPrimitiveByte()")
 	}
 
 	override getPrimitiveChar() {
-		compilationUnit.typeReferenceProvider.getPrimitiveChar()
+		Objects.requireNonNull(compilationUnit.typeReferenceProvider.getPrimitiveChar(), "getPrimitiveChar()")
 	}
 
 	override getPrimitiveDouble() {
-		compilationUnit.typeReferenceProvider.getPrimitiveDouble()
+		Objects.requireNonNull(compilationUnit.typeReferenceProvider.getPrimitiveDouble(), "getPrimitiveDouble()")
 	}
 
 	override getPrimitiveFloat() {
-		compilationUnit.typeReferenceProvider.getPrimitiveFloat()
+		Objects.requireNonNull(compilationUnit.typeReferenceProvider.getPrimitiveFloat(), "getPrimitiveFloat()")
 	}
 
 	override getPrimitiveInt() {
-		compilationUnit.typeReferenceProvider.getPrimitiveInt()
+		Objects.requireNonNull(compilationUnit.typeReferenceProvider.getPrimitiveInt(), "getPrimitiveInt()")
 	}
 
 	override getPrimitiveLong() {
-		compilationUnit.typeReferenceProvider.getPrimitiveLong()
+		Objects.requireNonNull(compilationUnit.typeReferenceProvider.getPrimitiveLong(), "getPrimitiveLong()")
 	}
 
 	override getPrimitiveShort() {
-		compilationUnit.typeReferenceProvider.getPrimitiveShort()
+		Objects.requireNonNull(compilationUnit.typeReferenceProvider.getPrimitiveShort(), "getPrimitiveShort()")
 	}
 
 	override getPrimitiveVoid() {
-		compilationUnit.typeReferenceProvider.getPrimitiveVoid()
+		Objects.requireNonNull(compilationUnit.typeReferenceProvider.getPrimitiveVoid(), "getPrimitiveVoid()")
 	}
 
 	override getSet(TypeReference param) {
-		compilationUnit.typeReferenceProvider.getSet(param)
+		Objects.requireNonNull(compilationUnit.typeReferenceProvider.getSet(param), "getSet(param)")
 	}
 
 	override getString() {
-		compilationUnit.typeReferenceProvider.getString()
+		Objects.requireNonNull(compilationUnit.typeReferenceProvider.getString(), "getString()")
 	}
 
 	def getClassTypeRef() {
-		compilationUnit.typeReferenceProvider.newTypeReference(Class)
+		Objects.requireNonNull(compilationUnit.typeReferenceProvider.newTypeReference(Class), "newTypeReference(Class)")
 	}
 
 	override newArrayTypeReference(TypeReference componentType) {
-		compilationUnit.typeReferenceProvider.newArrayTypeReference(componentType)
+		Objects.requireNonNull(compilationUnit.typeReferenceProvider.newArrayTypeReference(componentType), "newArrayTypeReference("+componentType+")")
 	}
 
 	override newTypeReference(String typeName, TypeReference... typeArguments) {
-		compilationUnit.typeReferenceProvider.newTypeReference(typeName, typeArguments)
+		Objects.requireNonNull(compilationUnit.typeReferenceProvider.newTypeReference(typeName, typeArguments), "newTypeReference("+typeName+")")
 	}
 
 	override newTypeReference(Type typeDeclaration, TypeReference... typeArguments) {
-		compilationUnit.typeReferenceProvider.newTypeReference(typeDeclaration, typeArguments)
+		Objects.requireNonNull(compilationUnit.typeReferenceProvider.newTypeReference(typeDeclaration, typeArguments), "newTypeReference("+typeDeclaration+")")
 	}
 
 	override newTypeReference(Class<?> clazz, TypeReference... typeArguments) {
-		compilationUnit.typeReferenceProvider.newTypeReference(clazz, typeArguments)
+		Objects.requireNonNull(compilationUnit.typeReferenceProvider.newTypeReference(clazz, typeArguments), "newTypeReference("+clazz+")")
 	}
 
 	override newWildcardTypeReference() {
-		compilationUnit.typeReferenceProvider.newWildcardTypeReference()
+		Objects.requireNonNull(compilationUnit.typeReferenceProvider.newWildcardTypeReference(), "newWildcardTypeReference()")
 	}
 
 	override newWildcardTypeReference(TypeReference upperBound) {
-		compilationUnit.typeReferenceProvider.newWildcardTypeReference(upperBound)
+		Objects.requireNonNull(compilationUnit.typeReferenceProvider.newWildcardTypeReference(upperBound), "newWildcardTypeReference(upperBound)")
 	}
 
 	override newWildcardTypeReferenceWithLowerBound(TypeReference lowerBound) {
-		compilationUnit.typeReferenceProvider.newWildcardTypeReferenceWithLowerBound(lowerBound)
+		Objects.requireNonNull(compilationUnit.typeReferenceProvider.newWildcardTypeReferenceWithLowerBound(lowerBound), "newWildcardTypeReferenceWithLowerBound(lowerBound)")
 	}
 
 }

@@ -53,7 +53,7 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>${maven-compiler-plugin-version}</version>
 				<configuration>
-					<compilerId>eclipse</compilerId>
+					<!-- compilerId>eclipse</compilerId -->
 					<source>${java-version}</source>
 					<target>${java-version}</target>
 				</configuration>
@@ -180,10 +180,11 @@
 				<plugin>
 					<artifactId>maven-compiler-plugin</artifactId>
 					<configuration>
-						<compilerId>eclipse</compilerId>
+						<!-- compilerId>eclipse</compilerId -->
 						<source>${java-version}</source>
 						<target>${java-version}</target>
 					</configuration>
+<!--
 					<dependencies>
 						<dependency>
 							<groupId>org.codehaus.plexus</groupId>
@@ -191,6 +192,7 @@
 							<version>${plexus-compiler-eclipse-plugin-version}</version>
 						</dependency>
 					</dependencies>
+ -->
 				</plugin>
 				<!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
 				<plugin>
@@ -264,11 +266,13 @@
             <artifactId>org.eclipse.xtend.core</artifactId>
 			<version>2.5.0</version>
         </dependency>
+<!--
 		<dependency>
 			<groupId>org.codehaus.plexus</groupId>
 			<artifactId>plexus-compiler-eclipse</artifactId>
 			<version>2.3</version>
 		</dependency>
+ -->
 		<dependency>
 		  <groupId>com.github.oehme.xtend</groupId>
 		  <artifactId>xtend-contrib</artifactId>
