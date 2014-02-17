@@ -23,13 +23,12 @@ import com.blockwithme.meta.FloatProperty
 import com.blockwithme.meta.IntegerProperty
 import com.blockwithme.meta.LongProperty
 import com.blockwithme.meta.ObjectProperty
+import com.blockwithme.meta.PrimitiveProperty
 import com.blockwithme.meta.Property
 import com.blockwithme.meta.PropertyVisitor
 import com.blockwithme.meta.ShortProperty
 import com.blockwithme.meta.beans._Bean
-import java.util.Objects
 import com.blockwithme.meta.beans._Entity
-import com.blockwithme.meta.PrimitiveProperty
 
 /**
  * A base class for PropertyVisitors.

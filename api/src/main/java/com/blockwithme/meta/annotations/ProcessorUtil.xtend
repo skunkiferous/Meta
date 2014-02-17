@@ -16,7 +16,7 @@
 package com.blockwithme.meta.annotations
 
 import com.blockwithme.fn.util.Functor
-import com.blockwithme.traits.util.AntiClassLoaderCache
+import de.oehme.xtend.contrib.macro.CommonQueries
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.lang.annotation.Annotation
@@ -25,6 +25,7 @@ import java.util.Arrays
 import java.util.Collections
 import java.util.Date
 import java.util.HashMap
+import java.util.HashSet
 import java.util.List
 import java.util.Map
 import java.util.Objects
@@ -65,13 +66,11 @@ import org.eclipse.xtend.lib.macro.services.ProblemSupport
 import org.eclipse.xtend.lib.macro.services.Tracability
 import org.eclipse.xtend.lib.macro.services.TypeReferenceProvider
 import org.eclipse.xtext.common.types.JvmDeclaredType
+import org.eclipse.xtext.common.types.JvmGenericType
 import org.eclipse.xtext.common.types.JvmType
 import org.eclipse.xtext.common.types.impl.JvmGenericTypeImpl
 import org.eclipse.xtext.xbase.XBlockExpression
 import org.eclipse.xtext.xbase.lib.Functions.Function1
-import de.oehme.xtend.contrib.macro.CommonQueries
-import java.util.HashSet
-import org.eclipse.xtext.common.types.JvmGenericType
 import org.eclipse.xtext.xbase.lib.util.ReflectExtensions
 
 /**
@@ -228,11 +227,6 @@ class ProcessorUtil implements TypeReferenceProvider {
 		file
 	}
 
-	/** The anti-class-loader cache */
-	final def getCache() {
-		cache
-	}
-
 	/** The phase */
 	final def getPhase() {
 		phase
@@ -299,7 +293,7 @@ class ProcessorUtil implements TypeReferenceProvider {
 							+isInterface+" it.qualifiedName: "+it.qualifiedName)
 					}
 				}
-				td
+				td as MutableTypeDeclaration
 			]
 		}
 		jvmDeclaredTypes
@@ -770,8 +764,10 @@ class ProcessorUtil implements TypeReferenceProvider {
 	/**
 	 * Records an error for the given element
 	 *
-	 * @param element the element to which associate the message
-	 * @param message the message
+	 * @param who The class in which the message was produced.
+	 * @param where The method where message was produced.
+	 * @param what The element to which associate the message
+	 * @param message The message
 	 */
 	final def void error(Class<?> who, String where, Element what, String message) {
 		val logElem = extractLoggingElement(what)
@@ -781,8 +777,11 @@ class ProcessorUtil implements TypeReferenceProvider {
 	/**
 	 * Records an error for the given element
 	 *
-	 * @param element the element to which associate the message
-	 * @param message the message
+	 * @param who The class in which the message was produced.
+	 * @param where The method where message was produced.
+	 * @param what The element to which associate the message
+	 * @param message The message
+	 * @param t The error
 	 */
 	final def void error(Class<?> who, String where, Element what, String message, Throwable t) {
 		val logElem = extractLoggingElement(what)
@@ -792,8 +791,10 @@ class ProcessorUtil implements TypeReferenceProvider {
 	/**
 	 * Records a warning for the given element
 	 *
-	 * @param element the element to which associate the message
-	 * @param message the message
+	 * @param who The class in which the message was produced.
+	 * @param where The method where message was produced.
+	 * @param what The element to which associate the message
+	 * @param message The message
 	 */
 	final def void warn(Class<?> who, String where, Element what, String message) {
 		val logElem = extractLoggingElement(what)
@@ -803,8 +804,11 @@ class ProcessorUtil implements TypeReferenceProvider {
 	/**
 	 * Records a warning for the given element
 	 *
-	 * @param element the element to which associate the message
-	 * @param message the message
+	 * @param who The class in which the message was produced.
+	 * @param where The method where message was produced.
+	 * @param what The element to which associate the message
+	 * @param message The message
+	 * @param t The error
 	 */
 	final def void warn(Class<?> who, String where, Element what, String message, Throwable t) {
 		val logElem = extractLoggingElement(what)
@@ -814,8 +818,10 @@ class ProcessorUtil implements TypeReferenceProvider {
 	/**
 	 * Records a warning for the given element
 	 *
-	 * @param element the element to which associate the message
-	 * @param message the message
+	 * @param who The class in which the message was produced.
+	 * @param where The method where message was produced.
+	 * @param what The element to which associate the message
+	 * @param message The message
 	 */
 	final def void debug(Class<?> who, String where, Element what, String message) {
 		if (DEBUG) {
@@ -827,8 +833,11 @@ class ProcessorUtil implements TypeReferenceProvider {
 	/**
 	 * Records a warning for the given element
 	 *
-	 * @param element the element to which associate the message
-	 * @param message the message
+	 * @param who The class in which the message was produced.
+	 * @param where The method where message was produced.
+	 * @param what The element to which associate the message
+	 * @param message The message
+	 * @param t The error.
 	 */
 	final def void debug(Class<?> who, String where, Element what, String message, Throwable t) {
 		if (DEBUG) {

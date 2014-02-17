@@ -71,21 +71,25 @@ public class _BeanImpl implements _Bean {
     }
 
     /** Returns our type */
+    @Override
     public final Type<?> getMetaType() {
         return type;
     }
 
     /** Returns true if we are immutable */
+    @Override
     public final boolean isImmutable() {
         return immutable;
     }
 
     /** Returns true if some property selected */
+    @Override
     public final boolean isSelected() {
         return selected != 0;
     }
 
     /** Returns true, if some property was selected, either in self, or in children */
+    @Override
     public final boolean isSelectedRecursive() {
         if (isSelected()) {
             return true;
@@ -129,6 +133,7 @@ public class _BeanImpl implements _Bean {
     }
 
     /** Clears all the selected flags */
+    @Override
     public final void clearSelection() {
         if (immutable) {
             throw new UnsupportedOperationException(this + " is immutable!");
@@ -144,6 +149,7 @@ public class _BeanImpl implements _Bean {
     }
 
     /** Adds all the selected properties to "selected" */
+    @Override
     public final void getSelectedProperty(
             final Collection<Property<?, ?>> selected) {
         selected.clear();
@@ -157,6 +163,7 @@ public class _BeanImpl implements _Bean {
     }
 
     /** Sets all selected flags to true, including the children */
+    @Override
     public final void setSelectionRecursive() {
         selected = -1L;
         for (final ObjectProperty p : type.objectProperties) {
@@ -168,6 +175,7 @@ public class _BeanImpl implements _Bean {
     }
 
     /** Returns the 64 bit hashcode */
+    @Override
     public final long getHashCode64() {
         if (hashCode64 == 0) {
             hashCode64 = MurmurHash.hash64(toString());
@@ -186,6 +194,7 @@ public class _BeanImpl implements _Bean {
     }
 
     /** Computes the JSON representation */
+    @Override
     public final void toJSON(final Appendable appendable) {
         try {
             final JacksonSerializer j = JacksonSerializer
@@ -230,11 +239,13 @@ public class _BeanImpl implements _Bean {
     }
 
     /** Returns the delegate */
+    @Override
     public final _Bean getDelegate() {
         return delegate;
     }
 
     /** Sets the delegate */
+    @Override
     public final void setDelegate(final _Bean delegate) {
         if (this.delegate != delegate) {
             if ((delegate != null) && (delegate.getClass() != getClass())) {
@@ -258,11 +269,13 @@ public class _BeanImpl implements _Bean {
     }
 
     /** Returns the interceptor */
+    @Override
     public final Interceptor getInterceptor() {
         return interceptor;
     }
 
     /** Sets the interceptor; cannot be null */
+    @Override
     public final void setInterceptor(final Interceptor interceptor) {
         if (this.interceptor != interceptor) {
             if (interceptor == null) {
@@ -276,11 +289,13 @@ public class _BeanImpl implements _Bean {
     }
 
     /** Returns the "parent" Bean, if any. */
+    @Override
     public final _Bean getParent() {
         return parent;
     }
 
     /** Sets the "parent" Bean, if any. */
+    @Override
     public final void setParent(final _Bean parent) {
         if (this instanceof Entity) {
             if (parent != null) {
@@ -292,6 +307,7 @@ public class _BeanImpl implements _Bean {
     }
 
     /** Returns the "root" Bean, if any. */
+    @Override
     public final _Bean getRoot() {
         _Bean result = null;
         // parent is always null for Entities
@@ -307,6 +323,7 @@ public class _BeanImpl implements _Bean {
     }
 
     /** Returns true, if this Bean has the same root as the Bean passed as parameter */
+    @Override
     public final boolean hasSameRoot(final _Bean other) {
         return (this == other)
                 || (getRoot() == Objects.requireNonNull(other, "other")
@@ -314,11 +331,13 @@ public class _BeanImpl implements _Bean {
     }
 
     /** Returns the current value of the change counter */
+    @Override
     public final int getChangeCounter() {
         return changeCounter;
     }
 
     /** Sets the current value of the change counter */
+    @Override
     public final void setChangeCounter(final int newValue) {
         changeCounter = newValue;
     }

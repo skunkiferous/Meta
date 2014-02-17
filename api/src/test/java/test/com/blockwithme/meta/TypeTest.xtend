@@ -593,11 +593,11 @@ class TypeTest {
      		TestMeta.OBJECT_PROP, TestMeta.ENUM_PROP
      	).toSet, TestMeta.MY_TYPE.properties.toSet)
      	assertEquals(newArrayList(TestMeta.OBJECT_PROP), TestMeta.MY_TYPE.objectProperties.toList)
-     	assertEquals(newArrayList(TestMeta.BOOL_PROP, TestMeta.BYTE_PROP,
+     	assertEquals(<Object>newArrayList(TestMeta.BOOL_PROP, TestMeta.BYTE_PROP,
      		TestMeta.CHAR_PROP, TestMeta.SHORT_PROP, TestMeta.INT_PROP,
      		TestMeta.LONG_PROP, TestMeta.FLOAT_PROP, TestMeta.DOUBLE_PROP,
      		TestMeta.ENUM_PROP
-     	).toSet, TestMeta.MY_TYPE.primitiveProperties.toSet)
+     	).toSet, <Object>TestMeta.MY_TYPE.primitiveProperties.toSet)
      	assertEquals(10, TestMeta.MY_TYPE.inheritedProperties.length)
      	assertEquals(1, TestMeta.MY_TYPE.typeId)
      	assertEquals(9, TestMeta.MY_TYPE.primitivePropertyCount)

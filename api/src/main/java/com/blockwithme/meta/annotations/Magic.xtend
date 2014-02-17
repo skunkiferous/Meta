@@ -6,7 +6,9 @@ import java.lang.annotation.ElementType
 import java.lang.annotation.Retention
 import java.lang.annotation.RetentionPolicy
 import java.lang.annotation.Target
+import java.util.HashMap
 import java.util.List
+import java.util.Map
 import org.eclipse.xtend.core.macro.declaration.CompilationUnitImpl
 import org.eclipse.xtend.lib.macro.Active
 import org.eclipse.xtend.lib.macro.CodeGenerationContext
@@ -21,10 +23,6 @@ import org.eclipse.xtend.lib.macro.declaration.MutableTypeDeclaration
 import org.eclipse.xtend.lib.macro.declaration.NamedElement
 import org.eclipse.xtend.lib.macro.declaration.TypeDeclaration
 import org.eclipse.xtext.xbase.lib.Procedures.Procedure3
-import java.util.HashMap
-import java.util.Map
-import java.util.Comparator
-import java.util.Collections
 
 /**
  * Marks that *all types in this file* should be processed.

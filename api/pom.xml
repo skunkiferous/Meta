@@ -53,7 +53,7 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>${maven-compiler-plugin-version}</version>
 				<configuration>
-					<!-- compilerId>eclipse</compilerId -->
+					<compilerId>eclipse</compilerId>
 					<source>${java-version}</source>
 					<target>${java-version}</target>
 				</configuration>
@@ -81,38 +81,33 @@
 						</fileset>
 					</filesets>
 				</configuration>
-<!--			        <executions>
-			          <execution>
-			            <id>auto-clean</id>
-			            <phase>initialize</phase>
-			            <goals>
-			              <goal>clean</goal>
-			            </goals>
-			          </execution>
-			        </executions>-->
 			</plugin>
- 		      <plugin>
-		        <artifactId>maven-source-plugin</artifactId>
-		        <version>${maven-source-plugin-version}</version>
-		        <executions>
-		          <execution>
-		            <id>attach-sources</id>
-		            <phase>post-integration-test</phase>
-		            <goals><goal>jar</goal></goals>
-		          </execution>
-		        </executions>
-		      </plugin>
-		      <plugin>
-		        <artifactId>maven-javadoc-plugin</artifactId>
-		        <version>${maven-javadoc-plugin-version}</version>
-		        <executions>
-		          <execution>
-		            <id>attach-docs</id>
-		            <phase>post-integration-test</phase>
-		            <goals><goal>jar</goal></goals>
-		          </execution>
-		        </executions>
-		      </plugin>
+			<plugin>
+				<artifactId>maven-source-plugin</artifactId>
+				<version>${maven-source-plugin-version}</version>
+				<executions>
+					<execution>
+						<id>attach-sources</id>
+						<phase>post-integration-test</phase>
+						<goals>
+							<goal>jar-no-fork</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<artifactId>maven-javadoc-plugin</artifactId>
+				<version>${maven-javadoc-plugin-version}</version>
+				<executions>
+					<execution>
+						<id>attach-docs</id>
+						<phase>post-integration-test</phase>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.felix</groupId>
 				<artifactId>maven-bundle-plugin</artifactId>
@@ -149,18 +144,18 @@
 				<artifactId>xtend-maven-plugin</artifactId>
 				<version>${xtend-maven-plugin-version}</version>
 				<executions>
-                   <execution>
-                        <goals>
-                            <goal>compile</goal>
-                            <goal>testCompile</goal>
-                            <goal>xtend-install-debug-info</goal>
-                            <goal>xtend-test-install-debug-info</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>src/main/xtend-gen</outputDirectory>
-                            <testOutputDirectory>src/test/xtend-gen</testOutputDirectory>
-                        </configuration>
-                    </execution>
+					<execution>
+						<goals>
+							<goal>compile</goal>
+							<goal>testCompile</goal>
+							<goal>xtend-install-debug-info</goal>
+							<goal>xtend-test-install-debug-info</goal>
+						</goals>
+						<configuration>
+							<outputDirectory>src/main/xtend-gen</outputDirectory>
+							<testOutputDirectory>src/test/xtend-gen</testOutputDirectory>
+						</configuration>
+					</execution>
 				</executions>
 			</plugin>
 		</plugins>
@@ -180,11 +175,10 @@
 				<plugin>
 					<artifactId>maven-compiler-plugin</artifactId>
 					<configuration>
-						<!-- compilerId>eclipse</compilerId -->
+						<compilerId>eclipse</compilerId>
 						<source>${java-version}</source>
 						<target>${java-version}</target>
 					</configuration>
-<!--
 					<dependencies>
 						<dependency>
 							<groupId>org.codehaus.plexus</groupId>
@@ -192,38 +186,6 @@
 							<version>${plexus-compiler-eclipse-plugin-version}</version>
 						</dependency>
 					</dependencies>
- -->
-				</plugin>
-				<!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
-				<plugin>
-					<groupId>org.eclipse.m2e</groupId>
-					<artifactId>lifecycle-mapping</artifactId>
-					<version>1.0.0</version>
-					<configuration>
-						<lifecycleMappingMetadata>
-							<pluginExecutions>
-								<pluginExecution>
-									<pluginExecutionFilter>
-										<groupId>
-											org.apache.maven.plugins
-										</groupId>
-										<artifactId>
-											maven-clean-plugin
-										</artifactId>
-										<versionRange>
-											[2.5,)
-										</versionRange>
-										<goals>
-											<goal>clean</goal>
-										</goals>
-									</pluginExecutionFilter>
-									<action>
-										<ignore></ignore>
-									</action>
-								</pluginExecution>
-							</pluginExecutions>
-						</lifecycleMappingMetadata>
-					</configuration>
 				</plugin>
 			</plugins>
 		</pluginManagement>
@@ -261,22 +223,20 @@
 			<artifactId>org.eclipse.xtend.lib</artifactId>
 			<version>2.5.0</version>
 		</dependency>
-        <dependency>
-            <groupId>org.eclipse.xtend</groupId>
-            <artifactId>org.eclipse.xtend.core</artifactId>
+		<dependency>
+			<groupId>org.eclipse.xtend</groupId>
+			<artifactId>org.eclipse.xtend.core</artifactId>
 			<version>2.5.0</version>
-        </dependency>
-<!--
+		</dependency>
 		<dependency>
 			<groupId>org.codehaus.plexus</groupId>
 			<artifactId>plexus-compiler-eclipse</artifactId>
 			<version>2.3</version>
 		</dependency>
- -->
 		<dependency>
-		  <groupId>com.github.oehme.xtend</groupId>
-		  <artifactId>xtend-contrib</artifactId>
-		  <version>0.4.1</version>
+			<groupId>com.github.oehme.xtend</groupId>
+			<artifactId>xtend-contrib</artifactId>
+			<version>0.4.1</version>
 		</dependency>
 		<dependency>
 			<groupId>com.google.inject</groupId>
@@ -289,9 +249,9 @@
 			<version>3.0</version>
 		</dependency>
 		<dependency>
-		    <groupId>com.fasterxml.jackson.core</groupId>
-		    <artifactId>jackson-core</artifactId>
-		    <version>2.3.0</version>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-core</artifactId>
+			<version>2.3.0</version>
 		</dependency>
 <!--
 		<dependency>
@@ -330,7 +290,7 @@
 	</pluginRepositories>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<java-version>1.5</java-version>
+		<java-version>1.7</java-version>
 		<plexus-compiler-eclipse-plugin-version>2.3</plexus-compiler-eclipse-plugin-version>
 		<maven-compiler-plugin-version>3.0</maven-compiler-plugin-version>
 		<maven-clean-plugin-version>2.5</maven-clean-plugin-version>

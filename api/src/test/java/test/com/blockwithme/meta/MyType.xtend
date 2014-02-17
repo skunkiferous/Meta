@@ -5,9 +5,7 @@ import com.blockwithme.meta.HierarchyBuilder
 import com.blockwithme.meta.JavaMeta
 import com.blockwithme.meta.Kind
 import com.blockwithme.meta.MetaMeta
-import com.blockwithme.meta.MetaProperty
 import com.blockwithme.meta.Type
-import com.blockwithme.meta.TypePackage
 import com.blockwithme.meta.converter.IntConverter
 
 import static java.util.Objects.*

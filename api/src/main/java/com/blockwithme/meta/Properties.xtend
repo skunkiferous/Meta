@@ -677,7 +677,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 		val TreeSet<Type<?>> pset = new TreeSet(checkArray(theParents, "theParents"))
 		val TreeSet<Type<?>> pallset = new TreeSet(pset)
 		for (p : pset) {
-			pallset.addAll(p.inheritedParents)
+			pallset.addAll(Arrays.asList(p.inheritedParents))
 		}
 		// Since we decided NOT to inherit the JAVA Hierarchy by default,
 		// we cannot assume that it is inherited. And since OBJECT is in
@@ -692,7 +692,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 		}
 		// 2: Re-add anything that comes from an indirect parent
 		for (p : <Type>newArrayList(pallset)) {
-			pallset.addAll(p.inheritedParents)
+			pallset.addAll(Arrays.asList(p.inheritedParents))
 		}
 		// 3: Remove from direct parents all the indirect parents
 		for (p : <Type>newArrayList(pset)) {

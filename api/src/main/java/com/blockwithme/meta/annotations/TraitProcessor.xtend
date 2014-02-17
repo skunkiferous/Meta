@@ -22,9 +22,11 @@ package com.blockwithme.meta.annotations
 //import com.blockwithme.msgpack.templates.PackerContext
 //import com.blockwithme.msgpack.templates.TrackingType
 //import com.blockwithme.msgpack.templates.UnpackerContext
+
 import com.blockwithme.fn.util.Functor
 import com.blockwithme.fn1.ProcObject
 import com.blockwithme.traits.util.IndentationAwareStringBuilder
+import com.google.inject.Provider
 import java.io.Serializable
 import java.lang.annotation.ElementType
 import java.lang.annotation.Inherited
@@ -33,29 +35,23 @@ import java.lang.annotation.RetentionPolicy
 import java.lang.annotation.Target
 import java.util.HashSet
 import java.util.LinkedHashSet
+import java.util.Map
 import java.util.Set
 import org.eclipse.xtend.lib.macro.Active
 import org.eclipse.xtend.lib.macro.RegisterGlobalsContext
 import org.eclipse.xtend.lib.macro.TransformationContext
 import org.eclipse.xtend.lib.macro.declaration.InterfaceDeclaration
 import org.eclipse.xtend.lib.macro.declaration.MutableClassDeclaration
+import org.eclipse.xtend.lib.macro.declaration.MutableFieldDeclaration
 import org.eclipse.xtend.lib.macro.declaration.MutableInterfaceDeclaration
 import org.eclipse.xtend.lib.macro.declaration.Type
 import org.eclipse.xtend.lib.macro.declaration.TypeDeclaration
 import org.eclipse.xtend.lib.macro.declaration.TypeReference
-import org.eclipse.xtend.lib.macro.declaration.Visibility
 
 import static com.blockwithme.fn.util.Util.*
 
-import static extension com.blockwithme.meta.annotations.ProcessorUtil.*
 import static extension java.lang.Character.*
 import static extension java.lang.Class.*
-import static java.util.Objects.*
-import com.google.inject.Provider
-import org.eclipse.xtend.lib.macro.declaration.MutableFieldDeclaration
-import org.eclipse.xtend2.lib.StringConcatenationClient
-import org.eclipse.xtend2.lib.StringConcatenationClient.TargetStringConcatenation
-import java.util.Map
 
 /**
  * Annotation for "traits"

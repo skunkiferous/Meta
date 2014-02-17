@@ -16,8 +16,6 @@
 package test.com.blockwithme.meta
 
 import com.blockwithme.meta.Hierarchy
-import com.blockwithme.meta.MetaProperty
-import com.blockwithme.meta.Type
 import com.blockwithme.meta.MetaMeta
 
 /**

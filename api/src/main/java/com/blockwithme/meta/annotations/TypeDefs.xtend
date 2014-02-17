@@ -2,13 +2,11 @@ package com.blockwithme.meta.annotations
 
 import java.util.List
 import org.eclipse.xtend.lib.macro.Active
-import org.eclipse.xtend.lib.macro.RegisterGlobalsContext
-import org.eclipse.xtend.lib.macro.RegisterGlobalsParticipant
 import org.eclipse.xtend.lib.macro.TransformationContext
 import org.eclipse.xtend.lib.macro.TransformationParticipant
+import org.eclipse.xtend.lib.macro.declaration.MutableClassDeclaration
 import org.eclipse.xtend.lib.macro.declaration.MutableTypeDeclaration
 import org.eclipse.xtend.lib.macro.declaration.TypeDeclaration
-import org.eclipse.xtend.lib.macro.declaration.MutableClassDeclaration
 import org.eclipse.xtext.common.types.JvmType
 
 @Active(typeof(GenProcessor))
