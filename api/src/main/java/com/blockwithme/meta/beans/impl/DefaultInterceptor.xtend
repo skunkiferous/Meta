@@ -45,88 +45,88 @@ class DefaultInterceptor implements Interceptor {
     /** Default instance */
     public static val INSTANCE = new DefaultInterceptor()
 
-	override getBooleanProperty(_Bean instance, BooleanProperty<?, ?, ?> prop, boolean value) {
+	override boolean getBooleanProperty(_Bean instance, BooleanProperty<?, ?, ?> prop, boolean value) {
         value
 	}
 
-	override setBooleanProperty(_Bean instance, BooleanProperty<?, ?, ?> prop, boolean oldValue, boolean newValue) {
+	override boolean setBooleanProperty(_Bean instance, BooleanProperty<?, ?, ?> prop, boolean oldValue, boolean newValue) {
         if (oldValue !== newValue) {
             instance.setSelected(prop)
         }
         newValue
 	}
 
-	override getByteProperty(_Bean instance, ByteProperty<?, ?, ?> prop, byte value) {
+	override byte getByteProperty(_Bean instance, ByteProperty<?, ?, ?> prop, byte value) {
         value
 	}
 
-	override setByteProperty(_Bean instance, ByteProperty<?, ?, ?> prop, byte oldValue, byte newValue) {
+	override byte setByteProperty(_Bean instance, ByteProperty<?, ?, ?> prop, byte oldValue, byte newValue) {
         if (oldValue !== newValue) {
             instance.setSelected(prop)
         }
         newValue
 	}
 
-	override getCharacterProperty(_Bean instance, CharacterProperty<?, ?, ?> prop, char value) {
+	override char getCharacterProperty(_Bean instance, CharacterProperty<?, ?, ?> prop, char value) {
         value
 	}
 
-	override setCharacterProperty(_Bean instance, CharacterProperty<?, ?, ?> prop, char oldValue, char newValue) {
+	override char setCharacterProperty(_Bean instance, CharacterProperty<?, ?, ?> prop, char oldValue, char newValue) {
         if (oldValue !== newValue) {
             instance.setSelected(prop)
         }
         newValue
 	}
 
-	override getShortProperty(_Bean instance, ShortProperty<?, ?, ?> prop, short value) {
+	override short getShortProperty(_Bean instance, ShortProperty<?, ?, ?> prop, short value) {
         value
 	}
 
-	override setShortProperty(_Bean instance, ShortProperty<?, ?, ?> prop, short oldValue, short newValue) {
+	override short setShortProperty(_Bean instance, ShortProperty<?, ?, ?> prop, short oldValue, short newValue) {
         if (oldValue !== newValue) {
             instance.setSelected(prop)
         }
         newValue
 	}
 
-	override getIntegerProperty(_Bean instance, IntegerProperty<?, ?, ?> prop, int value) {
+	override int getIntegerProperty(_Bean instance, IntegerProperty<?, ?, ?> prop, int value) {
         value
 	}
 
-	override setIntegerProperty(_Bean instance, IntegerProperty<?, ?, ?> prop, int oldValue, int newValue) {
+	override int setIntegerProperty(_Bean instance, IntegerProperty<?, ?, ?> prop, int oldValue, int newValue) {
         if (oldValue !== newValue) {
             instance.setSelected(prop)
         }
         newValue
 	}
 
-	override getFloatProperty(_Bean instance, FloatProperty<?, ?, ?> prop, float value) {
+	override float getFloatProperty(_Bean instance, FloatProperty<?, ?, ?> prop, float value) {
         value
 	}
 
-	override setFloatProperty(_Bean instance, FloatProperty<?, ?, ?> prop, float oldValue, float newValue) {
+	override float setFloatProperty(_Bean instance, FloatProperty<?, ?, ?> prop, float oldValue, float newValue) {
         if (oldValue !== newValue) {
             instance.setSelected(prop)
         }
         newValue
 	}
 
-	override getDoubleProperty(_Bean instance, DoubleProperty<?, ?, ?> prop, double value) {
+	override double getDoubleProperty(_Bean instance, DoubleProperty<?, ?, ?> prop, double value) {
         value
 	}
 
-	override setDoubleProperty(_Bean instance, DoubleProperty<?, ?, ?> prop, double oldValue, double newValue) {
+	override double setDoubleProperty(_Bean instance, DoubleProperty<?, ?, ?> prop, double oldValue, double newValue) {
         if (oldValue !== newValue) {
             instance.setSelected(prop)
         }
         newValue
 	}
 
-	override getLongProperty(_Bean instance, LongProperty<?, ?, ?> prop, long value) {
+	override long getLongProperty(_Bean instance, LongProperty<?, ?, ?> prop, long value) {
         value
 	}
 
-	override setLongProperty(_Bean instance, LongProperty<?, ?, ?> prop, long oldValue, long newValue) {
+	override long setLongProperty(_Bean instance, LongProperty<?, ?, ?> prop, long oldValue, long newValue) {
         if (oldValue !== newValue) {
             instance.setSelected(prop)
         }
@@ -148,7 +148,7 @@ class DefaultInterceptor implements Interceptor {
 	            	if (instance.hasSameRoot(newValue)) {
 	            		// Undo changes
 			            if (oldValue instanceof _Bean) {
-			            	oldValue.setParent(null)
+			            	oldValue.setParent(instance)
 			            }
 			            throw new IllegalStateException("Cycles not permitted on "
 			            	+prop.fullName+" of "+instance.class.name)
@@ -167,7 +167,7 @@ class DefaultInterceptor implements Interceptor {
 	def validateObjectType(Object e) {
 		if (!(e.class.enum || VALID_PROPERTY_TYPES.contains(e.class))) {
 			throw new IllegalArgumentException("Property values of type "
-				+e.class+" not supported")
+				+e.class+" not (yet) supported")
 		}
 	}
 

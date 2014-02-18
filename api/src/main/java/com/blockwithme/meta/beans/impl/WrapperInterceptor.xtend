@@ -31,11 +31,12 @@ import com.blockwithme.meta.beans._Bean
  *
  * @author monster
  */
+@SuppressWarnings("unchecked")
 class WrapperInterceptor extends DefaultInterceptor {
     /** Default instance */
     public static val INSTANCE = new WrapperInterceptor()
 
-	override getBooleanProperty(_Bean instance, BooleanProperty prop, boolean value) {
+	override boolean getBooleanProperty(_Bean instance, BooleanProperty prop, boolean value) {
         val delegate = instance.getDelegate()
         if ((delegate === null) || instance.isSelected(prop)) {
             return value
@@ -43,7 +44,7 @@ class WrapperInterceptor extends DefaultInterceptor {
         return prop.getBoolean(delegate)
 	}
 
-	override getByteProperty(_Bean instance, ByteProperty prop, byte value) {
+	override byte getByteProperty(_Bean instance, ByteProperty prop, byte value) {
         val delegate = instance.getDelegate()
         if ((delegate === null) || instance.isSelected(prop)) {
             return value
@@ -51,7 +52,7 @@ class WrapperInterceptor extends DefaultInterceptor {
         return prop.getByte(delegate)
 	}
 
-	override getCharacterProperty(_Bean instance, CharacterProperty prop, char value) {
+	override char getCharacterProperty(_Bean instance, CharacterProperty prop, char value) {
         val delegate = instance.getDelegate()
         if ((delegate === null) || instance.isSelected(prop)) {
             return value
@@ -59,7 +60,7 @@ class WrapperInterceptor extends DefaultInterceptor {
         return prop.getChar(delegate)
 	}
 
-	override getShortProperty(_Bean instance, ShortProperty prop, short value) {
+	override short getShortProperty(_Bean instance, ShortProperty prop, short value) {
         val delegate = instance.getDelegate()
         if ((delegate === null) || instance.isSelected(prop)) {
             return value
@@ -67,7 +68,7 @@ class WrapperInterceptor extends DefaultInterceptor {
         return prop.getShort(delegate)
 	}
 
-	override getIntegerProperty(_Bean instance, IntegerProperty prop, int value) {
+	override int getIntegerProperty(_Bean instance, IntegerProperty prop, int value) {
         val delegate = instance.getDelegate()
         if ((delegate === null) || instance.isSelected(prop)) {
             return value
@@ -75,7 +76,7 @@ class WrapperInterceptor extends DefaultInterceptor {
         return prop.getInt(delegate)
 	}
 
-	override getFloatProperty(_Bean instance, FloatProperty prop, float value) {
+	override float getFloatProperty(_Bean instance, FloatProperty prop, float value) {
         val delegate = instance.getDelegate()
         if ((delegate === null) || instance.isSelected(prop)) {
             return value
@@ -83,7 +84,7 @@ class WrapperInterceptor extends DefaultInterceptor {
         return prop.getFloat(delegate)
 	}
 
-	override getDoubleProperty(_Bean instance, DoubleProperty prop, double value) {
+	override double getDoubleProperty(_Bean instance, DoubleProperty prop, double value) {
         val delegate = instance.getDelegate()
         if ((delegate === null) || instance.isSelected(prop)) {
             return value
@@ -91,7 +92,7 @@ class WrapperInterceptor extends DefaultInterceptor {
         return prop.getDouble(delegate)
 	}
 
-	override getLongProperty(_Bean instance, LongProperty prop, long value) {
+	override long getLongProperty(_Bean instance, LongProperty prop, long value) {
         val delegate = instance.getDelegate()
         if ((delegate === null) || instance.isSelected(prop)) {
             return value

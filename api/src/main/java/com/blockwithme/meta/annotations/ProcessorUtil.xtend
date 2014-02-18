@@ -72,6 +72,7 @@ import org.eclipse.xtext.common.types.impl.JvmGenericTypeImpl
 import org.eclipse.xtext.xbase.XBlockExpression
 import org.eclipse.xtext.xbase.lib.Functions.Function1
 import org.eclipse.xtext.xbase.lib.util.ReflectExtensions
+import org.eclipse.xtend.core.macro.declaration.JvmTypeDeclarationImpl
 
 /**
  * Helper methods for active annotation processing.
@@ -350,7 +351,7 @@ class ProcessorUtil implements TypeReferenceProvider {
 	private def TypeDeclaration lookup2(TypeDeclaration td,
 		boolean isInterface, String typeName) {
 		val compilationUnit = td.compilationUnit as CompilationUnitImpl
-		val parentIsJvmType = (td instanceof JvmType)
+		val parentIsJvmType = (td instanceof JvmType) || (td instanceof JvmTypeDeclarationImpl)
 		if (parentIsJvmType) {
 			val tmp = getMutableTypes().findFirst[it.qualifiedName == typeName]
 			if (tmp !== null) {
@@ -381,7 +382,7 @@ class ProcessorUtil implements TypeReferenceProvider {
 			val result = compilationUnit.toType(foreign) as TypeDeclaration
 			if (!parentIsJvmType && (result.compilationUnit == compilationUnit)) {
 				throw new IllegalStateException("Parent type "+typeName+" of type "+td.qualifiedName
-					+" could not be found as Xtend type!")
+					+" could not be found as Xtend type: "+td.class)
 			}
 			result
 		}
@@ -934,6 +935,11 @@ class ProcessorUtil implements TypeReferenceProvider {
 			found as MutableInterfaceDeclaration
 		else
 			null
+	}
+
+	/** Utility method that finds an interface in the global context, fails if not found */
+	def getInterface(String name) {
+		Objects.requireNonNull(findInterface(name), "findInterface("+name+")")
 	}
 
 	/** Utility method that finds a class in the global context, returns null if not found */

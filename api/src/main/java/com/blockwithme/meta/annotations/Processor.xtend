@@ -292,4 +292,19 @@ class Processor<T extends TypeDeclaration, M extends MutableTypeDeclaration> {
 	def void generate(Map<String,Object> processingContext, T td, CodeGenerationContext context) {
 		// NOP
 	}
+
+	/** Called when the register phase for the current file is done. */
+	def void afterRegister(Map<String,Object> processingContext, String pkgName, RegisterGlobalsContext context) {
+		// NOP
+	}
+
+	/** Called when the transform phase for the current file is done. */
+	def void afterTransform(Map<String,Object> processingContext, String pkgName, TransformationContext context) {
+		// NOP
+	}
+
+	/** Called when the generate phase for the current file is done. */
+	def void afterGenerate(Map<String,Object> processingContext, String pkgName, CodeGenerationContext context) {
+		// NOP
+	}
 }

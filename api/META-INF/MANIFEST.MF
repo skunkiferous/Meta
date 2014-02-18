@@ -1,5 +1,5 @@
 Manifest-Version: 1.0
-Bnd-LastModified: 1392671843260
+Bnd-LastModified: 1392763950992
 Build-Jdk: 1.7.0_45
 Built-By: monster
 Bundle-Description: The second generation, XTend-based, Meta API for Typ

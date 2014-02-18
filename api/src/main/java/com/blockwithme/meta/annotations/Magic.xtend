@@ -23,6 +23,8 @@ import org.eclipse.xtend.lib.macro.declaration.MutableTypeDeclaration
 import org.eclipse.xtend.lib.macro.declaration.NamedElement
 import org.eclipse.xtend.lib.macro.declaration.TypeDeclaration
 import org.eclipse.xtext.xbase.lib.Procedures.Procedure3
+import org.eclipse.xtext.xbase.lib.Procedures.Procedure2
+import java.util.ArrayList
 
 /**
  * Marks that *all types in this file* should be processed.
@@ -37,6 +39,10 @@ annotation Magic {
 
 /**
  * Process classes annotated with @Magic
+ *
+ * Somehow, some of my code is executed *outside* of the active annotation processor
+ * hook methods, and that code needs the cached state, so I cannot clear the cache
+ * at the end of the API hook methods.
  *
  * @author monster
  */
@@ -57,18 +63,9 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 	static val ACCEPT = new HashMap<String,Boolean>
 
 	private def <TD extends TypeDeclaration> void loop(
-		// Somehow, some of my code is executed *outside* of the active annotation processor
-		// hook methods, and that code needs the cached state, so I cannot clear the cache
-		// at the end of this method.
-		// Example:
-		//java.lang.NullPointerException
-		//	at com.blockwithme.meta.annotations.TraitProcessor.isFunctor(TraitProcessor.java:127)
-		//	at com.blockwithme.meta.annotations.TraitProcessor.access$3(TraitProcessor.java:125)
-		//	at com.blockwithme.meta.annotations.TraitProcessor$12$1.compile(TraitProcessor.java:1130)
-		//	at org.eclipse.xtend.core.macro.declaration.CompilationUnitImpl$18.apply(CompilationUnitImpl.java:981)
-
 		List<? extends NamedElement> annotatedSourceElements,
-		String phase, Procedure3<Map<String,Object>, Processor, TD> lambda) {
+		String phase, Procedure3<Map<String,Object>, Processor, TD> lambda,
+		Procedure3<Map<String,Object>, Processor, String> lambdaAfter) {
 		val compilationUnit = ProcessorUtil.getCompilationUnit(annotatedSourceElements)
 		if (compilationUnit !== null) {
 			// Must be called first, for logging correctly
@@ -93,16 +90,22 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 			// Extract types to process from compilation unit (file)
 			val allTypes = (if (transform) processorUtil.allMutableTypes else processorUtil.allXtendTypes).toList
 			processorUtil.warn(MagicAnnotationProcessor, "loop", null,"allTypes: "+allTypes)
-			val types = allTypes.toArray(<TypeDeclaration>newArrayOfSize(allTypes.size))
-			val todoTypes = newArrayList(types)
+			// "+1" causes the last value in types to be null, which indicates end-of-file
+			val types = allTypes.toArray(<TypeDeclaration>newArrayOfSize(allTypes.size + 1))
+			val todoTypes = new ArrayList(allTypes)
 			val doneTypes = <TypeDeclaration>newArrayList()
 			processorUtil.debug(MagicAnnotationProcessor, "loop", null,
-					"Top-Level Types: "+ProcessorUtil.qualifiedNames(types))
+					"Top-Level Types: "+ProcessorUtil.qualifiedNames(allTypes))
 			val processingContext = new HashMap<String,Object>()
 			processingContext.put(Processor.PC_ALL_FILE_TYPES, allTypes)
 			processingContext.put(Processor.PC_TODO_TYPES, todoTypes)
 			processingContext.put(Processor.PC_DONE_TYPES, doneTypes)
 			processingContext.put(Processor.PC_ALL_PROCESSORS, allProcessors)
+			val pkgName = if (!allTypes.empty) {
+				val qn = allTypes.get(0).qualifiedName
+				val dot = qn.lastIndexOf(".")
+				qn.substring(0, dot)
+			} else ""
 			// Process all types
 			for (td : types) {
 				processingContext.put(Processor.PC_PROCESSED_TYPE, td)
@@ -111,45 +114,42 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 				val doneProcessors = <Processor>newArrayList()
 				processingContext.put(Processor.PC_TODO_PROCESSORS, todoProcessors)
 				processingContext.put(Processor.PC_DONE_PROCESSORS, doneProcessors)
+				val qualifiedName = if (td === null) null else td.qualifiedName
 				// If unprocessed (for this phase), check all processors
 				for (p : processors) {
 					todoProcessors.remove(p)
 					processingContext.put(Processor.PC_CURRENT_PROCESSOR, p)
 					p.setProcessorUtil(processorUtil)
 					try {
-						// Check if the processor is interested
-						val acceptKey = p.class.name+':'+td.qualifiedName
-						var accept = ACCEPT.get(acceptKey)
-						if (accept === null) {
-							accept = p.accept(processingContext, td)
-							ACCEPT.put(acceptKey, accept)
-							if (!accept) {
-								processorUtil.warn(MagicAnnotationProcessor, "loop", td,
-										"NOT Calling: "+p+"."+phase+"("+td.qualifiedName+")")
-if (("transform" == phase) && ("com.blockwithme.meta.demo.DemoType" == td.qualifiedName)) {
-processorUtil.warn(MagicAnnotationProcessor, "loop", td,
-		td.qualifiedName+": isInterface="+Processor.isInterface.apply(null,processorUtil,td)+" "+td.class)
-processorUtil.warn(MagicAnnotationProcessor, "loop", td,
-		td.qualifiedName+": withAnnotation(Bean)="+Processor.withAnnotation(Bean).apply(null,processorUtil,td))
-}
+						if (td === null) {
+							lambdaAfter.apply(processingContext, p, pkgName)
+						} else {
+							// Check if the processor is interested
+							val acceptKey = p.class.name+':'+qualifiedName
+							var accept = ACCEPT.get(acceptKey)
+							if (accept === null) {
+								accept = p.accept(processingContext, td)
+								ACCEPT.put(acceptKey, accept)
+								if (!accept) {
+									processorUtil.warn(MagicAnnotationProcessor, "loop", td,
+											"NOT Calling: "+p+"."+phase+"("+qualifiedName+")")
+								}
 							}
-						}
-						if (accept) {
-							processorUtil.debug(MagicAnnotationProcessor, "loop", td,
-									"Calling: "+p+"."+phase+"("+td.qualifiedName+")")
-							// Yes? Then call processor.
-							lambda.apply(processingContext, p, td as TD)
+							if (accept) {
+								processorUtil.debug(MagicAnnotationProcessor, "loop", td,
+										"Calling: "+p+"."+phase+"("+qualifiedName+")")
+								// Yes? Then call processor.
+								lambda.apply(processingContext, p, td as TD)
+							}
 						}
 					} catch (Throwable t) {
 						processorUtil.error(MagicAnnotationProcessor, "loop", td, p+": "
-						+td.qualifiedName, t)
+						+qualifiedName, t)
 					}
 					doneProcessors.add(p)
 				}
 				doneTypes.add(td)
 			}
-			// Causes error due to "delayed" method compilation
-//			processorUtil.setElement(phase, null)
 		}
 	}
 
@@ -157,21 +157,24 @@ processorUtil.warn(MagicAnnotationProcessor, "loop", td,
 	override void doRegisterGlobals(List<? extends NamedElement> annotatedSourceElements,
 			extension RegisterGlobalsContext context) {
 		<TypeDeclaration>loop(annotatedSourceElements, "register",
-			[processingContext,p,td|p.register(processingContext, td, context)])
+			[processingContext,p,td|p.register(processingContext, td, context)],
+			[processingContext,p,pkgName|p.afterRegister(processingContext, pkgName, context)])
 	}
 
 	/** Implements the doGenerateCode() phase */
 	override doGenerateCode(List<? extends NamedElement> annotatedSourceElements,
 			extension CodeGenerationContext context) {
 		<TypeDeclaration>loop(annotatedSourceElements, "generate",
-			[processingContext,p,td|p.generate(processingContext, td, context)])
+			[processingContext,p,td|p.generate(processingContext, td, context)],
+			[processingContext,p,pkgName|p.afterGenerate(processingContext, pkgName, context)])
 	}
 
 	/** Implements the doTransform() phase */
 	override doTransform(List<? extends MutableNamedElement> annotatedSourceElements,
 			extension TransformationContext context) {
 		<MutableTypeDeclaration>loop(annotatedSourceElements, "transform",
-			[processingContext,p,mtd|p.transform(processingContext, mtd, context)])
+			[processingContext,p,mtd|p.transform(processingContext, mtd, context)],
+			[processingContext,p,pkgName|p.afterTransform(processingContext, pkgName, context)])
 	}
 
 	/** Returns the list of processors. */

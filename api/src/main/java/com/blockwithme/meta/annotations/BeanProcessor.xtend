@@ -47,6 +47,8 @@ import com.blockwithme.meta.beans.impl._EntityImpl
 import com.blockwithme.meta.beans.impl._BeanImpl
 import static java.util.Objects.*;
 import com.blockwithme.meta.Kind
+import com.blockwithme.meta.Type
+import java.util.ArrayList
 
 /**
  * Annotates an interface declared in a C-style-struct syntax
@@ -81,7 +83,7 @@ package class BeanInfo {
 	def simpleName() {
 		qualifiedName.substring(qualifiedName.lastIndexOf('.')+1)
 	}
-	// STEP 21
+	// STEP 23
 	// If we have more then one parent, find out all missing properties
 	def Map<String,PropertyInfo[]> allProperties() {
 		val result = new HashMap<String,PropertyInfo[]>
@@ -130,18 +132,32 @@ package class BeanInfo {
  * 9) For each type property, an Accessor type under impl package is declared, if not defined yet
  * GENERATE:
  * 10) For each type, the fields are replaced with getters and setters
- * 11) A builder is created in Meta for that package
- * 12) For each type property, a property accessor class is generated
- * 13) For each type property, a property object in the "Meta" interface is generated.
- * 14) For each type, a type Provider under impl package is created.
- * 15) For each type, following the properties, a type instance is created.
- * 16) After all types, a package meta-object is created.
- * 17) The list of dependencies for the Hierarchy is computed.
- * 18) After the package, the hierarchy is created.
- * 19) The Impl extends either the impl of the first parent, or BaseImpl or EntityImpl appropriately
- * 20) For all getters and setters in type, implementations are generated in Impl
- * 21) If we have more then one parent, find out all missing properties
- * 22) Add impl to all missing properties in Impl
+ * 11) TODO If the property starts with _, the getter and setter goes in _Type
+ * 12) _Type must extend Type
+ * 13) A builder is created in Meta for that package
+ * 14) For each type property, a property accessor class is generated
+ * 15) For each type property, a property object in the "Meta" interface is generated.
+ * 16) For each type, a type Provider under impl package is created.
+ * 17) For each type, following the properties, a type instance is created.
+ * 18) After all types, a package meta-object is created.
+ * 19) The list of dependencies for the Hierarchy is computed.
+ * 20) After the package, the hierarchy is created.
+ * 21) The Impl extends either the impl of the first parent, or BaseImpl or EntityImpl appropriately
+ * 22) For all getters and setters in type, implementations are generated in Impl
+ * 23) If we have more then one parent, find out all missing properties
+ * 24) Add impl to all missing properties in Impl
+ *
+ * TODO:
+ * * In generated Meta, the CamelCase words should be replaces with CAMEL_CASE (note the underline)
+ * * All fields should come first in the implementation, then the getter/setter pairs
+ * * This much "					" whitespace should be removed before the "return this;" in setters
+ * * If _Type extends Type, the the implementation only needs implement _Type
+ *
+ * * Implementation class should have comments too.
+ * * Comments should be generated for Meta too
+ * * Comments on type and properties must be transfered to generated code
+ * * Comments should be generated for the accessors.
+ * * Review the whole code, adding comments, and fixing log-levels
  *
  * @author monster
  */
@@ -162,7 +178,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	/** Public constructor for this class. */
 	new() {
 		// Step 0, make sure we have an interface, annotated with @Bean
-		super(and(isInterface,withAnnotation(Bean)))
+		super(and(isInterface,withAnnotation(Bean), [ctx,pu,td|!td.simpleName.startsWith('_')]))
 	}
 
 	/** Returns the internal API name */
@@ -213,7 +229,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	}
 
 	/** Returns the meta name */
-	private def metaName(String pkgName, String simpleName) {
+	private def metaName(String pkgName) {
 		pkgName+'.Meta'
 	}
 
@@ -222,8 +238,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		val qualifiedName = td.qualifiedName
 		val index = qualifiedName.lastIndexOf(DOT)
 		val pkgName = qualifiedName.substring(0,index)
-		val simpleName = qualifiedName.substring(index+1)
-		metaName(pkgName, simpleName)
+		metaName(pkgName)
 	}
 
 	/** *Safely* registers an interface */
@@ -465,7 +480,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	}
 
 	/** Adds the builder field */
-	private def void addBuilderField(MutableClassDeclaration meta, String pkgName) {
+	private def void addBuilderField(MutableInterfaceDeclaration meta, String pkgName) {
 		// Only define once!
 		if (meta.findDeclaredField("BUILDER") === null) {
 			// public static final BUILDER = new HierarchyBuilder(Object);
@@ -563,7 +578,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	}
 
 	/** Creates a Property constant in meta */
-	private def String createPropertyConstant(MutableClassDeclaration meta,
+	private def String createPropertyConstant(MutableInterfaceDeclaration meta,
 		BeanInfo beanInfo, String accessorName, PropertyInfo propInfo) {
 		val metaPkg = BooleanProperty.package.name
 		val propName = propertyMethodName(propInfo)
@@ -613,14 +628,14 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 				static = false
 				returnType = newTypeReference(beanInfo.qualifiedName)
 				body = [
-					'''return new «implName(pkgName, simpleName)»();'''
+					'''return new «implName(pkgName, simpleName)»(«pkgName».Meta.«metaTypeFieldName(simpleName)»);'''
 				]
 			]
 		}
 	}
 
 	/** Adds the Type field */
-	private def void addTypeField(MutableClassDeclaration meta, BeanInfo beanInfo,
+	private def void addTypeField(MutableInterfaceDeclaration meta, BeanInfo beanInfo,
 		String allProps, Set<String> allDependencies) {
 		val pkg = beanInfo.pkgName
 		val simpleName = beanInfo.simpleName
@@ -656,7 +671,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 				parents.length = parents.length - 2
 			}
 			val beanType = newTypeReference(beanInfo.qualifiedName)
-			meta.addField(simpleName.toUpperCase) [
+			meta.addField(metaTypeFieldName(simpleName)) [
 				visibility = Visibility.PUBLIC
 				final = true
 				static = true
@@ -670,19 +685,31 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		}
 	}
 
+	/** Returns the name of the field for the type in Meta */
+	private def String metaTypeFieldName(String simpleName) {
+		simpleName.toUpperCase
+	}
+
 	/** Returns the name of the package field */
 	private def String packageFieldName(String pkgName) {
-		pkgName.replace(DOT, '_').toUpperCase+"_PACKAGE"
+		"PACKAGE"
 	}
 
 	/** Adds the package */
-	private def void addPackageField(MutableClassDeclaration meta, List<TypeDeclaration> allTypes,
+	private def void addPackageField(Map<String,Object> processingContext,
+		MutableInterfaceDeclaration meta, List<TypeDeclaration> allTypes,
 		String pkgName) {
 		val name = packageFieldName(pkgName)
 		if (meta.findDeclaredField(name) === null) {
-			val allTypesStr = allTypes.join(', ') [
-				simpleName.toUpperCase
-			]
+			val allTypesStr = new StringBuilder
+			for (t : allTypes) {
+				if (accept(processingContext, t)) {
+					if (allTypesStr.length > 0) {
+						allTypesStr.append(", ")
+					}
+					allTypesStr.append(t.simpleName.toUpperCase)
+				}
+			}
 			meta.addField(name) [
 				visibility = Visibility.PUBLIC
 				final = true
@@ -698,7 +725,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 
 	/** Returns the hierarchy dependencies */
 	private def Set<String> getAllDependencies(Map<String,Object> processingContext) {
-		// STEP 17
+		// STEP 19
 		// The list of dependencies for the Hierarchy is computed.
 		var result = processingContext.get(BP_ALL_DEPENDENCIES) as Set<String>
 		if (result === null) {
@@ -709,7 +736,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	}
 
 	/** Adds the Hierarchy */
-	private def void addHierarchyField(MutableClassDeclaration meta,
+	private def void addHierarchyField(MutableInterfaceDeclaration meta,
 		String pkgName, Set<String> allDependencies) {
 		if (meta.findDeclaredField("HIERARCHY") === null) {
 			meta.addField("HIERARCHY") [
@@ -749,8 +776,14 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		} else {
 			impl.setExtendedClass(newTypeReference(_BeanImpl))
 		}
-		impl.setImplementedInterfaces(newArrayList(
-			newTypeReference(qualifiedName), newTypeReference(internalName(pkgName, simpleName))))
+		impl.setImplementedInterfaces(newArrayList(newTypeReference(internalName(pkgName, simpleName))))
+		impl.addConstructor[
+			addParameter("$type", newTypeReference(Type))
+			visibility = Visibility.PUBLIC
+			body = [
+				'''super($type);'''
+			]
+		]
 		impl
 	}
 
@@ -799,41 +832,56 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		}
 	}
 
+	/** Defines the content of _Type */
+	private def void implementInternalInterface(BeanInfo beanInfo) {
+		val pkgName = beanInfo.pkgName
+		val simpleName = beanInfo.simpleName
+		val internal = getInterface(internalName(pkgName, simpleName))
+		val parents = <TypeReference>newArrayList()
+		parents.add(newTypeReference(beanInfo.qualifiedName))
+		for (p : beanInfo.parents) {
+			parents.add(newTypeReference(p.pkgName + "._" + p.simpleName))
+		}
+		internal.setExtendedInterfaces(parents)
+	}
+
 	/** Register new types, to be generated later. */
 	override void register(Map<String,Object> processingContext, InterfaceDeclaration td, RegisterGlobalsContext context) {
-		val qualifiedName = td.qualifiedName
-		// STEP 1-4
-		val beanInfo = beanInfo(processingContext, td)
+		if (td !== null) {
+			val qualifiedName = td.qualifiedName
+			// STEP 1-4
+			val beanInfo = beanInfo(processingContext, td)
 
-		if (beanInfo.validity.empty) {
-			val index = qualifiedName.lastIndexOf(DOT)
-			val pkgName = qualifiedName.substring(0,index)
-			val simpleName = qualifiedName.substring(index+1)
+			if (beanInfo.validity.empty) {
+				val index = qualifiedName.lastIndexOf(DOT)
+				val pkgName = qualifiedName.substring(0,index)
+				val simpleName = qualifiedName.substring(index+1)
 
-			// STEP 5
-			// Registering the implementation, if needed
-			registerClass(td, context, implName(pkgName, simpleName))
+				// STEP 5
+				// Registering the implementation, if needed
+				registerClass(td, context, implName(pkgName, simpleName))
 
-			// STEP 6
-			// Registering the Provider, if needed
-			registerClass(td, context, providerName(pkgName, simpleName))
+				// STEP 6
+				// Registering the Provider, if needed
+				registerClass(td, context, providerName(pkgName, simpleName))
 
-			// STEP 7
-			// Registering the Meta, if needed
-			registerClass(td, context, metaName(pkgName, simpleName))
+				// STEP 7
+				// Registering the Meta, if needed
+				registerInterface(td, context, metaName(pkgName))
 
-			// STEP 8
-			// Registering the internal API interface, if needed
-			registerInterface(td, context, internalName(pkgName, simpleName))
+				// STEP 8
+				// Registering the internal API interface, if needed
+				registerInterface(td, context, internalName(pkgName, simpleName))
 
-			// STEP 9
-			// Registering all Property Accessors, if needed
-			for (p : beanInfo.properties) {
-				registerClass(td, context, propertyAccessorName(pkgName, simpleName, p.name))
+				// STEP 9
+				// Registering all Property Accessors, if needed
+				for (p : beanInfo.properties) {
+					registerClass(td, context, propertyAccessorName(pkgName, simpleName, p.name))
+				}
+			} else {
+				error(BeanProcessor, "register", td, qualifiedName
+					+" cannot be processed because: "+beanInfo.validity)
 			}
-		} else {
-			error(BeanProcessor, "register", td, qualifiedName
-				+" cannot be processed because: "+beanInfo.validity)
 		}
 	}
 
@@ -844,7 +892,6 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		if (beanInfo.validity.empty) {
 			warn(BeanProcessor, "transform", mtd, qualifiedName+" will be transformed")
 			val pkgName = beanInfo.pkgName
-			val simpleName = beanInfo.simpleName
 
 			// STEP 10
 			// The fields are replaced with getters and setters
@@ -852,58 +899,46 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 				processField(f, mtd)
 			}
 
-			// STEP 11
+			// STEP 12
+			// _Type must extend Type
+			implementInternalInterface(beanInfo)
+
+			// STEP 13
 			// A builder is created in Meta for that package
-			val meta = getClass(metaName(pkgName, simpleName))
+			val meta = getInterface(metaName(pkgName))
 			addBuilderField(meta, pkgName)
 
-			// STEP 12
+			// STEP 14
 			// For each type property, a property accessor class is generated
 			var allProps = ""
 			for (propInfo : beanInfo.properties) {
 				val accessorName = implementPropertyAccessor(beanInfo, propInfo)
-				// STEP 13
+				// STEP 15
 				// For each type property, a property object in the "Meta" interface is generated.
 				val name = createPropertyConstant(meta, beanInfo, accessorName, propInfo)
 				allProps = if (allProps.empty) name else allProps+", "+name
 			}
 
-			// STEP 14
+			// STEP 16
 			// For each type, a type Provider under impl package is created.
 			createProvider(beanInfo)
 
-			// STEP 15
+			// STEP 17
 			// For each type, following the properties, a type instance is created.
 			val allDependencies = getAllDependencies(processingContext)
 			addTypeField(meta, beanInfo, allProps, allDependencies)
 
-			// Post-type-processing phases
-			val allDone = (processingContext.get(PC_TODO_TYPES) as List<?>).empty
-			if (allDone) {
-				// STEP 16
-				// After all types, a package meta-object is created.
-				val allTypes = processingContext.get(PC_TODO_TYPES) as List<TypeDeclaration>
-				addPackageField(meta, allTypes, pkgName)
-
-				// (Just to be safe, remove ourselves from the dependencies)
-				allDependencies.remove(pkgName+".Meta.HIERARCHY")
-
-				// STEP 18
-				// After the package, the hierarchy is created.
-				addHierarchyField(meta, pkgName, allDependencies)
-			}
-
-			// STEP 19
+			// STEP 21
 			// The Impl extends either the impl of the first parent, or BaseImpl or EntityImpl appropriately
 			val impl = createImplementation(processingContext, mtd)
 
-			// STEP 20
+			// STEP 22
 			// For all getters and setters in type, implementations are generated in Impl
 			for (propInfo : beanInfo.properties) {
 				generateProperty(processingContext, impl, beanInfo, propInfo)
 			}
 
-			// STEP 22
+			// STEP 24
 			// Add impl to all missing properties in Impl
 			var firstParent = beanInfo.parents.head()
 			if ((firstParent !== null) && !firstParent.isBean) {
@@ -923,5 +958,26 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 				+" will NOT be transformed, because: "+beanInfo.validity)
 		}
 		// else we already told the user mtd is bugged
+	}
+
+	/** Called when the transform phase for the current file is done. */
+	override void afterTransform(Map<String,Object> processingContext, String pkgName, TransformationContext context) {
+		// Post-type-processing phases
+		warn(BeanProcessor, "transform", null, "afterTransform("+pkgName+")")
+
+		val allDependencies = getAllDependencies(processingContext)
+		val meta = getInterface(metaName(pkgName))
+
+		// STEP 18
+		// After all types, a package meta-object is created.
+		val allTypes = processingContext.get(PC_ALL_FILE_TYPES) as List<TypeDeclaration>
+		addPackageField(processingContext, meta, allTypes, pkgName)
+
+		// (Just to be safe, remove ourselves from the dependencies)
+		allDependencies.remove(pkgName+".Meta.HIERARCHY")
+
+		// STEP 20
+		// After the package, the hierarchy is created.
+		addHierarchyField(meta, pkgName, allDependencies)
 	}
 }

@@ -37,21 +37,18 @@ import com.blockwithme.murmur.MurmurHash;
  * @author monster
  */
 public class _BeanImpl implements _Bean {
+    /** Our meta type */
+    private final Type<?> type;
+
     /** Are we immutable? */
     private boolean immutable;
-    /** 64 "selected" flags; maximum 64 properties! */
-    private long selected;
-    /** Our meta type */
-    private Type<?> type;
-    /** Lazily cached toString result (null == not computed yet) */
-    private String toString;
-    /** Lazily cached hashCode64 result (0 == not computed yet) */
-    private long hashCode64;
+
     /**
      * Optional "delegate"; must have the same type as "this".
      * Allows re-using the same generated code for "wrappers" ...
      */
     protected _Bean delegate;
+
     /**
      * The required interceptor. It allows customizing the behavior of Beans
      * while only generating a single implementation per type.
@@ -61,13 +58,39 @@ public class _BeanImpl implements _Bean {
     /** The "parent" Bean, if any. */
     private _Bean parent;
 
+    /** 64 "selected" flags; maximum 64 properties! */
+    private long selected;
+
     /** The change counter */
     private int changeCounter;
+
+    /** Lazily cached toString result (null == not computed yet) */
+    private String toString;
+
+    /** Lazily cached hashCode64 result (0 == not computed yet) */
+    private long hashCode64;
 
     /** Resets the cached state */
     private void resetCachedState() {
         hashCode64 = 0;
         toString = null;
+    }
+
+    /** The constructor. */
+    public _BeanImpl(final Type<?> type) {
+        Objects.requireNonNull(type, "type");
+        final String myType = getClass().getName();
+        final int lastDot = myType.lastIndexOf('.');
+        final String myPkg = myType.substring(0, lastDot);
+        final int preLastDot = myPkg.lastIndexOf('.');
+        final String parentPkg = myPkg.substring(0, preLastDot);
+        final String myInterfaceName = parentPkg + "."
+                + myType.substring(lastDot + 1, myType.length() - 4);
+        if (!myInterfaceName.equals(type.type.getName())) {
+            throw new IllegalArgumentException("Type should be "
+                    + myInterfaceName + " but was " + type.type.getName());
+        }
+        this.type = type;
     }
 
     /** Returns our type */
@@ -80,6 +103,15 @@ public class _BeanImpl implements _Bean {
     @Override
     public final boolean isImmutable() {
         return immutable;
+    }
+
+    /** Sets the immutable flag. */
+    public final void setImmutable(final boolean newImmutable) {
+        if (immutable && !newImmutable) {
+            throw new IllegalArgumentException(
+                    "One immutable, a Bean cannot be made mutable again!");
+        }
+        immutable = newImmutable;
     }
 
     /** Returns true if some property selected */
@@ -106,6 +138,7 @@ public class _BeanImpl implements _Bean {
     }
 
     /** Returns true if the specified property change */
+    @Override
     public final boolean isSelected(final Property<?, ?> prop) {
         return (selected & (1L >> indexOf(prop))) != 0;
     }
@@ -121,6 +154,7 @@ public class _BeanImpl implements _Bean {
     }
 
     /** Marks the specified property as selected */
+    @Override
     public final void setSelected(final Property<?, ?> prop) {
         if (immutable) {
             throw new UnsupportedOperationException(this + " is immutable!");

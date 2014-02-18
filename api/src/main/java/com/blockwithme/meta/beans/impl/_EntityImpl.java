@@ -15,6 +15,7 @@
  */
 package com.blockwithme.meta.beans.impl;
 
+import com.blockwithme.meta.Type;
 import com.blockwithme.meta.beans.EntityContext;
 import com.blockwithme.meta.beans._Entity;
 
@@ -24,6 +25,13 @@ import com.blockwithme.meta.beans._Entity;
  * @author monster
  */
 public class _EntityImpl extends _BeanImpl implements _Entity {
+    /**
+     * @param type
+     */
+    public _EntityImpl(final Type<?> type) {
+        super(type);
+    }
+
     /** The EntityContext of this Entity */
     private EntityContext entityContext;
 
@@ -33,26 +41,32 @@ public class _EntityImpl extends _BeanImpl implements _Entity {
     /** The last modification time of this Entity */
     private long lastModificationTime;
 
+    @Override
     public final EntityContext getEntityContext() {
         return entityContext;
     }
 
+    @Override
     public final void setEntityContext(final EntityContext entityContext) {
         this.entityContext = entityContext;
     }
 
+    @Override
     public final long getCreationTime() {
         return creationTime;
     }
 
+    @Override
     public final void setCreationTime(final long creationTime) {
         this.creationTime = creationTime;
     }
 
+    @Override
     public final long getLastModificationTime() {
         return lastModificationTime;
     }
 
+    @Override
     public final void setLastModificationTime(final long lastModificationTime) {
         this.lastModificationTime = lastModificationTime;
     }
