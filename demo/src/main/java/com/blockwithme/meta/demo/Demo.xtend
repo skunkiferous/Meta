@@ -53,6 +53,9 @@ interface DemoType {
 //@Trace
 interface DemoTypeChild extends DemoType {
 
+  /** internal property */
+  int _secret
+
   /** Object property */
   String childProp
 

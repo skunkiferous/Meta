@@ -132,7 +132,7 @@ package class BeanInfo {
  * 9) For each type property, an Accessor type under impl package is declared, if not defined yet
  * GENERATE:
  * 10) For each type, the fields are replaced with getters and setters
- * 11) TODO If the property starts with _, the getter and setter goes in _Type
+ * 11) If the property starts with _, the getter and setter goes in _Type
  * 12) _Type must extend Type
  * 13) A builder is created in Meta for that package
  * 14) For each type property, a property accessor class is generated
@@ -148,11 +148,6 @@ package class BeanInfo {
  * 24) Add impl to all missing properties in Impl
  *
  * TODO:
- * * In generated Meta, the CamelCase words should be replaces with CAMEL_CASE (note the underline)
- * * All fields should come first in the implementation, then the getter/setter pairs
- * * This much "					" whitespace should be removed before the "return this;" in setters
- * * If _Type extends Type, the the implementation only needs implement _Type
- *
  * * Implementation class should have comments too.
  * * Comments should be generated for Meta too
  * * Comments on type and properties must be transfered to generated code
@@ -181,6 +176,23 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		super(and(isInterface,withAnnotation(Bean), [ctx,pu,td|!td.simpleName.startsWith('_')]))
 	}
 
+	/** Converts CamelCase to CAMEL_CASE */
+	private static def String cameCaseToSnakeCase(String camelCase) {
+		camelCase.replaceAll(
+			String.format("%s|%s|%s",
+				"(?<=[A-Z])(?=[A-Z][a-z])",
+				"(?<=[^A-Z])(?=[A-Z])",
+				"(?<=[A-Za-z])(?=[^A-Za-z])"
+			),
+			"_"
+		).toUpperCase;
+	}
+
+	/** Capitalizes the first letter, taking "_" into account */
+	private static def String to_FirstUpper(String str) {
+		if (str.startsWith("_")) "_"+str.substring(1).toFirstUpper else str.toFirstUpper
+	}
+
 	/** Returns the internal API name */
 	private def internalName(String pkgName, String simpleName) {
 		pkgName+'._'+simpleName
@@ -202,16 +214,8 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 
 	/** Returns the Property Accessor name */
 	private def propertyAccessorName(String pkgName, String simpleName, String property) {
-		pkgName+'.impl.'+simpleName+property.toFirstUpper+'Accessor'
-	}
-
-	/** Returns the Provider name */
-	private def providerName(InterfaceDeclaration td) {
-		val qualifiedName = td.qualifiedName
-		val index = qualifiedName.lastIndexOf(DOT)
-		val pkgName = qualifiedName.substring(0,index)
-		val simpleName = qualifiedName.substring(index+1)
-		providerName(pkgName, simpleName)
+		val name = if (property.startsWith('_')) '_'+simpleName else simpleName
+		pkgName+'.impl.'+name+to_FirstUpper(property)+'Accessor'
 	}
 
 	/** Returns the implementation name */
@@ -219,26 +223,9 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		pkgName+'.impl.'+simpleName+'Impl'
 	}
 
-	/** Returns the implementation name */
-	private def implName(InterfaceDeclaration td) {
-		val qualifiedName = td.qualifiedName
-		val index = qualifiedName.lastIndexOf(DOT)
-		val pkgName = qualifiedName.substring(0,index)
-		val simpleName = qualifiedName.substring(index+1)
-		implName(pkgName, simpleName)
-	}
-
 	/** Returns the meta name */
 	private def metaName(String pkgName) {
 		pkgName+'.Meta'
-	}
-
-	/** Returns the meta name */
-	private def metaName(InterfaceDeclaration td) {
-		val qualifiedName = td.qualifiedName
-		val index = qualifiedName.lastIndexOf(DOT)
-		val pkgName = qualifiedName.substring(0,index)
-		metaName(pkgName)
 	}
 
 	/** *Safely* registers an interface */
@@ -434,7 +421,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	def private void processField(MutableFieldDeclaration fieldDeclaration,
 			MutableInterfaceDeclaration interf) {
 		val fieldName = fieldDeclaration.simpleName
-		val toFirstUpper = fieldName.toFirstUpper
+		val toFirstUpper = to_FirstUpper(fieldName)
 		val fieldType = fieldDeclaration.type
 
 		// TODO Move _name to the "internal interface"
@@ -497,17 +484,10 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		}
 	}
 
-	/** Implements the required Property accessor interface */
-	private def String implementPropertyAccessor(BeanInfo beanInfo, PropertyInfo propInfo) {
-		warn(BeanProcessor, "transform", findTypeGlobally(beanInfo.qualifiedName), "Implementing BUILDER to "+beanInfo.qualifiedName)
-		val pkgName = beanInfo.pkgName
-		val simpleName = beanInfo.simpleName
-		val accessorName = propertyAccessorName(pkgName, simpleName, propInfo.name)
-		val accessor = getClass(accessorName)
-		val propType = propInfo.type
-		val propTypeRef = newTypeReference(propType)
+	/** Build the accessor interface name */
+	private def String propertyAccessorPrefix(String propType) {
 		// Make accessor extend <Type>PropertyAccessor
-		val propertyAccessorPrefix = switch (propType) {
+		switch (propType) {
 			case "boolean": "Boolean"
 			case "byte": "Byte"
 			case "char": "Char"
@@ -518,39 +498,61 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 			case "double": "Double"
 			default: "Object"
 		}
+	}
+
+	/** Build the accessor interface name */
+	private def String acessorInterfaceName(String propertyAccessorPrefix) {
 		val pkg = BooleanPropertyAccessor.package.name
-		val beanType = newTypeReference(beanInfo.qualifiedName)
+		pkg+'.'+propertyAccessorPrefix+"PropertyAccessor"
+	}
+
+	/** Implements the required Property accessor interface */
+	private def String implementPropertyAccessor(BeanInfo beanInfo, PropertyInfo propInfo) {
+		warn(BeanProcessor, "transform", findTypeGlobally(beanInfo.qualifiedName),
+			"Implementing BUILDER to "+beanInfo.qualifiedName)
+		val pkgName = beanInfo.pkgName
+		val simpleName = beanInfo.simpleName
+		val qualifiedName = beanInfo.qualifiedName
+		val accessorName = propertyAccessorName(pkgName, simpleName, propInfo.name)
+		val accessor = getClass(accessorName)
+		val propType = propInfo.type
+		val propTypeRef = newTypeReference(propType)
+		// Make accessor extend <Type>PropertyAccessor
+		val propertyAccessorPrefix = propertyAccessorPrefix(propType)
+		val acessorInterfaceName = acessorInterfaceName(propertyAccessorPrefix)
+		val typeName = if (propInfo.name.startsWith('_')) internalName(pkgName, simpleName) else qualifiedName
+		val beanType = newTypeReference(typeName)
 		val typeRef = if ("Object" == propertyAccessorPrefix) #[beanType, propTypeRef] else #[beanType]
-		val propertyAccessorIntf = newTypeReference(pkg+'.'+propertyAccessorPrefix+"PropertyAccessor", typeRef)
+		val propertyAccessorIntf = newTypeReference(acessorInterfaceName, typeRef)
 		accessor.setImplementedInterfaces(newArrayList(propertyAccessorIntf))
 		accessor.visibility = Visibility.PUBLIC
 		accessor.final = true
 		// Add getter
-		val getterInstanceType = newTypeReference(beanInfo.qualifiedName)
-		if (accessor.findDeclaredMethod("apply", getterInstanceType) === null) {
+		val instanceType = newTypeReference(typeName)
+		if (accessor.findDeclaredMethod("apply", instanceType) === null) {
 			accessor.addMethod("apply") [
 				visibility = Visibility.PUBLIC
 				final = true
 				static = false
 				returnType = propTypeRef
-				addParameter("instance", getterInstanceType)
+				addParameter("instance", instanceType)
 				body = [
-					'''return instance.get«propInfo.name.toFirstUpper»();'''
+					'''return instance.get«to_FirstUpper(propInfo.name)»();'''
 				]
 			]
 		}
 		// Add setter
 		val valueType = newTypeReference(propType)
-		if (accessor.findDeclaredMethod("apply", getterInstanceType, valueType) === null) {
+		if (accessor.findDeclaredMethod("apply", instanceType, valueType) === null) {
 			accessor.addMethod("apply") [
 				visibility = Visibility.PUBLIC
 				final = true
 				static = false
-				returnType = newTypeReference(beanInfo.qualifiedName)
-				addParameter("instance", getterInstanceType)
+				returnType = instanceType
+				addParameter("instance", instanceType)
 				addParameter("newValue", valueType)
 				body = [
-					'''return instance.set«propInfo.name.toFirstUpper»(newValue);'''
+					'''return instance.set«to_FirstUpper(propInfo.name)»(newValue);'''
 				]
 			]
 		}
@@ -574,7 +576,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 
 	/** Returns the property field name */
 	private def String getPropertyFieldNameInMeta(String simpleName, PropertyInfo propInfo) {
-		simpleName.toUpperCase+"_"+propInfo.name.toUpperCase
+		cameCaseToSnakeCase(simpleName)+"_"+cameCaseToSnakeCase(propInfo.name)
 	}
 
 	/** Creates a Property constant in meta */
@@ -584,7 +586,14 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		val propName = propertyMethodName(propInfo)
 		val name = getPropertyFieldNameInMeta(beanInfo.simpleName, propInfo)
 		if (meta.findDeclaredField(name) === null) {
-			val beanType = newTypeReference(beanInfo.qualifiedName)
+//			val simpleName = if (propInfo.name.startsWith("_")) {
+//				"_"+beanInfo.simpleName
+//			} else beanInfo.simpleName
+			val acessorInterfaceName = acessorInterfaceName(propertyAccessorPrefix(propInfo.type))
+			val cast = if (propInfo.name.startsWith("_")) "("+acessorInterfaceName+")" else ""
+			val simpleName = beanInfo.simpleName
+			val qualifiedName = beanInfo.pkgName+"."+simpleName
+			val beanType = newTypeReference(qualifiedName)
 			val TypeReference retTypeRef = if ("ObjectProperty" == propName) {
 				newTypeReference(metaPkg+"."+propName, beanType, newTypeReference(propInfo.type))
 			} else {
@@ -599,10 +608,10 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 				initializer = [
 					if ("ObjectProperty" == propName) {
 						// TODO Work out the real value for the boolean flags!
-						'''BUILDER.new«propName»(«beanInfo.simpleName».class, "«propInfo.name»", «propInfo.type».class,
-						true, true, false, new «accessorName»())'''
+						'''BUILDER.new«propName»(«simpleName».class, "«propInfo.name»", «propInfo.type».class,
+						true, true, false, «cast» new «accessorName»())'''
 					} else {
-						'''BUILDER.new«propName»(«beanInfo.simpleName».class, "«propInfo.name»", new «accessorName»())'''
+						'''BUILDER.new«propName»(«simpleName».class, "«propInfo.name»", «cast» new «accessorName»())'''
 					}
 				]
 			]
@@ -628,7 +637,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 				static = false
 				returnType = newTypeReference(beanInfo.qualifiedName)
 				body = [
-					'''return new «implName(pkgName, simpleName)»(«pkgName».Meta.«metaTypeFieldName(simpleName)»);'''
+					'''return new «implName(pkgName, simpleName)»();'''
 				]
 			]
 		}
@@ -639,20 +648,20 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		String allProps, Set<String> allDependencies) {
 		val pkg = beanInfo.pkgName
 		val simpleName = beanInfo.simpleName
-		if (meta.findDeclaredField(simpleName.toUpperCase) === null) {
+		if (meta.findDeclaredField(metaTypeFieldName(simpleName)) === null) {
 			val parents = new StringBuilder
 			for (p : beanInfo.parents) {
 				if (p.pkgName == pkg) {
-					parents.append(p.simpleName.toUpperCase)
+					parents.append(cameCaseToSnakeCase(p.simpleName))
 					parents.append(', ')
 				} else if (p.isBean) {
-					parents.append(p.pkgName+".Meta."+p.simpleName.toUpperCase)
+					parents.append(p.pkgName+".Meta."+cameCaseToSnakeCase(p.simpleName))
 					parents.append(', ')
 					allDependencies.add(p.pkgName+".Meta.HIERARCHY")
 				} else {
 					val java = JavaMeta.HIERARCHY.findType(p.qualifiedName)
 					if (java !== null) {
-						parents.append(JavaMeta.name+"."+java.simpleName.toUpperCase)
+						parents.append(JavaMeta.name+"."+cameCaseToSnakeCase(java.simpleName))
 						parents.append(', ')
 						allDependencies.add(JavaMeta.name+".HIERARCHY")
 					} else {
@@ -681,13 +690,13 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 					new Type[] {«parents»}, «allProps»)'''
 				]
 			]
-			warn(BeanProcessor, "transform", meta, "Adding "+simpleName.toUpperCase+" to "+meta.qualifiedName)
+			warn(BeanProcessor, "transform", meta, "Adding "+cameCaseToSnakeCase(simpleName)+" to "+meta.qualifiedName)
 		}
 	}
 
 	/** Returns the name of the field for the type in Meta */
 	private def String metaTypeFieldName(String simpleName) {
-		simpleName.toUpperCase
+		cameCaseToSnakeCase(simpleName)
 	}
 
 	/** Returns the name of the package field */
@@ -707,7 +716,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 					if (allTypesStr.length > 0) {
 						allTypesStr.append(", ")
 					}
-					allTypesStr.append(t.simpleName.toUpperCase)
+					allTypesStr.append(cameCaseToSnakeCase(t.simpleName))
 				}
 			}
 			meta.addField(name) [
@@ -777,18 +786,11 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 			impl.setExtendedClass(newTypeReference(_BeanImpl))
 		}
 		impl.setImplementedInterfaces(newArrayList(newTypeReference(internalName(pkgName, simpleName))))
-		impl.addConstructor[
-			addParameter("$type", newTypeReference(Type))
-			visibility = Visibility.PUBLIC
-			body = [
-				'''super($type);'''
-			]
-		]
 		impl
 	}
 
-	/** Generates the getter, setter and field for the given property */
-	private def void generateProperty(Map<String, Object> processingContext,
+	/** Generates the field for the given property */
+	private def void generatePropertyField(Map<String, Object> processingContext,
 		MutableClassDeclaration impl, BeanInfo beanInfo, PropertyInfo propInfo) {
 		if (impl.findDeclaredField(propInfo.name) === null) {
 			impl.addField(propInfo.name) [
@@ -799,9 +801,14 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 			]
 			warn(BeanProcessor, "transform", impl, propInfo.name+" added to "+impl.qualifiedName)
 		}
+	}
+
+	/** Generates the getter, setter for the given property */
+	private def void generatePropertyMethods(Map<String, Object> processingContext,
+		MutableClassDeclaration impl, BeanInfo beanInfo, PropertyInfo propInfo) {
 		val propertyMethodName = propertyMethodName(propInfo);
 		val propertyFieldName = beanInfo.pkgName+".Meta."+getPropertyFieldNameInMeta(beanInfo.simpleName, propInfo)
-		val getter = "get"+propInfo.name.toFirstUpper
+		val getter = "get"+to_FirstUpper(propInfo.name)
 		if (impl.findDeclaredMethod(getter) === null) {
 			impl.addMethod(getter) [
 				visibility = Visibility.PUBLIC
@@ -814,18 +821,18 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 			]
 			warn(BeanProcessor, "transform", impl, getter+" added to "+impl.qualifiedName)
 		}
-		val setter = "set"+propInfo.name.toFirstUpper
+		val setter = "set"+to_FirstUpper(propInfo.name)
 		val valueType = newTypeReference(propInfo.type)
 		if (impl.findDeclaredMethod(setter, valueType) === null) {
 			impl.addMethod(setter) [
 				visibility = Visibility.PUBLIC
 				final = true
 				static = false
-				returnType = newTypeReference(beanInfo.qualifiedName)
+				returnType = newTypeReference(impl.qualifiedName)
 				addParameter("$newValue", valueType)
 				body = [
 					'''«propInfo.name» = interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», $newValue);
-					return this;'''
+return this;'''
 				]
 			]
 			warn(BeanProcessor, "transform", impl, setter+" added to "+impl.qualifiedName)
@@ -892,11 +899,17 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		if (beanInfo.validity.empty) {
 			warn(BeanProcessor, "transform", mtd, qualifiedName+" will be transformed")
 			val pkgName = beanInfo.pkgName
+			val simpleName = beanInfo.simpleName
+			val MutableInterfaceDeclaration internal = getInterface(internalName(mtd))
 
 			// STEP 10
 			// The fields are replaced with getters and setters
 			for (f : mtd.declaredFields.toList) {
-				processField(f, mtd)
+				if (f.simpleName.startsWith("_")) {
+					processField(f, internal)
+				} else {
+					processField(f, mtd)
+				}
 			}
 
 			// STEP 12
@@ -935,7 +948,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 			// STEP 22
 			// For all getters and setters in type, implementations are generated in Impl
 			for (propInfo : beanInfo.properties) {
-				generateProperty(processingContext, impl, beanInfo, propInfo)
+				generatePropertyField(processingContext, impl, beanInfo, propInfo)
 			}
 
 			// STEP 24
@@ -944,13 +957,46 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 			if ((firstParent !== null) && !firstParent.isBean) {
 				firstParent = null
 			}
+			val map = new HashMap<BeanInfo,PropertyInfo[]>
 			for (e : beanInfo.allProperties.entrySet) {
 				val key = e.key
 				if ((key != qualifiedName) && ((firstParent === null) || !firstParent.allProperties.containsKey(key))) {
 					// Missing properties!
+					val bi = processingContext.get(cacheKey(key)) as BeanInfo
 					for (p : e.value) {
-						generateProperty(processingContext, impl, processingContext.get(cacheKey(key)) as BeanInfo, p)
+						map.put(bi, e.value)
+						generatePropertyField(processingContext, impl, bi, p)
 					}
+				}
+			}
+
+			// STEP 21
+			// The Impl extends either the impl of the first parent, or BaseImpl or EntityImpl appropriately
+			impl.addConstructor[
+				addParameter("$type", newTypeReference(Type))
+				visibility = Visibility.PROTECTED
+				body = [
+					'''super($type);'''
+				]
+			]
+			impl.addConstructor[
+				visibility = Visibility.PUBLIC
+				body = [
+					'''this(«pkgName».Meta.«metaTypeFieldName(simpleName)»);'''
+				]
+			]
+
+			// STEP 22
+			// For all getters and setters in type, implementations are generated in Impl
+			for (propInfo : beanInfo.properties) {
+				generatePropertyMethods(processingContext, impl, beanInfo, propInfo)
+			}
+
+			// STEP 24
+			// Add impl to all missing properties in Impl
+			for (e : map.entrySet) {
+				for (p : e.value) {
+					generatePropertyMethods(processingContext, impl, e.key, p)
 				}
 			}
 		} else {
