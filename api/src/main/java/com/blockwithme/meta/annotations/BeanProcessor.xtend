@@ -49,6 +49,7 @@ import static java.util.Objects.*;
 import com.blockwithme.meta.Kind
 import com.blockwithme.meta.Type
 import java.util.ArrayList
+import org.eclipse.xtend.lib.macro.declaration.MutableTypeDeclaration
 
 /**
  * Annotates an interface declared in a C-style-struct syntax
@@ -95,6 +96,18 @@ package class BeanInfo {
 			result.putAll(p.allProperties)
 		}
 		result
+	}
+	def Set<String> allParents() {
+		val result = new HashSet<String>
+		allParents(result)
+		result
+	}
+	private def void allParents(HashSet<String> result) {
+		if (result.add(qualifiedName)) {
+			for (p : parents) {
+				p.allParents(result)
+			}
+		}
 	}
 	/** Check the BeanInfo is fully initialized */
 	public def void check() {
@@ -146,13 +159,17 @@ package class BeanInfo {
  * 22) For all getters and setters in type, implementations are generated in Impl
  * 23) If we have more then one parent, find out all missing properties
  * 24) Add impl to all missing properties in Impl
+ * 25) If a TypeExt class exists in the same file, add it's static methods as instance methods in Type
+ * 26) If a TypeExt class exists in the same file, add it's static methods as instance methods in TypeImpl
  *
- * TODO:
- * * Implementation class should have comments too.
- * * Comments should be generated for Meta too
- * * Comments on type and properties must be transfered to generated code
- * * Comments should be generated for the accessors.
- * * Review the whole code, adding comments, and fixing log-levels
+ * TODO: Make sure inheritance and static delegation works across file boundaries
+ * TODO: Implementation class should have comments too.
+ * TODO: Comments should be generated for Meta too
+ * TODO: Comments on type and properties must be transfered to generated code
+ * TODO: Comments should be generated for the accessors.
+ * TODO: Review the whole code, adding comments, and fixing log-levels
+ *
+ * WARNING: Always specify explicitly the *return type* of extension methods!
  *
  * @author monster
  */
@@ -852,6 +869,74 @@ return this;'''
 		internal.setExtendedInterfaces(parents)
 	}
 
+	/** Add extensions methods to Type */
+	private def void addInterfaceExtensions(Map<String,Object> processingContext, BeanInfo beanInfo, MutableInterfaceDeclaration intf) {
+		val qualifiedName = beanInfo.qualifiedName
+		val pkgName = beanInfo.pkgName
+		val internal = internalName(pkgName, beanInfo.simpleName)
+		val ext = findClass(qualifiedName+"Ext")
+		if (ext !== null) {
+			for (m : ext.declaredMethods) {
+				val params = m.parameters.toList
+				if (m.static && !params.empty) {
+					val pqn = ProcessorUtil.qualifiedName(params.head.type)
+					if ((pqn == qualifiedName) || (internal == qualifiedName)) {
+						val rest = new ArrayList(params)
+						rest.remove(0)
+						intf.addMethod(m.simpleName) [
+							visibility = Visibility.PUBLIC
+							returnType = m.returnType
+							for (p : rest) {
+								addParameter(p.simpleName, p.type)
+							}
+						]
+						warn(BeanProcessor, "transform", intf, m.simpleName+" added to "+intf.qualifiedName)
+					}
+				}
+			}
+		}
+	}
+
+	/** Add extensions methods to TypeImpl */
+	private def void addImplExtensions(Map<String,Object> processingContext, String qualifiedName,
+		MutableClassDeclaration impl) {
+		val dot = qualifiedName.lastIndexOf(DOT)
+		val pkgName = qualifiedName.substring(0, dot)
+		val simpleName = qualifiedName.substring(dot+1)
+		val internal = internalName(pkgName, simpleName)
+		val ext = findClass(qualifiedName+"Ext")
+		if (ext !== null) {
+			val xqn = ext.qualifiedName
+			warn(BeanProcessor, "transform", impl, "EXTENSION: "+xqn)
+			for (m : ext.declaredMethods) {
+				val params = m.parameters.toList
+				if (m.static && !params.empty) {
+					val pqn = ProcessorUtil.qualifiedName(params.head.type)
+					if ((pqn == qualifiedName) || (internal == qualifiedName)) {
+						warn(BeanProcessor, "transform", impl, "EXTENSION METHOD: "+m.simpleName)
+						val rest = new ArrayList(params)
+						rest.remove(0)
+						impl.addMethod(m.simpleName) [
+							visibility = Visibility.PUBLIC
+							final = true
+							static = false
+							returnType = m.returnType
+							val paramNames = new StringBuilder
+							for (p : rest) {
+								paramNames.append(", ").append(p.simpleName)
+								addParameter(p.simpleName, p.type)
+							}
+							body = [
+								'''return «xqn».«m.simpleName»(this«paramNames»);'''
+							]
+						]
+						warn(BeanProcessor, "transform", impl, m.simpleName+" added to "+impl.qualifiedName)
+					}
+				}
+			}
+		}
+	}
+
 	/** Register new types, to be generated later. */
 	override void register(Map<String,Object> processingContext, InterfaceDeclaration td, RegisterGlobalsContext context) {
 		if (td !== null) {
@@ -998,6 +1083,22 @@ return this;'''
 				for (p : e.value) {
 					generatePropertyMethods(processingContext, impl, e.key, p)
 				}
+			}
+
+			// STEP 25
+			// If a TypeExt class exists in the same file, add it's static methods as instance methods in Type
+			addInterfaceExtensions(processingContext, beanInfo, mtd)
+
+			// STEP 26
+			// If a TypeExt class exists in the same file, add it's static methods as instance methods in TypeImpl
+			val include = beanInfo.allParents()
+			if (firstParent !== null) {
+				include.removeAll(firstParent.allParents())
+			}
+			warn(BeanProcessor, "transform", mtd, "Types searched for extensions to "
+				+qualifiedName+": "+include)
+			for (p : include) {
+				addImplExtensions(processingContext, p, impl)
 			}
 		} else {
 			warn(BeanProcessor, "transform", mtd, qualifiedName

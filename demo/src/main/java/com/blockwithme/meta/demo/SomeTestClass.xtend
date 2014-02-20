@@ -16,12 +16,12 @@
 package com.blockwithme.meta.demo
 
 import com.blockwithme.meta.annotations.Magic
-
-/**
- * @author monster
- *
- */
-@Magic
-class SomeTestClass {
-
-}
+//
+///**
+// * @author monster
+// *
+// */
+//@Magic
+//class SomeTestClass {
+//
+//}

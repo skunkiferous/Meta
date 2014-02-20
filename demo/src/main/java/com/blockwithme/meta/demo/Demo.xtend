@@ -66,3 +66,32 @@ class SomeClass {
 	int age
 	def hello() { "hello, I'm "+age }
 }
+
+
+@Bean
+interface Aged {
+	int age
+}
+
+class AgedExt {
+	static def boolean adult(Aged aged) {
+		aged.age >= 18
+	}
+}
+
+@Bean
+interface Named {
+	String name
+}
+
+// Multiple Inheritance Example
+@Bean
+interface Person extends Named, Aged {
+	String profession
+}
+
+class PersonExt {
+	static def String desc(Person p) {
+		p.name
+	}
+}
