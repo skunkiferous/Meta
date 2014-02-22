@@ -211,12 +211,17 @@
 		<dependency>
 			<groupId>com.blockwithme</groupId>
 			<artifactId>Common</artifactId>
-			<version>[0.0,1)</version>
+			<version>0.0.14</version>
 		</dependency>
 		<dependency>
 			<groupId>com.blockwithme</groupId>
+			<artifactId>PrimitiveFuncUtil</artifactId>
+			<version>1.2.0</version>
+		</dependency>
+				<dependency>
+			<groupId>com.blockwithme</groupId>
 			<artifactId>FuncGenerated012</artifactId>
-			<version>[1.0,2)</version>
+			<version>1.2.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.eclipse.xtend</groupId>
