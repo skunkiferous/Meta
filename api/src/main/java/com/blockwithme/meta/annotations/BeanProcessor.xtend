@@ -247,18 +247,22 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 
 	/** *Safely* registers an interface */
 	private def registerInterface(InterfaceDeclaration td, RegisterGlobalsContext context, String name) {
-		if (findTypeGlobally(name) === null) {
+		setShouldBeInterface(name)
+		try {
 			context.registerInterface(name)
 			warn(BeanProcessor, "register", td, "Registering Interface: "+name)
-			setShouldBeInterface(name)
+		} catch(IllegalArgumentException ex) {
+			// NOP (already registered)
 		}
 	}
 
 	/** *Safely* registers a class */
 	private def registerClass(InterfaceDeclaration td, RegisterGlobalsContext context, String name) {
-		if (findTypeGlobally(name) === null) {
+		try {
 			context.registerClass(name)
 			warn(BeanProcessor, "register", td, "Registering Class: "+name)
+		} catch(IllegalArgumentException ex) {
+			// NOP (already registered)
 		}
 	}
 
@@ -907,13 +911,13 @@ return this;'''
 		val ext = findClass(qualifiedName+"Ext")
 		if (ext !== null) {
 			val xqn = ext.qualifiedName
-			warn(BeanProcessor, "transform", impl, "EXTENSION: "+xqn)
+			warn(BeanProcessor, "transform", impl, "Found extension "+xqn+" for "+qualifiedName)
 			for (m : ext.declaredMethods) {
 				val params = m.parameters.toList
 				if (m.static && !params.empty) {
 					val pqn = ProcessorUtil.qualifiedName(params.head.type)
 					if ((pqn == qualifiedName) || (internal == qualifiedName)) {
-						warn(BeanProcessor, "transform", impl, "EXTENSION METHOD: "+m.simpleName)
+						debug(BeanProcessor, "transform", impl, "Found extension method: "+xqn+"."+m.simpleName)
 						val rest = new ArrayList(params)
 						rest.remove(0)
 						impl.addMethod(m.simpleName) [
@@ -930,7 +934,7 @@ return this;'''
 								'''return «xqn».«m.simpleName»(this«paramNames»);'''
 							]
 						]
-						warn(BeanProcessor, "transform", impl, m.simpleName+" added to "+impl.qualifiedName)
+						warn(BeanProcessor, "transform", impl, xqn+"."+m.simpleName+" added to "+impl.qualifiedName)
 					}
 				}
 			}

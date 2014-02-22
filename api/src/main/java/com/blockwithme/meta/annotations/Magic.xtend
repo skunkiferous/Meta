@@ -25,6 +25,8 @@ import org.eclipse.xtend.lib.macro.declaration.TypeDeclaration
 import org.eclipse.xtext.xbase.lib.Procedures.Procedure3
 import org.eclipse.xtext.xbase.lib.Procedures.Procedure2
 import java.util.ArrayList
+import java.util.HashSet
+import com.blockwithme.traits.util.SyncUtil
 
 /**
  * Marks that *all types in this file* should be processed.
@@ -89,7 +91,6 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 			val allProcessors = newArrayList(processors)
 			// Extract types to process from compilation unit (file)
 			val allTypes = (if (transform) processorUtil.allMutableTypes else processorUtil.allXtendTypes).toList
-			processorUtil.warn(MagicAnnotationProcessor, "loop", null,"allTypes: "+allTypes)
 			// "+1" causes the last value in types to be null, which indicates end-of-file
 			val types = allTypes.toArray(<TypeDeclaration>newArrayOfSize(allTypes.size + 1))
 			val todoTypes = new ArrayList(allTypes)
@@ -131,7 +132,7 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 								accept = p.accept(processingContext, td)
 								ACCEPT.put(acceptKey, accept)
 								if (!accept) {
-									processorUtil.warn(MagicAnnotationProcessor, "loop", td,
+									processorUtil.debug(MagicAnnotationProcessor, "loop", td,
 											"NOT Calling: "+p+"."+phase+"("+qualifiedName+")")
 								}
 							}
@@ -142,6 +143,9 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 								lambda.apply(processingContext, p, td as TD)
 							}
 						}
+					} catch (MissingTypeException ex) {
+						processorUtil.error(MagicAnnotationProcessor, "loop", td, p+": "
+						+qualifiedName+" "+ex)
 					} catch (Throwable t) {
 						processorUtil.error(MagicAnnotationProcessor, "loop", td, p+": "
 						+qualifiedName, t)

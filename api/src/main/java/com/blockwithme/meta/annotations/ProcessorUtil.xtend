@@ -85,6 +85,9 @@ class ProcessorUtil implements TypeReferenceProvider {
 	/** Debug output? */
 	private static val DEBUG = false
 
+	/** Output errors as warnings? */
+	private static val ERROR_AS_WARNING = false
+
 	/**
 	 * The processed NamedElement
 	 * (According to the Active Annotation API... We don't care
@@ -241,7 +244,7 @@ class ProcessorUtil implements TypeReferenceProvider {
 	/** Should this type be an interface? */
 	def setShouldBeInterface(String qualifiedName) {
 		if (SHOULD_BE_INTERFACE.add(qualifiedName)) {
-			warn(ProcessorUtil, "setShouldBeInterface", null, "setShouldBeInterface("+qualifiedName+")")
+			debug(ProcessorUtil, "setShouldBeInterface", null, "setShouldBeInterface("+qualifiedName+")")
 		}
 	}
 
@@ -772,7 +775,11 @@ class ProcessorUtil implements TypeReferenceProvider {
 	 */
 	final def void error(Class<?> who, String where, Element what, String message) {
 		val logElem = extractLoggingElement(what)
-		problemSupport.addError(logElem, buildMessage(false, who, where, message, null))
+		if (ERROR_AS_WARNING) {
+			problemSupport.addWarning(logElem, buildMessage(false, who, where, message, null))
+		} else {
+			problemSupport.addError(logElem, buildMessage(false, who, where, message, null))
+		}
 	}
 
 	/**
@@ -786,7 +793,11 @@ class ProcessorUtil implements TypeReferenceProvider {
 	 */
 	final def void error(Class<?> who, String where, Element what, String message, Throwable t) {
 		val logElem = extractLoggingElement(what)
-		problemSupport.addError(logElem, buildMessage(false, who, where, message, t))
+		if (ERROR_AS_WARNING) {
+			problemSupport.addWarning(logElem, buildMessage(false, who, where, message, t))
+		} else {
+			problemSupport.addError(logElem, buildMessage(false, who, where, message, t))
+		}
 	}
 
 	/**
@@ -939,7 +950,11 @@ class ProcessorUtil implements TypeReferenceProvider {
 
 	/** Utility method that finds an interface in the global context, fails if not found */
 	def getInterface(String name) {
-		Objects.requireNonNull(findInterface(name), "findInterface("+name+")")
+		val result = findInterface(name)
+		if (result === null) {
+			throw new MissingTypeException(name)
+		}
+		result
 	}
 
 	/** Utility method that finds a class in the global context, returns null if not found */
@@ -953,7 +968,11 @@ class ProcessorUtil implements TypeReferenceProvider {
 
 	/** Utility method that finds a class in the global context, fails if not found */
 	def MutableClassDeclaration getClass(String name) {
-		Objects.requireNonNull(findClass(name), "findClass("+name+")")
+		val result = findClass(name)
+		if (result === null) {
+			throw new MissingTypeException(name)
+		}
+		result
 	}
 
 	/** Searches for the *default* constructor. */

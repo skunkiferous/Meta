@@ -13,15 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta.demo
+package com.blockwithme.meta.annotations
 
-import com.blockwithme.meta.annotations.Magic
-//
-///**
-// * @author monster
-// *
-// */
-//@Magic
-//class SomeTestClass {
-//
-//}
+import java.lang.RuntimeException
+
+/**
+ * @author monster
+ *
+ */
+class MissingTypeException extends RuntimeException {
+	new(String type) {
+		super("Type "+type+" could not be found")
+	}
+}
