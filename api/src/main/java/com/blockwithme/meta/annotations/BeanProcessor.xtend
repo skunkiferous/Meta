@@ -69,6 +69,7 @@ annotation Bean {
 package class PropertyInfo {
 	String name
 	String type
+	String comment
 }
 
 @Data
@@ -159,14 +160,17 @@ package class BeanInfo {
  * 22) For all getters and setters in type, implementations are generated in Impl
  * 23) If we have more then one parent, find out all missing properties
  * 24) Add impl to all missing properties in Impl
- * 25) If a TypeExt class exists in the same file, add it's static methods as instance methods in Type
- * 26) If a TypeExt class exists in the same file, add it's static methods as instance methods in TypeImpl
+ * (REMOVED) 25) If a TypeExt class exists in the same file, add it's static methods as instance methods in Type
+ * (REMOVED) 26) If a TypeExt class exists in the same file, add it's static methods as instance methods in TypeImpl
+ * 27) Implementation class should have comments too.
+ * 28) Comments should be generated for Meta too
+ * 29) Comments should be generated for the accessors.
+ * 30) Comments should be generated for _Type too
+ * 31) Comments on properties must be transfered to generated code
+ * 32) Comments should be generated for the providers.
+ * 33) Comments should be generated for the implementation fields.
  *
- * TODO: Make sure inheritance and static delegation works across file boundaries
- * TODO: Implementation class should have comments too.
- * TODO: Comments should be generated for Meta too
- * TODO: Comments on type and properties must be transfered to generated code
- * TODO: Comments should be generated for the accessors.
+ * TODO: Make sure inheritance work across file boundaries
  * TODO: Review the whole code, adding comments, and fixing log-levels
  *
  * WARNING: Always specify explicitly the *return type* of extension methods!
@@ -412,7 +416,8 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 						val ftypeName = f.type.name
 						properties.set(index, new PropertyInfo(
 							requireNonNull(f.simpleName, "f.simpleName"),
-							requireNonNull(ftypeName, "ftypeName")))
+							requireNonNull(ftypeName, "ftypeName"),
+							f.docComment))
 						index = index + 1
 						if (!validPropertyType(processingContext, f.type)) {
 							result.validity.add("Property "+f.simpleName+" is not valid")
@@ -444,12 +449,20 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		val fieldName = fieldDeclaration.simpleName
 		val toFirstUpper = to_FirstUpper(fieldName)
 		val fieldType = fieldDeclaration.type
+		val doc = if (fieldDeclaration.docComment != null) fieldDeclaration.docComment else "";
 
 		// TODO Move _name to the "internal interface"
 		val getter = 'get' + toFirstUpper
 		if (interf.findDeclaredMethod(getter) === null) {
 			interf.addMethod(getter) [
 				returnType = fieldType
+				// STEP 31
+				// Comments on properties must be transfered to generated code
+				if (doc.empty) {
+					docComment = "Getter for "+fieldName
+				} else {
+					docComment = "Getter for "+doc
+				}
 			]
 			warn(BeanProcessor, "transform", interf, "Adding "+getter+" to "+interf.qualifiedName)
 		}
@@ -458,6 +471,13 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 			interf.addMethod(setter) [
 				addParameter(fieldName, fieldType)
 				returnType = interf.newTypeReference
+				// STEP 31
+				// Comments on properties must be transfered to generated code
+				if (doc.empty) {
+					docComment = "Setter for "+fieldName
+				} else {
+					docComment = "Setter for "+doc
+				}
 			]
 			warn(BeanProcessor, "transform", interf, "Adding " + setter+" to "+interf.qualifiedName)
 		}
@@ -500,8 +520,14 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 				initializer = [
 					'''new «HierarchyBuilder.name»("«pkgName»")'''
 				]
+				docComment = "BUILDER field for the Hierarchy of this Package"
 			]
 			warn(BeanProcessor, "transform", meta, "Adding BUILDER to "+meta.qualifiedName)
+
+			// First time we use Meta, so give is a comment:
+			// STEP 28
+			// Comments should be generated for Meta too
+			meta.setDocComment("The Class Meta contains constants defining meta-information about types of this package.")
 		}
 	}
 
@@ -560,6 +586,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 				body = [
 					'''return instance.get«to_FirstUpper(propInfo.name)»();'''
 				]
+				docComment = "Getter for the property "+qualifiedName+"."+propInfo.name
 			]
 		}
 		// Add setter
@@ -575,8 +602,12 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 				body = [
 					'''return instance.set«to_FirstUpper(propInfo.name)»(newValue);'''
 				]
+				docComment = "Setter for the property "+qualifiedName+"."+propInfo.name
 			]
 		}
+		// STEP 29
+		// Comments should be generated for the accessors.
+		accessor.setDocComment("Accessor for the property "+qualifiedName+"."+propInfo.name)
 		accessorName
 	}
 
@@ -635,6 +666,9 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 						'''BUILDER.new«propName»(«simpleName».class, "«propInfo.name»", «cast» new «accessorName»())'''
 					}
 				]
+				// SETP 28
+				// Comments should be generated for Meta too
+				docComment = "Property field for "+beanInfo.qualifiedName+"."+propInfo.name
 			]
 		}
 		name
@@ -660,8 +694,14 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 				body = [
 					'''return new «implName(pkgName, simpleName)»();'''
 				]
+				// STEP 32
+				// Comments should be generated for the providers.
+				docComment = "Creates and returns a new "+beanInfo.qualifiedName
 			]
 		}
+		// STEP 32
+		// Comments should be generated for the providers.
+		provider.docComment = "Provider for the type "+beanInfo.qualifiedName
 	}
 
 	/** Adds the Type field */
@@ -710,6 +750,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 					'''BUILDER.newType(«simpleName».class, new «providerName(pkg, simpleName)»(), «Kind.name».Trait,
 					new Type[] {«parents»}, «allProps»)'''
 				]
+				docComment = "Type field for "+beanInfo.qualifiedName
 			]
 			warn(BeanProcessor, "transform", meta, "Adding "+cameCaseToSnakeCase(simpleName)+" to "+meta.qualifiedName)
 		}
@@ -748,6 +789,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 				initializer = [
 					'''BUILDER.newTypePackage(«allTypesStr»)'''
 				]
+				docComment = "Package field for the current package"
 			]
 			warn(BeanProcessor, "transform", meta, "Adding "+name+" to "+meta.qualifiedName)
 		}
@@ -781,6 +823,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 						'''BUILDER.newHierarchy(new «TypePackage.name»[] { «packageFieldName(pkgName)» }, «allDependencies.join(', ')»)'''
 					}
 				]
+				docComment = "Hierarchy field for this package"
 			]
 			warn(BeanProcessor, "transform", meta, "Adding HIERARCHY to "+meta.qualifiedName)
 		}
@@ -807,6 +850,9 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 			impl.setExtendedClass(newTypeReference(_BeanImpl))
 		}
 		impl.setImplementedInterfaces(newArrayList(newTypeReference(internalName(pkgName, simpleName))))
+		// STEP 27
+		// Implementation class should have comments too.
+		impl.setDocComment("Implementation class for "+qualifiedName)
 		impl
 	}
 
@@ -814,11 +860,19 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	private def void generatePropertyField(Map<String, Object> processingContext,
 		MutableClassDeclaration impl, BeanInfo beanInfo, PropertyInfo propInfo) {
 		if (impl.findDeclaredField(propInfo.name) === null) {
+			val doc = if (propInfo.comment === null) "" else propInfo.comment
 			impl.addField(propInfo.name) [
 				visibility = Visibility.PRIVATE
 				final = false
 				static = false
 				type = newTypeReference(propInfo.type)
+				// STEP 31
+				// Comments on properties must be transfered to generated code
+				if (doc.empty) {
+					docComment = propInfo.name+" Field"
+				} else {
+					docComment = doc+" Field"
+				}
 			]
 			warn(BeanProcessor, "transform", impl, propInfo.name+" added to "+impl.qualifiedName)
 		}
@@ -830,6 +884,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		val propertyMethodName = propertyMethodName(propInfo);
 		val propertyFieldName = beanInfo.pkgName+".Meta."+getPropertyFieldNameInMeta(beanInfo.simpleName, propInfo)
 		val getter = "get"+to_FirstUpper(propInfo.name)
+		val doc = if (propInfo.comment === null) "" else propInfo.comment
 		if (impl.findDeclaredMethod(getter) === null) {
 			impl.addMethod(getter) [
 				visibility = Visibility.PUBLIC
@@ -839,6 +894,13 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 				body = [
 					'''return interceptor.get«propertyMethodName»(this, «propertyFieldName», «propInfo.name»);'''
 				]
+				// STEP 31
+				// Comments on properties must be transfered to generated code
+				if (doc.empty) {
+					docComment = "Getter for "+propInfo.name
+				} else {
+					docComment = "Getter for "+doc
+				}
 			]
 			warn(BeanProcessor, "transform", impl, getter+" added to "+impl.qualifiedName)
 		}
@@ -850,11 +912,18 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 				final = true
 				static = false
 				returnType = newTypeReference(impl.qualifiedName)
-				addParameter("$newValue", valueType)
+				addParameter("newValue", valueType)
 				body = [
-					'''«propInfo.name» = interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», $newValue);
+					'''«propInfo.name» = interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», newValue);
 return this;'''
 				]
+				// STEP 31
+				// Comments on properties must be transfered to generated code
+				if (doc.empty) {
+					docComment = "Setter for "+propInfo.name
+				} else {
+					docComment = "Setter for "+doc
+				}
 			]
 			warn(BeanProcessor, "transform", impl, setter+" added to "+impl.qualifiedName)
 		}
@@ -872,74 +941,74 @@ return this;'''
 		}
 		internal.setExtendedInterfaces(parents)
 	}
-
-	/** Add extensions methods to Type */
-	private def void addInterfaceExtensions(Map<String,Object> processingContext, BeanInfo beanInfo, MutableInterfaceDeclaration intf) {
-		val qualifiedName = beanInfo.qualifiedName
-		val pkgName = beanInfo.pkgName
-		val internal = internalName(pkgName, beanInfo.simpleName)
-		val ext = findClass(qualifiedName+"Ext")
-		if (ext !== null) {
-			for (m : ext.declaredMethods) {
-				val params = m.parameters.toList
-				if (m.static && !params.empty) {
-					val pqn = ProcessorUtil.qualifiedName(params.head.type)
-					if ((pqn == qualifiedName) || (internal == qualifiedName)) {
-						val rest = new ArrayList(params)
-						rest.remove(0)
-						intf.addMethod(m.simpleName) [
-							visibility = Visibility.PUBLIC
-							returnType = m.returnType
-							for (p : rest) {
-								addParameter(p.simpleName, p.type)
-							}
-						]
-						warn(BeanProcessor, "transform", intf, m.simpleName+" added to "+intf.qualifiedName)
-					}
-				}
-			}
-		}
-	}
-
-	/** Add extensions methods to TypeImpl */
-	private def void addImplExtensions(Map<String,Object> processingContext, String qualifiedName,
-		MutableClassDeclaration impl) {
-		val dot = qualifiedName.lastIndexOf(DOT)
-		val pkgName = qualifiedName.substring(0, dot)
-		val simpleName = qualifiedName.substring(dot+1)
-		val internal = internalName(pkgName, simpleName)
-		val ext = findClass(qualifiedName+"Ext")
-		if (ext !== null) {
-			val xqn = ext.qualifiedName
-			warn(BeanProcessor, "transform", impl, "Found extension "+xqn+" for "+qualifiedName)
-			for (m : ext.declaredMethods) {
-				val params = m.parameters.toList
-				if (m.static && !params.empty) {
-					val pqn = ProcessorUtil.qualifiedName(params.head.type)
-					if ((pqn == qualifiedName) || (internal == qualifiedName)) {
-						debug(BeanProcessor, "transform", impl, "Found extension method: "+xqn+"."+m.simpleName)
-						val rest = new ArrayList(params)
-						rest.remove(0)
-						impl.addMethod(m.simpleName) [
-							visibility = Visibility.PUBLIC
-							final = true
-							static = false
-							returnType = m.returnType
-							val paramNames = new StringBuilder
-							for (p : rest) {
-								paramNames.append(", ").append(p.simpleName)
-								addParameter(p.simpleName, p.type)
-							}
-							body = [
-								'''return «xqn».«m.simpleName»(this«paramNames»);'''
-							]
-						]
-						warn(BeanProcessor, "transform", impl, xqn+"."+m.simpleName+" added to "+impl.qualifiedName)
-					}
-				}
-			}
-		}
-	}
+//
+//	/** Add extensions methods to Type */
+//	private def void addInterfaceExtensions(Map<String,Object> processingContext, BeanInfo beanInfo, MutableInterfaceDeclaration intf) {
+//		val qualifiedName = beanInfo.qualifiedName
+//		val pkgName = beanInfo.pkgName
+//		val internal = internalName(pkgName, beanInfo.simpleName)
+//		val ext = findClass(qualifiedName+"Ext")
+//		if (ext !== null) {
+//			for (m : ext.declaredMethods) {
+//				val params = m.parameters.toList
+//				if (m.static && !params.empty) {
+//					val pqn = ProcessorUtil.qualifiedName(params.head.type)
+//					if ((pqn == qualifiedName) || (internal == qualifiedName)) {
+//						val rest = new ArrayList(params)
+//						rest.remove(0)
+//						intf.addMethod(m.simpleName) [
+//							visibility = Visibility.PUBLIC
+//							returnType = m.returnType
+//							for (p : rest) {
+//								addParameter(p.simpleName, p.type)
+//							}
+//						]
+//						warn(BeanProcessor, "transform", intf, m.simpleName+" added to "+intf.qualifiedName)
+//					}
+//				}
+//			}
+//		}
+//	}
+//
+//	/** Add extensions methods to TypeImpl */
+//	private def void addImplExtensions(Map<String,Object> processingContext, String qualifiedName,
+//		MutableClassDeclaration impl) {
+//		val dot = qualifiedName.lastIndexOf(DOT)
+//		val pkgName = qualifiedName.substring(0, dot)
+//		val simpleName = qualifiedName.substring(dot+1)
+//		val internal = internalName(pkgName, simpleName)
+//		val ext = findClass(qualifiedName+"Ext")
+//		if (ext !== null) {
+//			val xqn = ext.qualifiedName
+//			warn(BeanProcessor, "transform", impl, "Found extension "+xqn+" for "+qualifiedName)
+//			for (m : ext.declaredMethods) {
+//				val params = m.parameters.toList
+//				if (m.static && !params.empty) {
+//					val pqn = ProcessorUtil.qualifiedName(params.head.type)
+//					if ((pqn == qualifiedName) || (internal == qualifiedName)) {
+//						debug(BeanProcessor, "transform", impl, "Found extension method: "+xqn+"."+m.simpleName)
+//						val rest = new ArrayList(params)
+//						rest.remove(0)
+//						impl.addMethod(m.simpleName) [
+//							visibility = Visibility.PUBLIC
+//							final = true
+//							static = false
+//							returnType = m.returnType
+//							val paramNames = new StringBuilder
+//							for (p : rest) {
+//								paramNames.append(", ").append(p.simpleName)
+//								addParameter(p.simpleName, p.type)
+//							}
+//							body = [
+//								'''return «xqn».«m.simpleName»(this«paramNames»);'''
+//							]
+//						]
+//						warn(BeanProcessor, "transform", impl, xqn+"."+m.simpleName+" added to "+impl.qualifiedName)
+//					}
+//				}
+//			}
+//		}
+//	}
 
 	/** Register new types, to be generated later. */
 	override void register(Map<String,Object> processingContext, InterfaceDeclaration td, RegisterGlobalsContext context) {
@@ -990,6 +1059,12 @@ return this;'''
 			val pkgName = beanInfo.pkgName
 			val simpleName = beanInfo.simpleName
 			val MutableInterfaceDeclaration internal = getInterface(internalName(mtd))
+			// STEP 30
+			// Comments should be generated for _Type too
+			val doc = internal.docComment
+			if ((doc === null) || doc.empty) {
+				internal.docComment = "Internal interface to "+qualifiedName
+			}
 
 			// STEP 10
 			// The fields are replaced with getters and setters
@@ -1062,17 +1137,19 @@ return this;'''
 			// STEP 21
 			// The Impl extends either the impl of the first parent, or BaseImpl or EntityImpl appropriately
 			impl.addConstructor[
-				addParameter("$type", newTypeReference(Type))
+				addParameter("metaType", newTypeReference(Type))
 				visibility = Visibility.PROTECTED
 				body = [
-					'''super($type);'''
+					'''super(metaType);'''
 				]
+				docComment = "Creates a new "+qualifiedName+" taking it's metaType as parameter"
 			]
 			impl.addConstructor[
 				visibility = Visibility.PUBLIC
 				body = [
 					'''this(«pkgName».Meta.«metaTypeFieldName(simpleName)»);'''
 				]
+				docComment = "Creates a new "+qualifiedName+" with it's default metaType"
 			]
 
 			// STEP 22
@@ -1088,22 +1165,22 @@ return this;'''
 					generatePropertyMethods(processingContext, impl, e.key, p)
 				}
 			}
-
-			// STEP 25
-			// If a TypeExt class exists in the same file, add it's static methods as instance methods in Type
-			addInterfaceExtensions(processingContext, beanInfo, mtd)
-
-			// STEP 26
-			// If a TypeExt class exists in the same file, add it's static methods as instance methods in TypeImpl
-			val include = beanInfo.allParents()
-			if (firstParent !== null) {
-				include.removeAll(firstParent.allParents())
-			}
-			warn(BeanProcessor, "transform", mtd, "Types searched for extensions to "
-				+qualifiedName+": "+include)
-			for (p : include) {
-				addImplExtensions(processingContext, p, impl)
-			}
+//
+//			// STEP 25
+//			// If a TypeExt class exists in the same file, add it's static methods as instance methods in Type
+//			addInterfaceExtensions(processingContext, beanInfo, mtd)
+//
+//			// STEP 26
+//			// If a TypeExt class exists in the same file, add it's static methods as instance methods in TypeImpl
+//			val include = beanInfo.allParents()
+//			if (firstParent !== null) {
+//				include.removeAll(firstParent.allParents())
+//			}
+//			warn(BeanProcessor, "transform", mtd, "Types searched for extensions to "
+//				+qualifiedName+": "+include)
+//			for (p : include) {
+//				addImplExtensions(processingContext, p, impl)
+//			}
 		} else {
 			warn(BeanProcessor, "transform", mtd, qualifiedName
 				+" will NOT be transformed, because: "+beanInfo.validity)

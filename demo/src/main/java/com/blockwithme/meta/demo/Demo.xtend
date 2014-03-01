@@ -18,6 +18,7 @@ package com.blockwithme.meta.demo
 import com.blockwithme.meta.annotations.Bean
 import com.blockwithme.meta.annotations.Trace
 
+/** Example that should we support all type of properties */
 @Bean
 interface DemoType {
 
@@ -49,48 +50,61 @@ interface DemoType {
   String objectProp
 }
 
+/** Example of a child type */
 @Bean
-//@Trace
 interface DemoTypeChild extends DemoType {
 
-  /** internal property */
+  /** Internal property */
   int _secret
 
-  /** Object property */
+  /** Child Object property */
   String childProp
 
 }
 
+/** Example of the Trace annotation */
 @Trace
 class SomeClass {
+	/** The age */
 	int age
 	def hello() { "hello, I'm "+age }
 }
 
-
+/** Aspect of an an Object that has an "age". */
 @Bean
 interface Aged {
+	/** age of something */
 	int age
 }
 
+/** Extension for all Aged objects. */
 class AgedExt {
+	/** Returns true, if the age of the object is 18+ */
 	static def boolean adult(Aged aged) {
 		aged.age >= 18
 	}
 }
 
+/** Aspect of an an Object that has a "Name". */
 @Bean
 interface Named {
+	/** name of something */
 	String name
 }
 
-// Multiple Inheritance Example
+/**
+ * A Person is an example of Multiple Inheritance.
+ * In combines both Named and Aged with it's own data.
+ */
 @Bean
 interface Person extends Named, Aged {
+	/** profession of someone */
 	String profession
 }
 
+/** Extension for all Person objects. */
 class PersonExt {
+	/** Describes a person (by returning their name) */
 	static def String desc(Person p) {
 		p.name
 	}
