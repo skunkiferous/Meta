@@ -378,23 +378,37 @@ class ProcessorUtil implements TypeReferenceProvider {
 		// Not found. Maybe it lives outside the file?
 		val foreign = compilationUnit.typeReferences.findDeclaredType(typeName, compilationUnit.xtendFile)
 		if (foreign == null) {
+			val foreign2 = findTypeGlobally(typeName)
+			if (foreign2 instanceof TypeDeclaration) {
+				return foreign2
+			}
 			// Ouch!
 			throw new IllegalStateException("Could not find parent type "+typeName+" of type "+td.qualifiedName)
 		} else {
 			fixInterface(foreign, isInterface)
-			val result = compilationUnit.toType(foreign) as TypeDeclaration
-			if (!parentIsJvmType && (result.compilationUnit == compilationUnit)) {
-				throw new IllegalStateException("Parent type "+typeName+" of type "+td.qualifiedName
-					+" could not be found as Xtend type: "+td.class)
-			}
-			result
+			return compilationUnit.toType(foreign) as TypeDeclaration
 		}
 	}
 
 	/** Converts TypeReferences to TypeDeclarations */
 	private def Iterable<? extends TypeDeclaration> convert(
 		TypeDeclaration td, boolean isInterface, Iterable<? extends TypeReference> refs) {
-		refs.map[lookup(td, isInterface, it.name)]
+		refs.map[lookup(td, isInterface, localQualifiedName(it))]
+	}
+
+	/** Tries to find and return the qualifiedName of the given element. */
+	def String localQualifiedName(TypeReference element) {
+		var result = element.name
+		if (result == element.simpleName) {
+			val pattern = "."+result
+			for (d : compilationUnit.xtendFile.importSection.importDeclarations) {
+				if (d.importedTypeName.endsWith(pattern)) {
+					// Last one wins
+					result = d.importedTypeName
+				}
+			}
+		}
+		result
 	}
 
 	/** Returns the direct parents */

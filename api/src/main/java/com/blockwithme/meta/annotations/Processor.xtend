@@ -182,6 +182,9 @@ class Processor<T extends TypeDeclaration, M extends MutableTypeDeclaration> {
 	/** processingContext key for the currently processed type in the compilation unit.  */
 	public static val PC_PROCESSED_TYPE = "PC_PROCESSED_TYPE"
 
+	/** processingContext key for the package of the processed types in the compilation unit.  */
+	public static val PC_PACKAGE = "PC_PACKAGE"
+
 	/** processingContext key for the complete list of processors.  */
 	public static val PC_ALL_PROCESSORS = "PC_ALL_PROCESSORS"
 

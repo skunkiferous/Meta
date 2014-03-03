@@ -50,6 +50,7 @@ import com.blockwithme.meta.Kind
 import com.blockwithme.meta.Type
 import java.util.ArrayList
 import org.eclipse.xtend.lib.macro.declaration.MutableTypeDeclaration
+import org.eclipse.xtend.lib.macro.declaration.AnnotationReference
 
 /**
  * Annotates an interface declared in a C-style-struct syntax
@@ -131,6 +132,16 @@ package class BeanInfo {
 }
 
 /**
+ * Stores in the class-file the BeanInfo data
+ */
+annotation _BeanInfo {
+    Class<?>[] parents = #[]
+    String[] properties = #[] //name0,type0,comment0,...
+    String[] validity = #[]
+    boolean isBean
+}
+
+/**
  * Process classes annotated with @Bean
  *
  * REGISTER:
@@ -169,6 +180,7 @@ package class BeanInfo {
  * 31) Comments on properties must be transfered to generated code
  * 32) Comments should be generated for the providers.
  * 33) Comments should be generated for the implementation fields.
+ * 34) @_BeanInfo must be generated on the type
  *
  * TODO: Make sure inheritance work across file boundaries
  * TODO: Review the whole code, adding comments, and fixing log-levels
@@ -345,8 +357,23 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		}
 	}
 
+	private def BeanInfo beanInfo(Map<String,Object> processingContext, String qualifiedName) {
+		val td = findTypeGlobally(qualifiedName)
+		if (td === null) {
+			// Unknown/undefined type (too early to query?)
+			val result = new BeanInfo(qualifiedName,NO_PARENTS,NO_PROPERTIES,
+				newArrayList("Undefined: "+qualifiedName), false)
+			result.check()
+			val key = cacheKey(qualifiedName)
+			val simpleName = qualifiedName.substring(qualifiedName.lastIndexOf(DOT)+1)
+			val noSameSimpleNameKey = noSameSimpleNameKey(simpleName)
+			putInCache(processingContext, key, noSameSimpleNameKey, result)
+			return result
+		}
+		beanInfo(processingContext, findTypeGlobally(qualifiedName) as TypeDeclaration)
+	}
+
 	// STEP 1/2
-	/** Scans the Type hierarchy for compatibility */
 	private def BeanInfo beanInfo(Map<String,Object> processingContext, TypeDeclaration td) {
 		// Lazy init
 		if (!processingContext.containsKey(BEAN_KEY)) {
@@ -359,82 +386,86 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		}
 		val qualifiedName = td.qualifiedName
 		val simpleName = td.simpleName
+		val pkgName = qualifiedName.substring(0, qualifiedName.lastIndexOf(DOT))
 		val key = cacheKey(qualifiedName)
 		val noSameSimpleNameKey = noSameSimpleNameKey(simpleName)
 		var result = processingContext.get(key) as BeanInfo
 		if (result === null) {
-			val type = findTypeGlobally(qualifiedName)
-			if (type === null) {
-				// Unknown/undefined type (too early to query?)
+			if (td instanceof TypeDeclaration) {
+				val filePkg = (processingContext.get(Processor.PC_PACKAGE) as String)
+				if (filePkg != pkgName) {
+					val _beanInfo = td.findAnnotation(findTypeGlobally(_BeanInfo))
+					if (_beanInfo !== null) {
+						result = extractBeanInfo(processingContext, qualifiedName, _beanInfo)
+						result.check()
+						putInCache(processingContext, key, noSameSimpleNameKey, result)
+						return result
+					}
+				}
+		 	}
+			val check = checkIsBeanOrMarker(processingContext, td)
+			if (check !== null) {
+				// not valid as Bean/Marker type
+				var msg = "Non Bean/Marker type: "+qualifiedName
+				if (qualifiedName != check) {
+					msg = msg + " because of "+check
+				}
 				result = new BeanInfo(qualifiedName,NO_PARENTS,NO_PROPERTIES,
-					newArrayList("Undefined: "+qualifiedName), false)
+					newArrayList(msg), false)
 				result.check()
 				putInCache(processingContext, key, noSameSimpleNameKey, result)
 			} else {
-				val check = checkIsBeanOrMarker(processingContext, td)
-				if (check !== null) {
-					// not valid as Bean/Marker type
-					var msg = "Non Bean/Marker type: "+qualifiedName
-					if (qualifiedName != check) {
-						msg = msg + " because of "+check
-					}
-					result = new BeanInfo(qualifiedName,NO_PARENTS,NO_PROPERTIES,
-						newArrayList(msg), false)
-					result.check()
-					putInCache(processingContext, key, noSameSimpleNameKey, result)
-				} else {
-					// Could be OK type ...
-					val parentsTD = findParents(td)
-					val fields = td.declaredFields
-					// Add early in cache, to prevent infinite loops
-					val parents = <BeanInfo>newArrayOfSize(parentsTD.size - 1)
-					val properties = <PropertyInfo>newArrayOfSize(fields.size)
-					result = new BeanInfo(qualifiedName,parents,properties,
-						newArrayList(), accept(processingContext, td))
-					putInCache(processingContext, key, noSameSimpleNameKey, result)
-					// Find parents
-					var index = 0
-					val parentFields = <String>newArrayList()
-					for (p : parentsTD) {
-						if (p !== td) {
-							val b = beanInfo(processingContext, p)
-							parents.set(index, b)
-							index = index + 1
-							if (!b.validity.isEmpty) {
-								result.validity.add("Parent "+p.qualifiedName+" is not valid")
-							}
-							for (pp : b.properties) {
-								requireNonNull(pp, b.qualifiedName+".properties[?]")
-								requireNonNull(pp.name, b.qualifiedName+".properties[?].name")
-								parentFields.add(pp.name.toLowerCase)
-							}
-						}
-					}
-					// Find properties
-					index = 0
-					for (f : fields) {
-						val ftypeName = f.type.name
-						properties.set(index, new PropertyInfo(
-							requireNonNull(f.simpleName, "f.simpleName"),
-							requireNonNull(ftypeName, "ftypeName"),
-							f.docComment))
+				// Could be OK type ...
+				val parentsTD = findParents(td)
+				val fields = td.declaredFields
+				// Add early in cache, to prevent infinite loops
+				val parents = <BeanInfo>newArrayOfSize(parentsTD.size - 1)
+				val properties = <PropertyInfo>newArrayOfSize(fields.size)
+				result = new BeanInfo(qualifiedName,parents,properties,
+					newArrayList(), accept(processingContext, td))
+				putInCache(processingContext, key, noSameSimpleNameKey, result)
+				// Find parents
+				var index = 0
+				val parentFields = <String>newArrayList()
+				for (p : parentsTD) {
+					if (p !== td) {
+						val b = beanInfo(processingContext, p)
+						parents.set(index, b)
 						index = index + 1
-						if (!validPropertyType(processingContext, f.type)) {
-							result.validity.add("Property "+f.simpleName+" is not valid")
+						if (!b.validity.isEmpty) {
+							result.validity.add("Parent "+p.qualifiedName+" is not valid")
 						}
-						// STEP 4
-						if (parentFields.contains(f.simpleName.toLowerCase)) {
-							result.validity.add("Property "+f.simpleName
-								+" is a duplicate from a parent property")
+						for (pp : b.properties) {
+							requireNonNull(pp, b.qualifiedName+".properties[?]")
+							requireNonNull(pp.name, b.qualifiedName+".properties[?].name")
+							parentFields.add(pp.name.toLowerCase)
 						}
 					}
-					// Find methods
-					val methods = td.declaredMethods
-					if (methods.iterator.hasNext) {
-						result.validity.add("Has methods: "+methods.toList)
-					}
-					result.check()
 				}
+				// Find properties
+				index = 0
+				for (f : fields) {
+					val ftypeName = f.type.name
+					properties.set(index, new PropertyInfo(
+						requireNonNull(f.simpleName, "f.simpleName"),
+						requireNonNull(ftypeName, "ftypeName"),
+						f.docComment))
+					index = index + 1
+					if (!validPropertyType(processingContext, f.type)) {
+						result.validity.add("Property "+f.simpleName+" is not valid")
+					}
+					// STEP 4
+					if (parentFields.contains(f.simpleName.toLowerCase)) {
+						result.validity.add("Property "+f.simpleName
+							+" is a duplicate from a parent property")
+					}
+				}
+				// Find methods
+				val methods = td.declaredMethods
+				if (methods.iterator.hasNext) {
+					result.validity.add("Has methods: "+methods.toList)
+				}
+				result.check()
 			}
 		}
 		if (result !== null) {
@@ -741,6 +772,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 				parents.length = parents.length - 2
 			}
 			val beanType = newTypeReference(beanInfo.qualifiedName)
+			val props = if (allProps.empty) "" else ", "+allProps
 			meta.addField(metaTypeFieldName(simpleName)) [
 				visibility = Visibility.PUBLIC
 				final = true
@@ -748,7 +780,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 				type = newTypeReference(com.blockwithme.meta.Type, beanType)
 				initializer = [
 					'''BUILDER.newType(«simpleName».class, new «providerName(pkg, simpleName)»(), «Kind.name».Trait,
-					new Type[] {«parents»}, «allProps»)'''
+					new Type[] {«parents»}«props»)'''
 				]
 				docComment = "Type field for "+beanInfo.qualifiedName
 			]
@@ -1010,6 +1042,73 @@ return this;'''
 //		}
 //	}
 
+	/** Record the BeanInfo in form of an annotation */
+	private def void recordBeanInfo(MutableInterfaceDeclaration target, BeanInfo beanInfo) {
+		val _biTD = findTypeGlobally(_BeanInfo)
+		if (target.findAnnotation(_biTD) === null) {
+			val bi = target.addAnnotation(_biTD)
+
+			var i = 0
+			if (!beanInfo.parents.empty) {
+				val parents = <TypeReference>newArrayOfSize(beanInfo.parents.size)
+				for (p : beanInfo.parents) {
+					parents.set(i, newTypeReference(p.qualifiedName))
+					i = i + 1
+				}
+				bi.set("parents", parents)
+			}
+
+			if (!beanInfo.properties.empty) {
+				val props = <String>newArrayOfSize(beanInfo.properties.size*3)
+				i = 0
+				for (p : beanInfo.properties) {
+					props.set(i, p.name)
+					i = i + 1
+					props.set(i, p.type)
+					i = i + 1
+					props.set(i, p.comment)
+					i = i + 1
+				}
+				bi.set("properties", props)
+			}
+
+			if (!beanInfo.validity.empty) {
+				val String[] validity = <String>newArrayOfSize(beanInfo.validity.size)
+				bi.set("validity", beanInfo.validity.toArray(validity))
+			}
+
+			bi.setBooleanValue("isBean", beanInfo.isBean)
+		}
+	}
+
+	/** Extract recorded BeanInfo data */
+	private def BeanInfo extractBeanInfo(Map<String,Object> processingContext, String qualifiedName, AnnotationReference annotRef) {
+		val _parents = annotRef.getClassArrayValue("parents")
+		val _props = annotRef.getStringArrayValue("properties")
+		val _validity = annotRef.getStringArrayValue("validity")
+		val isBean = annotRef.getBooleanValue("isBean")
+
+		val parentList = <BeanInfo>newArrayList()
+		for (p : _parents) {
+			parentList.add(beanInfo(processingContext, p.name))
+		}
+
+		val properties = <PropertyInfo>newArrayOfSize(_props.size/3)
+		var i = 0
+		while (i < _props.size) {
+			val name = _props.get(i)
+			val type = _props.get(i+1)
+			val comment = _props.get(i+2)
+			properties.set(i/3, new PropertyInfo(name, type, comment))
+			i = i + 3
+		}
+		new BeanInfo(qualifiedName,
+			parentList.toArray(newArrayOfSize(parentList.size)),
+			properties,
+			newArrayList(_validity),
+			isBean)
+	}
+
 	/** Register new types, to be generated later. */
 	override void register(Map<String,Object> processingContext, InterfaceDeclaration td, RegisterGlobalsContext context) {
 		if (td !== null) {
@@ -1046,6 +1145,12 @@ return this;'''
 			} else {
 				error(BeanProcessor, "register", td, qualifiedName
 					+" cannot be processed because: "+beanInfo.validity)
+				for (p : beanInfo.parents) {
+					if (!beanInfo.validity.empty) {
+						error(BeanProcessor, "register", td, "... "+p.qualifiedName
+							+" cannot be processed because: "+p.validity)
+					}
+				}
 			}
 		}
 	}
@@ -1181,6 +1286,10 @@ return this;'''
 //			for (p : include) {
 //				addImplExtensions(processingContext, p, impl)
 //			}
+
+			// STEP 34
+			// @_BeanInfo must be generated on the type
+			recordBeanInfo(mtd, beanInfo)
 		} else {
 			warn(BeanProcessor, "transform", mtd, qualifiedName
 				+" will NOT be transformed, because: "+beanInfo.validity)

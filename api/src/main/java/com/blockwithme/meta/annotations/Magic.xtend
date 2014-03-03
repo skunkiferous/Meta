@@ -95,7 +95,7 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 			val types = allTypes.toArray(<TypeDeclaration>newArrayOfSize(allTypes.size + 1))
 			val todoTypes = new ArrayList(allTypes)
 			val doneTypes = <TypeDeclaration>newArrayList()
-			processorUtil.debug(MagicAnnotationProcessor, "loop", null,
+			processorUtil.warn(MagicAnnotationProcessor, "loop", null,
 					"Top-Level Types: "+ProcessorUtil.qualifiedNames(allTypes))
 			val processingContext = new HashMap<String,Object>()
 			processingContext.put(Processor.PC_ALL_FILE_TYPES, allTypes)
@@ -107,6 +107,22 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 				val dot = qn.lastIndexOf(".")
 				qn.substring(0, dot)
 			} else ""
+			processingContext.put(Processor.PC_PACKAGE, pkgName)
+			processorUtil.debug(MagicAnnotationProcessor, "loop", null,
+				"IMPORTS: "+compilationUnit.xtendFile.importSection.importDeclarations.map[importedTypeName])
+			for (t : compilationUnit.xtendFile.importSection.importDeclarations.map[importedTypeName]) {
+				if (processorUtil.findTypeGlobally(t) === null) {
+					var found = false
+					try {
+						found = (Class.forName(t)!=null)
+					} catch(Exception e) {
+						// NOP
+					}
+
+					processorUtil.error(MagicAnnotationProcessor, "loop", null,
+						"Import "+t+" cannot be resolved! (As Class: "+found+")")
+				}
+			}
 			// Process all types
 			for (td : types) {
 				processingContext.put(Processor.PC_PROCESSED_TYPE, td)
