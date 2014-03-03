@@ -355,6 +355,8 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 				validity.add(DUPLICATE)
 			}
 		}
+		debug(BeanProcessor, "putInCache", null, "Adding BeanInfo("+beanInfo.qualifiedName+","
+			+beanInfo.parents.map[it?.qualifiedName]+") to cache")
 	}
 
 	private def BeanInfo beanInfo(Map<String,Object> processingContext, String qualifiedName) {
@@ -393,9 +395,12 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		if (result === null) {
 			if (td instanceof TypeDeclaration) {
 				val filePkg = (processingContext.get(Processor.PC_PACKAGE) as String)
+				// OK, this type comes from a *dependency*
 				if (filePkg != pkgName) {
 					val _beanInfo = td.findAnnotation(findTypeGlobally(_BeanInfo))
 					if (_beanInfo !== null) {
+						// and it was already processed, so we can extract the BeanInfo from
+						// a *generated* annotations
 						result = extractBeanInfo(processingContext, qualifiedName, _beanInfo)
 						result.check()
 						putInCache(processingContext, key, noSameSimpleNameKey, result)
@@ -416,10 +421,10 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 				putInCache(processingContext, key, noSameSimpleNameKey, result)
 			} else {
 				// Could be OK type ...
-				val parentsTD = findParents(td)
+				val parentsTD = findDirectParents(td)
 				val fields = td.declaredFields
 				// Add early in cache, to prevent infinite loops
-				val parents = <BeanInfo>newArrayOfSize(parentsTD.size - 1)
+				val parents = <BeanInfo>newArrayOfSize(parentsTD.size)
 				val properties = <PropertyInfo>newArrayOfSize(fields.size)
 				result = new BeanInfo(qualifiedName,parents,properties,
 					newArrayList(), accept(processingContext, td))
@@ -428,18 +433,16 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 				var index = 0
 				val parentFields = <String>newArrayList()
 				for (p : parentsTD) {
-					if (p !== td) {
-						val b = beanInfo(processingContext, p)
-						parents.set(index, b)
-						index = index + 1
-						if (!b.validity.isEmpty) {
-							result.validity.add("Parent "+p.qualifiedName+" is not valid")
-						}
-						for (pp : b.properties) {
-							requireNonNull(pp, b.qualifiedName+".properties[?]")
-							requireNonNull(pp.name, b.qualifiedName+".properties[?].name")
-							parentFields.add(pp.name.toLowerCase)
-						}
+					val b = beanInfo(processingContext, p)
+					parents.set(index, b)
+					index = index + 1
+					if (!b.validity.isEmpty) {
+						result.validity.add("Parent "+p.qualifiedName+" is not valid")
+					}
+					for (pp : b.properties) {
+						requireNonNull(pp, b.qualifiedName+".properties[?]")
+						requireNonNull(pp.name, b.qualifiedName+".properties[?].name")
+						parentFields.add(pp.name.toLowerCase)
 					}
 				}
 				// Find properties
@@ -466,6 +469,8 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 					result.validity.add("Has methods: "+methods.toList)
 				}
 				result.check()
+				debug(BeanProcessor, "putInCache", null, "Updating BeanInfo("+qualifiedName+","
+					+result.parents.map[it?.qualifiedName]+") in cache")
 			}
 		}
 		if (result !== null) {
@@ -1090,7 +1095,11 @@ return this;'''
 
 		val parentList = <BeanInfo>newArrayList()
 		for (p : _parents) {
-			parentList.add(beanInfo(processingContext, p.name))
+			val qname = p.name
+			if (!qname.contains('.')) {
+				throw new IllegalStateException("Got a non-absolute type name: "+qname)
+			}
+			parentList.add(beanInfo(processingContext, qname))
 		}
 
 		val properties = <PropertyInfo>newArrayOfSize(_props.size/3)

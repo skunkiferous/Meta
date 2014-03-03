@@ -412,7 +412,7 @@ class ProcessorUtil implements TypeReferenceProvider {
 	}
 
 	/** Returns the direct parents */
-	private def Iterable<? extends TypeDeclaration> findDirectParents(TypeDeclaration td) {
+	final def Iterable<? extends TypeDeclaration> findDirectParents(TypeDeclaration td) {
 		var result = directParents.get(td)
 		if (result === null) {
 			result = findDirectParents2(td)

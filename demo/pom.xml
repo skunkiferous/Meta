@@ -19,7 +19,7 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
 -->
 	<groupId>com.blockwithme</groupId>
 	<artifactId>MetaDemo</artifactId>
-	<version>0.0.1</version>
+	<version>0.0.2</version>
 	<packaging>jar</packaging>
 	<inceptionYear>2013</inceptionYear>
 	<name>Demo for Meta</name>
