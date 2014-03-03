@@ -181,8 +181,8 @@ annotation _BeanInfo {
  * 32) Comments should be generated for the providers.
  * 33) Comments should be generated for the implementation fields.
  * 34) @_BeanInfo must be generated on the type
+ * 35) Make sure inheritance work across file boundaries
  *
- * TODO: Make sure inheritance work across file boundaries
  * TODO: Review the whole code, adding comments, and fixing log-levels
  *
  * WARNING: Always specify explicitly the *return type* of extension methods!
