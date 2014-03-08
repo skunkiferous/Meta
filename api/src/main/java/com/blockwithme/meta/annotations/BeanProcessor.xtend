@@ -15,42 +15,41 @@
  */
 package com.blockwithme.meta.annotations
 
+import com.blockwithme.meta.BooleanProperty
+import com.blockwithme.meta.BooleanPropertyAccessor
+import com.blockwithme.meta.Hierarchy
+import com.blockwithme.meta.HierarchyBuilder
+import com.blockwithme.meta.JavaMeta
+import com.blockwithme.meta.Kind
+import com.blockwithme.meta.Type
+import com.blockwithme.meta.TypePackage
+import com.blockwithme.meta.beans.Entity
+import com.blockwithme.meta.beans.impl._BeanImpl
+import com.blockwithme.meta.beans.impl._EntityImpl
 import java.lang.annotation.ElementType
 import java.lang.annotation.Inherited
 import java.lang.annotation.Retention
 import java.lang.annotation.RetentionPolicy
 import java.lang.annotation.Target
 import java.util.HashMap
+import java.util.HashSet
+import java.util.List
+import java.util.Map
+import java.util.Set
+import javax.inject.Provider
 import org.eclipse.xtend.lib.macro.Active
 import org.eclipse.xtend.lib.macro.RegisterGlobalsContext
 import org.eclipse.xtend.lib.macro.TransformationContext
+import org.eclipse.xtend.lib.macro.declaration.AnnotationReference
 import org.eclipse.xtend.lib.macro.declaration.InterfaceDeclaration
+import org.eclipse.xtend.lib.macro.declaration.MutableClassDeclaration
+import org.eclipse.xtend.lib.macro.declaration.MutableFieldDeclaration
 import org.eclipse.xtend.lib.macro.declaration.MutableInterfaceDeclaration
 import org.eclipse.xtend.lib.macro.declaration.TypeDeclaration
-import java.util.List
 import org.eclipse.xtend.lib.macro.declaration.TypeReference
-import com.blockwithme.meta.beans.Entity
-import org.eclipse.xtend.lib.macro.declaration.MutableFieldDeclaration
 import org.eclipse.xtend.lib.macro.declaration.Visibility
-import com.blockwithme.meta.HierarchyBuilder
-import org.eclipse.xtend.lib.macro.declaration.MutableClassDeclaration
-import com.blockwithme.meta.BooleanPropertyAccessor
-import com.blockwithme.meta.BooleanProperty
-import javax.inject.Provider
-import java.util.Map
-import com.blockwithme.meta.TypePackage
-import com.blockwithme.meta.JavaMeta
-import java.util.Set
-import java.util.HashSet
-import com.blockwithme.meta.Hierarchy
-import com.blockwithme.meta.beans.impl._EntityImpl
-import com.blockwithme.meta.beans.impl._BeanImpl
-import static java.util.Objects.*;
-import com.blockwithme.meta.Kind
-import com.blockwithme.meta.Type
-import java.util.ArrayList
-import org.eclipse.xtend.lib.macro.declaration.MutableTypeDeclaration
-import org.eclipse.xtend.lib.macro.declaration.AnnotationReference
+
+import static java.util.Objects.*
 
 /**
  * Annotates an interface declared in a C-style-struct syntax
@@ -134,6 +133,8 @@ package class BeanInfo {
 /**
  * Stores in the class-file the BeanInfo data
  */
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.CLASS)
 annotation _BeanInfo {
     Class<?>[] parents = #[]
     String[] properties = #[] //name0,type0,comment0,...
@@ -153,12 +154,12 @@ annotation _BeanInfo {
  * 5) For each type, an Impl type under impl package is registered, if not defined yet
  * 6) For each type, a type Provider under impl package is registered, if not defined yet
  * 7) For each type *package*, a Meta interface is declared, if not defined yet
- * 8) For each type, the internal API interface (_X) is registered, if not defined yet
+ * (REMOVED) 8) For each type, the internal API interface (_X) is registered, if not defined yet
  * 9) For each type property, an Accessor type under impl package is declared, if not defined yet
  * GENERATE:
  * 10) For each type, the fields are replaced with getters and setters
- * 11) If the property starts with _, the getter and setter goes in _Type
- * 12) _Type must extend Type
+ * (REMOVED) 11) If the property starts with _, the getter and setter goes in _Type
+ * (REMOVED) 12) _Type must extend Type
  * 13) A builder is created in Meta for that package
  * 14) For each type property, a property accessor class is generated
  * 15) For each type property, a property object in the "Meta" interface is generated.
@@ -176,7 +177,7 @@ annotation _BeanInfo {
  * 27) Implementation class should have comments too.
  * 28) Comments should be generated for Meta too
  * 29) Comments should be generated for the accessors.
- * 30) Comments should be generated for _Type too
+ * (REMOVED) 30) Comments should be generated for _Type too
  * 31) Comments on properties must be transfered to generated code
  * 32) Comments should be generated for the providers.
  * 33) Comments should be generated for the implementation fields.
@@ -199,14 +200,11 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	static val ENTITY_QUALIFIED_NAME = Entity.name
 	static val String BEAN_KEY = cacheKey(BEAN_QUALIFIED_NAME)
 	static val String ENTITY_KEY = cacheKey(ENTITY_QUALIFIED_NAME)
-//
-//	/** The "transient" cache */
-//	static var CACHE = new HashMap<String,Object>
 
 	/** Public constructor for this class. */
 	new() {
 		// Step 0, make sure we have an interface, annotated with @Bean
-		super(and(isInterface,withAnnotation(Bean), [ctx,pu,td|!td.simpleName.startsWith('_')]))
+		super(and(isInterface,withAnnotation(Bean)))
 	}
 
 	/** Converts CamelCase to CAMEL_CASE */
@@ -224,20 +222,6 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	/** Capitalizes the first letter, taking "_" into account */
 	private static def String to_FirstUpper(String str) {
 		if (str.startsWith("_")) "_"+str.substring(1).toFirstUpper else str.toFirstUpper
-	}
-
-	/** Returns the internal API name */
-	private def internalName(String pkgName, String simpleName) {
-		pkgName+'._'+simpleName
-	}
-
-	/** Returns the internal API name */
-	private def internalName(InterfaceDeclaration td) {
-		val qualifiedName = td.qualifiedName
-		val index = qualifiedName.lastIndexOf(DOT)
-		val pkgName = qualifiedName.substring(0,index)
-		val simpleName = qualifiedName.substring(index+1)
-		internalName(pkgName, simpleName)
 	}
 
 	/** Returns the Provider name */
@@ -487,7 +471,6 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		val fieldType = fieldDeclaration.type
 		val doc = if (fieldDeclaration.docComment != null) fieldDeclaration.docComment else "";
 
-		// TODO Move _name to the "internal interface"
 		val getter = 'get' + toFirstUpper
 		if (interf.findDeclaredMethod(getter) === null) {
 			interf.addMethod(getter) [
@@ -603,7 +586,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		// Make accessor extend <Type>PropertyAccessor
 		val propertyAccessorPrefix = propertyAccessorPrefix(propType)
 		val acessorInterfaceName = acessorInterfaceName(propertyAccessorPrefix)
-		val typeName = if (propInfo.name.startsWith('_')) internalName(pkgName, simpleName) else qualifiedName
+		val typeName = qualifiedName
 		val beanType = newTypeReference(typeName)
 		val typeRef = if ("Object" == propertyAccessorPrefix) #[beanType, propTypeRef] else #[beanType]
 		val propertyAccessorIntf = newTypeReference(acessorInterfaceName, typeRef)
@@ -674,11 +657,6 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		val propName = propertyMethodName(propInfo)
 		val name = getPropertyFieldNameInMeta(beanInfo.simpleName, propInfo)
 		if (meta.findDeclaredField(name) === null) {
-//			val simpleName = if (propInfo.name.startsWith("_")) {
-//				"_"+beanInfo.simpleName
-//			} else beanInfo.simpleName
-			val acessorInterfaceName = acessorInterfaceName(propertyAccessorPrefix(propInfo.type))
-			val cast = if (propInfo.name.startsWith("_")) "("+acessorInterfaceName+")" else ""
 			val simpleName = beanInfo.simpleName
 			val qualifiedName = beanInfo.pkgName+"."+simpleName
 			val beanType = newTypeReference(qualifiedName)
@@ -697,9 +675,9 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 					if ("ObjectProperty" == propName) {
 						// TODO Work out the real value for the boolean flags!
 						'''BUILDER.new«propName»(«simpleName».class, "«propInfo.name»", «propInfo.type».class,
-						true, true, false, «cast» new «accessorName»())'''
+						true, true, false, new «accessorName»())'''
 					} else {
-						'''BUILDER.new«propName»(«simpleName».class, "«propInfo.name»", «cast» new «accessorName»())'''
+						'''BUILDER.new«propName»(«simpleName».class, "«propInfo.name»", new «accessorName»())'''
 					}
 				]
 				// SETP 28
@@ -782,7 +760,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 				visibility = Visibility.PUBLIC
 				final = true
 				static = true
-				type = newTypeReference(com.blockwithme.meta.Type, beanType)
+				type = newTypeReference(Type, beanType)
 				initializer = [
 					'''BUILDER.newType(«simpleName».class, new «providerName(pkg, simpleName)»(), «Kind.name».Trait,
 					new Type[] {«parents»}«props»)'''
@@ -886,7 +864,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		} else {
 			impl.setExtendedClass(newTypeReference(_BeanImpl))
 		}
-		impl.setImplementedInterfaces(newArrayList(newTypeReference(internalName(pkgName, simpleName))))
+		impl.setImplementedInterfaces(newArrayList(newTypeReference(qualifiedName)))
 		// STEP 27
 		// Implementation class should have comments too.
 		impl.setDocComment("Implementation class for "+qualifiedName)
@@ -965,87 +943,6 @@ return this;'''
 			warn(BeanProcessor, "transform", impl, setter+" added to "+impl.qualifiedName)
 		}
 	}
-
-	/** Defines the content of _Type */
-	private def void implementInternalInterface(BeanInfo beanInfo) {
-		val pkgName = beanInfo.pkgName
-		val simpleName = beanInfo.simpleName
-		val internal = getInterface(internalName(pkgName, simpleName))
-		val parents = <TypeReference>newArrayList()
-		parents.add(newTypeReference(beanInfo.qualifiedName))
-		for (p : beanInfo.parents) {
-			parents.add(newTypeReference(p.pkgName + "._" + p.simpleName))
-		}
-		internal.setExtendedInterfaces(parents)
-	}
-//
-//	/** Add extensions methods to Type */
-//	private def void addInterfaceExtensions(Map<String,Object> processingContext, BeanInfo beanInfo, MutableInterfaceDeclaration intf) {
-//		val qualifiedName = beanInfo.qualifiedName
-//		val pkgName = beanInfo.pkgName
-//		val internal = internalName(pkgName, beanInfo.simpleName)
-//		val ext = findClass(qualifiedName+"Ext")
-//		if (ext !== null) {
-//			for (m : ext.declaredMethods) {
-//				val params = m.parameters.toList
-//				if (m.static && !params.empty) {
-//					val pqn = ProcessorUtil.qualifiedName(params.head.type)
-//					if ((pqn == qualifiedName) || (internal == qualifiedName)) {
-//						val rest = new ArrayList(params)
-//						rest.remove(0)
-//						intf.addMethod(m.simpleName) [
-//							visibility = Visibility.PUBLIC
-//							returnType = m.returnType
-//							for (p : rest) {
-//								addParameter(p.simpleName, p.type)
-//							}
-//						]
-//						warn(BeanProcessor, "transform", intf, m.simpleName+" added to "+intf.qualifiedName)
-//					}
-//				}
-//			}
-//		}
-//	}
-//
-//	/** Add extensions methods to TypeImpl */
-//	private def void addImplExtensions(Map<String,Object> processingContext, String qualifiedName,
-//		MutableClassDeclaration impl) {
-//		val dot = qualifiedName.lastIndexOf(DOT)
-//		val pkgName = qualifiedName.substring(0, dot)
-//		val simpleName = qualifiedName.substring(dot+1)
-//		val internal = internalName(pkgName, simpleName)
-//		val ext = findClass(qualifiedName+"Ext")
-//		if (ext !== null) {
-//			val xqn = ext.qualifiedName
-//			warn(BeanProcessor, "transform", impl, "Found extension "+xqn+" for "+qualifiedName)
-//			for (m : ext.declaredMethods) {
-//				val params = m.parameters.toList
-//				if (m.static && !params.empty) {
-//					val pqn = ProcessorUtil.qualifiedName(params.head.type)
-//					if ((pqn == qualifiedName) || (internal == qualifiedName)) {
-//						debug(BeanProcessor, "transform", impl, "Found extension method: "+xqn+"."+m.simpleName)
-//						val rest = new ArrayList(params)
-//						rest.remove(0)
-//						impl.addMethod(m.simpleName) [
-//							visibility = Visibility.PUBLIC
-//							final = true
-//							static = false
-//							returnType = m.returnType
-//							val paramNames = new StringBuilder
-//							for (p : rest) {
-//								paramNames.append(", ").append(p.simpleName)
-//								addParameter(p.simpleName, p.type)
-//							}
-//							body = [
-//								'''return «xqn».«m.simpleName»(this«paramNames»);'''
-//							]
-//						]
-//						warn(BeanProcessor, "transform", impl, xqn+"."+m.simpleName+" added to "+impl.qualifiedName)
-//					}
-//				}
-//			}
-//		}
-//	}
 
 	/** Record the BeanInfo in form of an annotation */
 	private def void recordBeanInfo(MutableInterfaceDeclaration target, BeanInfo beanInfo) {
@@ -1142,10 +1039,6 @@ return this;'''
 				// Registering the Meta, if needed
 				registerInterface(td, context, metaName(pkgName))
 
-				// STEP 8
-				// Registering the internal API interface, if needed
-				registerInterface(td, context, internalName(pkgName, simpleName))
-
 				// STEP 9
 				// Registering all Property Accessors, if needed
 				for (p : beanInfo.properties) {
@@ -1172,27 +1065,12 @@ return this;'''
 			warn(BeanProcessor, "transform", mtd, qualifiedName+" will be transformed")
 			val pkgName = beanInfo.pkgName
 			val simpleName = beanInfo.simpleName
-			val MutableInterfaceDeclaration internal = getInterface(internalName(mtd))
-			// STEP 30
-			// Comments should be generated for _Type too
-			val doc = internal.docComment
-			if ((doc === null) || doc.empty) {
-				internal.docComment = "Internal interface to "+qualifiedName
-			}
 
 			// STEP 10
 			// The fields are replaced with getters and setters
 			for (f : mtd.declaredFields.toList) {
-				if (f.simpleName.startsWith("_")) {
-					processField(f, internal)
-				} else {
-					processField(f, mtd)
-				}
+				processField(f, mtd)
 			}
-
-			// STEP 12
-			// _Type must extend Type
-			implementInternalInterface(beanInfo)
 
 			// STEP 13
 			// A builder is created in Meta for that package
