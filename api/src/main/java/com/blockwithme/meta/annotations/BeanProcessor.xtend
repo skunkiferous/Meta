@@ -50,6 +50,7 @@ import org.eclipse.xtend.lib.macro.declaration.TypeReference
 import org.eclipse.xtend.lib.macro.declaration.Visibility
 
 import static java.util.Objects.*
+import com.blockwithme.meta.HierarchyBuilderFactory
 
 /**
  * Annotates an interface declared in a C-style-struct syntax
@@ -140,6 +141,18 @@ annotation _BeanInfo {
     String[] properties = #[] //name0,type0,comment0,...
     String[] validity = #[]
     boolean isBean
+}
+
+
+/**
+ * Marks a Type as "instantiable".
+ * The default for all other types is "abstract".
+ *
+ * Note that additional "scope requirements" might still apply.
+ */
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.CLASS)
+annotation Instance {
 }
 
 /**
@@ -530,14 +543,14 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	private def void addBuilderField(MutableInterfaceDeclaration meta, String pkgName) {
 		// Only define once!
 		if (meta.findDeclaredField("BUILDER") === null) {
-			// public static final BUILDER = new HierarchyBuilder(Object);
+			// public static final BUILDER = HierarchyBuilderFactory.registerHierarchyBuilder("package");
 			meta.addField("BUILDER") [
 				visibility = Visibility.PUBLIC
 				final = true
 				static = true
 				type = newTypeReference(HierarchyBuilder)
 				initializer = [
-					'''new «HierarchyBuilder.name»("«pkgName»")'''
+					'''new «HierarchyBuilderFactory.name».getHierarchyBuilder("«pkgName»")'''
 				]
 				docComment = "BUILDER field for the Hierarchy of this Package"
 			]

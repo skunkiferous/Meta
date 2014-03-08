@@ -259,17 +259,17 @@ public class Hierarchy {
 		builder.close()
 	}
 
-	protected new (HierarchyBuilder builder, Hierarchy ... theDependencies) {
-		this(builder, newArrayOfSize(0), theDependencies)
-	}
+    protected new (HierarchyBuilder builder, Hierarchy ... theDependencies) {
+        this(builder, newArrayOfSize(0), theDependencies)
+    }
 
-	protected new (HierarchyBuilder builder, TypePackage... packages) {
-		this(builder, packages, newArrayOfSize(0))
-	}
+    protected new (HierarchyBuilder builder, TypePackage... packages) {
+        this(builder, packages, newArrayOfSize(0))
+    }
 
-	protected new (HierarchyBuilder builder) {
-		this(builder, newArrayOfSize(0), newArrayOfSize(0))
-	}
+    protected new (HierarchyBuilder builder) {
+         this(builder, newArrayOfSize(0), newArrayOfSize(0))
+    }
 
 	override final toString() {
 		name
@@ -2012,7 +2012,7 @@ public class MetaHierarchyBuilder extends HierarchyBuilder {
 
 	/** Constructor */
 	new() {
-		super(MetaBase)
+		super(MetaBase.name)
 	}
 
 	package override void checkNotClosed() {
@@ -2127,7 +2127,7 @@ class TypePackage extends MetaBase<Hierarchy> {
 public interface JavaMeta {
 
 	/** The Hierarchy of Java's Runtime Types */
-	public static val BUILDER = new HierarchyBuilder(Object)
+	public static val BUILDER = HierarchyBuilderFactory.getHierarchyBuilder(Object.name)
 
 	/** The primitive Serializable Type */
 	public static val SERIALIZABLE = BUILDER.newType(Serializable, null, Kind.Trait)
@@ -2185,7 +2185,7 @@ public interface JavaMeta {
 	public static val JAVA_IO_PACKAGE = BUILDER.newTypePackage(SERIALIZABLE)
 
 	/** The Hierarchy of Java's Runtime Types */
-	public static val HIERARCHY = new Hierarchy(BUILDER, JAVA_LANG_PACKAGE, JAVA_IO_PACKAGE)
+	public static val HIERARCHY = BUILDER.newHierarchy(JAVA_LANG_PACKAGE, JAVA_IO_PACKAGE)
 
 }
 
@@ -2198,7 +2198,7 @@ public interface JavaMeta {
  @SuppressWarnings("rawtypes")
 public interface MetaMeta {
 	/** The Hierarchy of Meta Types */
-	public static val BUILDER = new MetaHierarchyBuilder()
+	public static val BUILDER = HierarchyBuilderFactory.registerHierarchyBuilder(new MetaHierarchyBuilder())
 
 	/** The MetaBase Type */
 	public static val META_BASE = BUILDER.newType(MetaBase, null, Kind.Data,

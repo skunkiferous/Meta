@@ -9,6 +9,7 @@ import com.blockwithme.meta.Type
 import com.blockwithme.meta.converter.IntConverter
 
 import static java.util.Objects.*
+import com.blockwithme.meta.HierarchyBuilderFactory
 
 enum MyEnum {
   A,
@@ -93,7 +94,7 @@ class MySubType extends MyType {
 
 class TestMeta {
   /** Test Hierarchy Builder */
-  public static val BUILDER = new HierarchyBuilder(MyType)
+  public static val BUILDER = HierarchyBuilderFactory.getHierarchyBuilder(MyType.name)
 
   public static val ENUM_TYPE = BUILDER.newType(MyEnum, null, Kind::Data)
 
