@@ -183,6 +183,6 @@ class TestMeta {
 
   /** Test Hierarchy */
   public static val TEST = BUILDER.newHierarchy(
-    newArrayList(MY_PACKAGE, MY_JAVA_LANG), JavaMeta.HIERARCHY
+    newArrayList(MY_PACKAGE, MY_JAVA_LANG)
   )
 }

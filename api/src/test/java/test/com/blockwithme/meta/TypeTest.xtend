@@ -593,12 +593,17 @@ class TypeTest {
      		TestMeta.OBJECT_PROP, TestMeta.ENUM_PROP
      	).toSet, TestMeta.MY_TYPE.properties.toSet)
      	assertEquals(newArrayList(TestMeta.OBJECT_PROP), TestMeta.MY_TYPE.objectProperties.toList)
+     	assertEquals(<Object>TestMeta.MY_TYPE.objectProperties.toList,
+     		<Object>TestMeta.MY_TYPE.inheritedObjectProperties.toList)
      	assertEquals(<Object>newArrayList(TestMeta.BOOL_PROP, TestMeta.BYTE_PROP,
      		TestMeta.CHAR_PROP, TestMeta.SHORT_PROP, TestMeta.INT_PROP,
      		TestMeta.LONG_PROP, TestMeta.FLOAT_PROP, TestMeta.DOUBLE_PROP,
      		TestMeta.ENUM_PROP
      	).toSet, <Object>TestMeta.MY_TYPE.primitiveProperties.toSet)
+     	assertEquals(<Object>TestMeta.MY_TYPE.primitiveProperties.toList,
+     		<Object>TestMeta.MY_TYPE.inheritedPrimitiveProperties.toList)
      	assertEquals(10, TestMeta.MY_TYPE.inheritedProperties.length)
+     	assertEquals(10, TestMeta.MY_TYPE.inheritedPropertyCount)
      	assertEquals(1, TestMeta.MY_TYPE.typeId)
      	assertEquals(9, TestMeta.MY_TYPE.primitivePropertyCount)
      	assertEquals(1, TestMeta.MY_TYPE.objectPropertyCount)
@@ -657,6 +662,7 @@ class TypeTest {
      		TestMeta.OBJECT_PROP, TestMeta.ENUM_PROP, TestMeta.INT_PROP2
      	).toSet, TestMeta.MY_SUB_TYPE.inheritedProperties.toSet)
      	assertEquals(11, TestMeta.MY_SUB_TYPE.inheritedProperties.length)
+     	assertEquals(11, TestMeta.MY_SUB_TYPE.inheritedPropertyCount)
      	assertEquals(2, TestMeta.MY_SUB_TYPE.typeId)
      	assertEquals(1, TestMeta.MY_SUB_TYPE.primitivePropertyCount)
      	assertEquals(0, TestMeta.MY_SUB_TYPE.objectPropertyCount)

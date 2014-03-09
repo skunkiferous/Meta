@@ -15,18 +15,20 @@
  */
 package com.blockwithme.meta.demo.sub
 
-import org.junit.Test
+import com.blockwithme.meta.beans._Bean
 import com.blockwithme.meta.demo.sub.impl.MovingPersonProvider
 import org.junit.Assert
+import org.junit.Test
 
 /**
  * @author monster
  *
  */
 class TestMovingPerson {
+	val hierarchy = Meta.BUILDER.newHierarchy(com.blockwithme.meta.demo.Meta.PACKAGE, Meta.PACKAGE)
 
 	@Test
-	def test() {
+	def testMovingPerson() {
 		val person = new MovingPersonProvider().get
 		person.setAge(42)
 		person.setLandMovingSpeed(99.0f)
@@ -37,5 +39,6 @@ class TestMovingPerson {
 		Assert.assertEquals(99.0f, person.getLandMovingSpeed(), 0.0001f)
 		Assert.assertEquals("John", person.getName())
 		Assert.assertEquals("Teacher", person.getProfession())
+		Assert.assertEquals(hierarchy, (person as _Bean).metaType.hierarchy)
 	}
 }

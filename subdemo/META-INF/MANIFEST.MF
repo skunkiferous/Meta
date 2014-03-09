@@ -1,5 +1,5 @@
 Manifest-Version: 1.0
-Bnd-LastModified: 1394272261801
+Bnd-LastModified: 1394387339348
 Build-Jdk: 1.7.0_45
 Built-By: monster
 Bundle-Description: A demo/test for the new Xtend Meta API. It *must be 
@@ -14,7 +14,6 @@ Created-By: Apache Maven Bundle Plugin
 Export-Package: com.blockwithme.meta.demo.sub;uses:="com.blockwithme.met
  a,com.blockwithme.meta.demo";version="0.0.2"
 Import-Package: com.blockwithme.meta;version="[0.0,1)",com.blockwithme.m
- eta.beans;version="[0.0,1)",com.blockwithme.meta.beans.impl,com.blockwi
- thme.meta.demo;version="[0.0,1)",com.blockwithme.meta.demo.impl,javax.i
- nject
+ eta.beans;version="[0.0,1)",com.blockwithme.meta.demo;version="[0.0,1)"
+ ,com.blockwithme.meta.demo.impl,javax.inject
 Tool: Bnd-2.1.0.20130426-122213

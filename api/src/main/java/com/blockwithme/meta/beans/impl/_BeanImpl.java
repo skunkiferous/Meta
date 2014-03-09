@@ -29,7 +29,7 @@ import com.blockwithme.meta.beans._Bean;
 import com.blockwithme.murmur.MurmurHash;
 
 /**
- * Bean impl for all data/bean objects (maybe remove requirement later)
+ * Bean impl for all data/bean objects.
  *
  * This class is written in Java, due to the inability of Xtend to
  * use bitwise operators!
@@ -37,17 +37,11 @@ import com.blockwithme.murmur.MurmurHash;
  * @author monster
  */
 public class _BeanImpl implements _Bean {
+    /** Empty long[], used in selectedArray */
+    private static final long[] NO_LONG = new long[0];
+
     /** Our meta type */
-    private final Type<?> type;
-
-    /** Are we immutable? */
-    private boolean immutable;
-
-    /**
-     * Optional "delegate"; must have the same type as "this".
-     * Allows re-using the same generated code for "wrappers" ...
-     */
-    protected _Bean delegate;
+    private final Type<?> metaType;
 
     /**
      * The required interceptor. It allows customizing the behavior of Beans
@@ -55,30 +49,56 @@ public class _BeanImpl implements _Bean {
      */
     protected Interceptor interceptor = DefaultInterceptor.INSTANCE;
 
-    /** The "parent" Bean, if any. */
+    /**
+     * Optional "delegate"; must have the same type as "this".
+     * Allows re-using the same generated code for "wrappers" ...
+     */
+    protected _Bean delegate;
+
+    /** Are we immutable? */
+    private boolean immutable;
+
+    /**
+     * The "parent" Bean, if any.
+     *
+     * Bean do not support cycles in the structure, and so are limited to tree
+     * structures. This means we can only ever have one parent maximum. This
+     * parent field is *managed automatically*, and allows traversing the tree
+     * in all directions.
+     */
     private _Bean parent;
 
-    /** 64 "selected" flags; maximum 64 properties! */
+    /** 64 "selected" flags */
     private long selected;
+
+    /** More "selected" flags, if 64 is not enough, or if the number varies */
+    private final long[] selectedArray;
 
     /** The change counter */
     private int changeCounter;
 
-    /** Lazily cached toString result (null == not computed yet) */
+    /**
+     * Lazily cached toString result (null == not computed yet)
+     * Cleared automatically when the "state" of the Bean changes.
+     */
     private String toString;
 
-    /** Lazily cached hashCode64 result (0 == not computed yet) */
-    private long hashCode64;
+    /**
+     * Lazily cached hashCode64 result (0 == not computed yet)
+     * Cleared automatically when the "state" of the Bean changes.
+     */
+    private long toStringHashCode64;
 
-    /** Resets the cached state */
+    /** Resets the cached state (when something changes) */
     private void resetCachedState() {
-        hashCode64 = 0;
+        toStringHashCode64 = 0;
         toString = null;
     }
 
-    /** The constructor. */
-    public _BeanImpl(final Type<?> type) {
-        Objects.requireNonNull(type, "type");
+    /** The constructor; metaType is required. */
+    public _BeanImpl(final Type<?> metaType) {
+        Objects.requireNonNull(metaType, "metaType");
+        // Make sure we get the "right" metaType
         final String myType = getClass().getName();
         final int lastDot = myType.lastIndexOf('.');
         final String myPkg = myType.substring(0, lastDot);
@@ -86,17 +106,26 @@ public class _BeanImpl implements _Bean {
         final String parentPkg = myPkg.substring(0, preLastDot);
         final String myInterfaceName = parentPkg + "."
                 + myType.substring(lastDot + 1, myType.length() - 4);
-        if (!myInterfaceName.equals(type.type.getName())) {
+        if (!myInterfaceName.equals(metaType.type.getName())) {
             throw new IllegalArgumentException("Type should be "
-                    + myInterfaceName + " but was " + type.type.getName());
+                    + myInterfaceName + " but was " + metaType.type.getName());
         }
-        this.type = type;
+        this.metaType = metaType;
+        // Setup the selectedArray. The idea is that small objects do not
+        // require an additional long[] instance, making small more lightweight.
+        final int propertyCount = metaType.inheritedPropertyCount;
+        int arraySizePlusOne = propertyCount / 64;
+        if (propertyCount % 64 != 0) {
+            arraySizePlusOne++;
+        }
+        selectedArray = (arraySizePlusOne == 1) ? NO_LONG
+                : new long[arraySizePlusOne - 1];
     }
 
-    /** Returns our type */
+    /** Returns our metaType. Cannot be null. */
     @Override
     public final Type<?> getMetaType() {
-        return type;
+        return metaType;
     }
 
     /** Returns true if we are immutable */
@@ -105,50 +134,66 @@ public class _BeanImpl implements _Bean {
         return immutable;
     }
 
-    /** Sets the immutable flag. */
-    public final void setImmutable(final boolean newImmutable) {
-        if (immutable && !newImmutable) {
-            throw new IllegalArgumentException(
-                    "One immutable, a Bean cannot be made mutable again!");
-        }
-        immutable = newImmutable;
+    /** Sets the immutable flag to true. */
+    @Override
+    public final void makeImmutable() {
+        immutable = true;
     }
 
-    /** Returns true if some property selected */
+    /** Returns true if some property is "selected" */
     @Override
     public final boolean isSelected() {
-        return selected != 0;
+        if (selected != 0) {
+            return true;
+        }
+        final long[] array = selectedArray;
+        for (final long l : array) {
+            if (l != 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    /** Returns true, if some property was selected, either in self, or in children */
+    /** Returns true, if some property was "selected", either in self, or in children */
     @Override
     public final boolean isSelectedRecursive() {
         if (isSelected()) {
             return true;
         }
-        for (final ObjectProperty p : type.objectProperties) {
-            final Object value = p.getObject(this);
-            if (value instanceof _Bean) {
-                if (((_Bean) value).isSelectedRecursive()) {
-                    return true;
+        for (@SuppressWarnings("rawtypes")
+        final ObjectProperty p : metaType.inheritedObjectProperties) {
+            if (p.bean) {
+                @SuppressWarnings("unchecked")
+                final _Bean value = (_Bean) p.getObject(this);
+                if (value != null) {
+                    if (value.isSelectedRecursive()) {
+                        return true;
+                    }
+                    value.setSelectionRecursive();
                 }
             }
         }
         return false;
     }
 
-    /** Returns true if the specified property change */
+    /** Returns true if the specified property was selected */
     @Override
     public final boolean isSelected(final Property<?, ?> prop) {
-        return (selected & (1L >> indexOf(prop))) != 0;
+        final int index = indexOf(prop);
+        if (index < 64) {
+            return (selected & (1L << index)) != 0;
+        }
+        final long sel = selectedArray[index / 64 - 1];
+        return (sel & (1L << (index % 64))) != 0;
     }
 
     /** Returns the index to use for this property. */
     private int indexOf(final Property<?, ?> prop) {
-        final int result = prop.inheritedPropertyId(type);
+        final int result = prop.inheritedPropertyId(metaType);
         if (result < 0) {
             throw new IllegalArgumentException("Property " + prop.fullName
-                    + " unknown in " + type.fullName);
+                    + " unknown in " + metaType.fullName);
         }
         return result;
     }
@@ -160,7 +205,12 @@ public class _BeanImpl implements _Bean {
             throw new UnsupportedOperationException(this + " is immutable!");
         }
         changeCounter++;
-        selected |= (1L >> indexOf(prop));
+        final int index = indexOf(prop);
+        if (index < 64) {
+            selected |= (1L << index);
+        } else {
+            selectedArray[index / 64 - 1] |= (1L << (index % 64));
+        }
         // Setting the selected flag also means the content will probably change
         // so we reset the cached state.
         resetCachedState();
@@ -168,16 +218,38 @@ public class _BeanImpl implements _Bean {
 
     /** Clears all the selected flags */
     @Override
-    public final void clearSelection() {
+    public final void clearSelection(final boolean alsoChangeCounter,
+            final boolean recursively) {
         if (immutable) {
             throw new UnsupportedOperationException(this + " is immutable!");
         }
-        if (selected != 0) {
+        if (isSelected()) {
             selected = 0;
-            // selected has a special meaning, when used wit a delegate.
+            // It's always safe to set all bits to 0, even the ones we don't use.
+            final long[] array = selectedArray;
+            final int length = array.length;
+            for (int i = 0; i < length; i++) {
+                array[i] = 0;
+            }
+            // selected has a special meaning, when used with a delegate.
             // This could cause the apparent "content" of the bean to change.
             if (delegate != null) {
                 resetCachedState();
+            }
+        }
+        if (alsoChangeCounter) {
+            changeCounter = 0;
+        }
+        if (recursively) {
+            for (@SuppressWarnings("rawtypes")
+            final ObjectProperty p : metaType.inheritedObjectProperties) {
+                if (p.bean) {
+                    @SuppressWarnings("unchecked")
+                    final _Bean value = (_Bean) p.getObject(this);
+                    if (value != null) {
+                        value.clearSelection(alsoChangeCounter, true);
+                    }
+                }
             }
         }
     }
@@ -188,7 +260,7 @@ public class _BeanImpl implements _Bean {
             final Collection<Property<?, ?>> selected) {
         selected.clear();
         if (isSelected()) {
-            for (final Property<?, ?> p : type.properties) {
+            for (final Property<?, ?> p : metaType.inheritedProperties) {
                 if (isSelected(p)) {
                     selected.add(p);
                 }
@@ -200,30 +272,48 @@ public class _BeanImpl implements _Bean {
     @Override
     public final void setSelectionRecursive() {
         selected = -1L;
-        for (final ObjectProperty p : type.objectProperties) {
-            final Object value = p.getObject(this);
-            if (value instanceof _Bean) {
-                ((_Bean) value).setSelectionRecursive();
+        final long[] array = selectedArray;
+        final int length = array.length;
+        for (int i = 0; i < length; i++) {
+            array[i] = -1L;
+        }
+        final int rest = metaType.inheritedPropertyCount % 64;
+        if (rest != 0) {
+            // If we were to set too many bits to 1, then isSelected() would return the wrong value
+            if (length == 0) {
+                selected = (1L << rest) - 1L;
+            } else {
+                array[length - 1] = (1L << rest) - 1L;
+            }
+        }
+        for (@SuppressWarnings("rawtypes")
+        final ObjectProperty p : metaType.inheritedObjectProperties) {
+            if (p.bean) {
+                @SuppressWarnings("unchecked")
+                final _Bean value = (_Bean) p.getObject(this);
+                if (value != null) {
+                    value.setSelectionRecursive();
+                }
             }
         }
     }
 
-    /** Returns the 64 bit hashcode */
+    /** Returns the 64 bit hashcode of toString */
     @Override
-    public final long getHashCode64() {
-        if (hashCode64 == 0) {
-            hashCode64 = MurmurHash.hash64(toString());
-            if (hashCode64 == 0) {
-                hashCode64 = 1;
+    public final long getToStringHashCode64() {
+        if (toStringHashCode64 == 0) {
+            toStringHashCode64 = MurmurHash.hash64(toString());
+            if (toStringHashCode64 == 0) {
+                toStringHashCode64 = 1;
             }
         }
-        return hashCode64;
+        return toStringHashCode64;
     }
 
     /** Returns the 32 bit hashcode */
     @Override
     public final int hashCode() {
-        final long value = getHashCode64();
+        final long value = getToStringHashCode64();
         return (int) (value ^ (value >>> 32));
     }
 
@@ -263,7 +353,7 @@ public class _BeanImpl implements _Bean {
             return true;
         }
         final _BeanImpl other = (_BeanImpl) obj;
-        if (getHashCode64() != other.getHashCode64()) {
+        if (getToStringHashCode64() != other.getToStringHashCode64()) {
             return false;
         }
         // Inequality here is very unlikely.
@@ -356,12 +446,13 @@ public class _BeanImpl implements _Bean {
         return result;
     }
 
-    /** Returns true, if this Bean has the same root as the Bean passed as parameter */
+    /** Returns true, if this Bean has the same (non-null) root as the Bean passed as parameter */
     @Override
     public final boolean hasSameRoot(final _Bean other) {
-        return (this == other)
-                || (getRoot() == Objects.requireNonNull(other, "other")
-                        .getRoot());
+        _Bean root;
+        return (other != null)
+                && ((this == other) || ((root = getRoot()) != null)
+                        && (root == other.getRoot()));
     }
 
     /** Returns the current value of the change counter */

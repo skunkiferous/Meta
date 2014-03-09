@@ -40,47 +40,47 @@ abstract class AbstractPropertyVisitor implements PropertyVisitor {
 	private _Bean bean
 
 	final override void visit(BooleanProperty prop) {
-		visit(prop)
+		visit(prop as Property)
 		visit(prop, prop.getBoolean(bean))
 	}
 
 	final override void visit(ByteProperty prop) {
-		visit(prop)
+		visit(prop as Property)
 		visit(prop, prop.getByte(bean))
 	}
 
 	final override void visit(CharacterProperty prop) {
-		visit(prop)
+		visit(prop as Property)
 		visit(prop, prop.getChar(bean))
 	}
 
 	final override void visit(ShortProperty prop) {
-		visit(prop)
+		visit(prop as Property)
 		visit(prop, prop.getShort(bean))
 	}
 
 	final override void visit(IntegerProperty prop) {
-		visit(prop)
+		visit(prop as Property)
 		visit(prop, prop.getInt(bean))
 	}
 
 	final override void visit(LongProperty prop) {
-		visit(prop)
+		visit(prop as Property)
 		visit(prop, prop.getLong(bean))
 	}
 
 	final override void visit(FloatProperty prop) {
-		visit(prop)
+		visit(prop as Property)
 		visit(prop, prop.getFloat(bean))
 	}
 
 	final override void visit(DoubleProperty prop) {
-		visit(prop)
+		visit(prop as Property)
 		visit(prop, prop.getDouble(bean))
 	}
 
 	final override void visit(ObjectProperty prop) {
-		visit(prop)
+		visit(prop as Property)
 		val obj = prop.getObject(bean)
 		if (obj === null) {
 			visitNull(prop)

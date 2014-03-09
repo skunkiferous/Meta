@@ -413,7 +413,7 @@ class ProcessorUtil implements TypeReferenceProvider {
 
 	/** Returns the direct parents */
 	final def Iterable<? extends TypeDeclaration> findDirectParents(TypeDeclaration td) {
-		var result = directParents.get(td)
+		var result = directParents.get(Objects.requireNonNull(td, "td"))
 		if (result === null) {
 			result = findDirectParents2(td)
 			directParents.put(td, result)
@@ -430,7 +430,14 @@ class ProcessorUtil implements TypeReferenceProvider {
 	private dispatch def Iterable<? extends TypeDeclaration> findDirectParents2(ClassDeclaration td) {
 		val result = <TypeDeclaration>newArrayList()
 		result.addAll(convert(td, true, td.implementedInterfaces))
-		result.addAll(convert(td, false, Collections.singleton(td.extendedClass)))
+		val extendedClass = td.extendedClass
+		if ((extendedClass !== null) && !extendedClass.anyType) {
+			try {
+				result.addAll(convert(td, false, Collections.singleton(extendedClass)))
+			} catch (RuntimeException ex) {
+				error(ProcessorUtil, "findDirectParents2", td, "Problems with "+extendedClass, ex)
+			}
+		}
 		result
 	}
 
@@ -447,7 +454,7 @@ class ProcessorUtil implements TypeReferenceProvider {
 
 	/** Returns the all parents, *including the type itself* */
 	final def Iterable<? extends TypeDeclaration> findParents(TypeDeclaration td) {
-		var result = parents.get(td)
+		var result = parents.get(Objects.requireNonNull(td, "td"))
 		if (result === null) {
 			result = findParents2(td)
 			parents.put(td, result)

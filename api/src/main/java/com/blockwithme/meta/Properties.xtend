@@ -59,6 +59,7 @@ import java.util.Set
 import java.util.concurrent.atomic.AtomicReference
 import java.util.Arrays
 import javax.inject.Provider
+import com.blockwithme.meta.beans.Bean
 
 /**
  * Hierarchy represents a Type hierarchy. It is not limited to types in the
@@ -408,6 +409,11 @@ abstract class MetaBase<PARENT> implements Comparable<MetaBase<?>> {
     		if (parent instanceof MetaBase<?>) {
 	    		hierarchy = (parent as MetaBase<?>).hierarchy()
 	    	}
+	    	if (hierarchy == null) {
+	    		// Fail!
+	    		val prt = if (parent === null) "null" else parent.class.name+" "+parent
+	    		throw new IllegalStateException(class.name+" "+fullName+": hierarchy is null; parent="+prt)
+	    	}
 	    	requireNonNull(hierarchy, "hierarchy")
     	}
     	hierarchy
@@ -570,61 +576,76 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	public val PrimitiveProperty<JAVA_TYPE,?,?>[] primitiveProperties
 
 	/**
-	 * The Properties of this type, and all it's parents
+	 * The properties of this type, and all it's parents
 	 * Do not modify!
 	 */
 	public val Property<?,?>[] inheritedProperties
 
+	/**
+	 * The Object properties of this type, and all it's parents
+	 * Do not modify!
+	 */
+	public val ObjectProperty<JAVA_TYPE,?>[] inheritedObjectProperties
+
+	/**
+	 * The Primitive properties of this type, and all it's parents
+	 * Do not modify!
+	 */
+	public val PrimitiveProperty<JAVA_TYPE,?,?>[] inheritedPrimitiveProperties
+
 	/** The zero-based type ID */
 	public val int typeId
 
-	/** Primitive property bits total */
+	/** The direct primitive property bits total */
 	public val int primitivePropertyBitsTotal
 
-	/** Primitive property (non-packed) bytes total */
+	/** The direct primitive property (non-packed) bytes total */
 	public val int primitivePropertyByteTotal
 
-	/** Primitive property count */
+	/** The direct primitive property count */
 	public val int primitivePropertyCount
 
-	/** Object property count */
+	/** The direct object property count */
 	public val int objectPropertyCount
 
-	/** Total property count */
+	/** The direct property count */
 	public val int propertyCount
 
-	/** 64-bit primitive property count */
+	/** The direct 64-bit primitive property count */
 	public val int sixtyFourBitPropertyCount
 
-	/** Non-64-bit primitive property count */
+	/** The direct non-64-bit primitive property count */
 	public val int nonSixtyFourBitPropertyCount
 
-	/** Boolean primitive property count */
+	/** The direct boolean primitive property count */
 	public val int booleanPrimitivePropertyCount
 
-	/** Byte primitive property count */
+	/** The direct byte primitive property count */
 	public val int bytePrimitivePropertyCount
 
-	/** Char primitive property count */
+	/** The direct char primitive property count */
 	public val int charPrimitivePropertyCount
 
-	/** Short primitive property count */
+	/** The direct short primitive property count */
 	public val int shortPrimitivePropertyCount
 
-	/** Int primitive property count */
+	/** The direct int primitive property count */
 	public val int intPrimitivePropertyCount
 
-	/** Long primitive property count */
+	/** The direct long primitive property count */
 	public val int longPrimitivePropertyCount
 
-	/** Float primitive property count */
+	/** The direct float primitive property count */
 	public val int floatPrimitivePropertyCount
 
-	/** Double primitive property count */
+	/** The direct double primitive property count */
 	public val int doublePrimitivePropertyCount
 
-	/** Non-long primitive property count */
+	/** The direct non-long primitive property count */
 	public val int nonLongPrimitivePropertyCount
+
+	/** The inherited property count */
+	public val int inheritedPropertyCount
 
 	/** Shallow own footprint, without Object overhead */
 	public val int footprint
@@ -632,7 +653,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	/** Shallow total footprint, with Object overhead */
 	public val int inheritedFootprint
 
-	/** Map property name to property (immutable) */
+	/** Map *all* property name to property (immutable) */
 	public val Map<String,Property<?,?>> simpleNameToProperty
 
     /** The kind of type, that this class/interface is. */
@@ -641,6 +662,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
     /** The default builder instance */
     public val Provider<JAVA_TYPE> constructor
 
+	/** Creates and returns a "fake Provider" for abstract types. */
 	private static def <JAVA_TYPE> Provider<JAVA_TYPE> asProvider(Class<JAVA_TYPE> theType) {
 		val NoConstructor<JAVA_TYPE> tmp = new NoConstructor<JAVA_TYPE>(theType)
 		tmp as Provider<JAVA_TYPE>
@@ -745,6 +767,9 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 			ownset.addAll(p.inheritedProperties as Property<JAVA_TYPE,?>[])
 		}
 		inheritedProperties = ownset
+		inheritedPropertyCount = inheritedProperties.length
+		inheritedObjectProperties = ownset.filter(ObjectProperty)
+		inheritedPrimitiveProperties = ownset.filter(PrimitiveProperty)
 		typeId = registration.typeId
 
 	    var _primitivePropertyBitsTotal = 0
@@ -924,7 +949,7 @@ extends MetaBase<Type<OWNER_TYPE>> {
 	/** Only for internal validation ... */
 	package val Class<OWNER_TYPE> ownerClass
 	/** The content/data Type of this property */
-	val Class<PROPERTY_TYPE> contentTypeClass
+	public val Class<PROPERTY_TYPE> contentTypeClass
 	/** The content/data Type of this property */
 	var Type<PROPERTY_TYPE> contentType
 	/** Maps a type ID to an "inherited Property ID" */
@@ -1097,6 +1122,9 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
     /** The Setter Functor */
     public val ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> setter
 
+	/** Is this object a "Bean"? */
+	public val boolean bean
+
 	/** Constructor */
 	package new(PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, ? extends Converter<PROPERTY_TYPE>> theData,
 		boolean theShared, boolean theActualInstance, boolean theExactType,
@@ -1109,6 +1137,7 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
 		exactType = theExactType
 		getter = theGetter
 		setter = theSetter
+		bean = Bean.isAssignableFrom(theData.dataType)
 	}
 
 	/** Constructor */

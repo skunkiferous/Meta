@@ -60,6 +60,8 @@ class HierarchyBuilder {
 
     static val LOG = LoggerFactory.getLogger(HierarchyBuilder);
 
+    static val char DOT = "."
+
     /** The Hierarchy name */
     public val String name
 
@@ -777,25 +779,48 @@ class HierarchyBuilder {
 		new TypePackage(this, theTypes)
 	}
 
-	/** Creates a new Hierarchy */
-	def Hierarchy newHierarchy(TypePackage[] packages, Hierarchy ... theDependencies) {
-		val result = new Hierarchy(this, registerPackage(packages), theDependencies)
-		close()
+	/** Searches for all dependencies */
+	private def Hierarchy[] findDependencies(TypePackage[] packages) {
+		val pkgAsList = <String>newArrayList(packages.map[it.fullName])
+		for (p : JavaMeta.HIERARCHY.allPackages) {
+			pkgAsList.add(p.fullName)
+		}
+		val result = <Hierarchy>newArrayList()
+		result.add(JavaMeta.HIERARCHY)
+		for (pkg : packages) {
+			for (t : pkg.types) {
+				for (prop : t.properties) {
+					// contentTypeClass does not require having initialized the hierarchy
+					val typeName = prop.contentTypeClass.name
+					val dot = typeName.lastIndexOf(DOT)
+					if (dot > 0) {
+						val pkgName = typeName.substring(0, dot)
+						if (!pkgAsList.contains(pkgName)) {
+							try {
+								// Not part of our packages, so a dependency
+								val h = prop.contentType.hierarchy()
+								if ((h !== null) && !result.contains(h)) {
+									result.add(h)
+								}
+							} catch (RuntimeException ex) {
+								throw new RuntimeException("For contentType "+typeName
+									+" packages: "+pkgAsList, ex
+								)
+							}
+						}
+					}
+				}
+			}
+		}
 		result
 	}
 
 	/** Creates a new Hierarchy */
-	def Hierarchy newHierarchy(Hierarchy ... theDependencies) {
-		newHierarchy(newArrayOfSize(0), theDependencies)
-	}
-
-	/** Creates a new Hierarchy */
 	def Hierarchy newHierarchy(TypePackage... packages) {
-		newHierarchy(packages, newArrayOfSize(0))
-	}
-
-	/** Creates a new Hierarchy */
-	def Hierarchy newHierarchy() {
-		newHierarchy(newArrayOfSize(0), newArrayOfSize(0))
+		val registered = registerPackage(packages)
+		val dependencies = if ((Object.name == name) || (class == MetaHierarchyBuilder)) newArrayOfSize(0) else findDependencies(registered)
+		val result = new Hierarchy(this, registered, dependencies)
+		close()
+		result
 	}
 }

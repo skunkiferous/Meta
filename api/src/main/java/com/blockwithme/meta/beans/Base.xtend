@@ -52,8 +52,8 @@ public interface _Bean extends Bean {
 	/** Returns the Type of the instance */
     def Type<?> getMetaType()
 
-	/** Returns the 64-bit hashcode */
-    def long getHashCode64()
+	/** Returns the 64-bit hashcode of toString (=> toJSON()) */
+    def long getToStringHashCode64()
 
 	/** Returns the current value of the change counter */
 	def int getChangeCounter()
@@ -95,10 +95,13 @@ public interface _Bean extends Bean {
     def void getSelectedProperty(Collection<Property<?,?>> selected)
 
 	/** Cleans all selected flags */
-    def void clearSelection()
+    def void clearSelection(boolean alsoChangeCounter, boolean recursively)
 
 	/** Sets all selected flags to true, including the children */
     def void setSelectionRecursive()
+
+    /** Sets the immutable flag to true. */
+    def void makeImmutable()
 
     /** Computes the JSON representation */
     def void toJSON(Appendable appendable)
@@ -106,7 +109,7 @@ public interface _Bean extends Bean {
     /** Returns the "root" Bean, if any. */
     def _Bean getRoot()
 
-    /** Returns true, if this Bean has the same root as the Bean passed as parameter */
+    /** Returns true, if this Bean has the same (non-null) root as the Bean passed as parameter */
     def boolean hasSameRoot(_Bean other)
 }
 
