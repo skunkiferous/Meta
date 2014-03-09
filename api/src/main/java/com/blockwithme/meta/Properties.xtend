@@ -1066,6 +1066,9 @@ extends MetaBase<Type<OWNER_TYPE>> {
 
 	/** Accepts the visitor */
 	def void accept(PropertyVisitor visitor)
+
+	/** Copy the value of the Property from the source to the target */
+	def void copyValue(OWNER_TYPE source, OWNER_TYPE target)
 }
 
 /** Temporary Helper Object, used for Object Property creation. */
@@ -1161,6 +1164,11 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
 	/** Accepts the visitor */
 	override final void accept(PropertyVisitor visitor) {
 		visitor.visit(this)
+	}
+
+	/** Copy the value of the Property from the source to the target */
+	override final void copyValue(OWNER_TYPE source, OWNER_TYPE target) {
+		setObject(target, getObject(source))
 	}
 }
 
@@ -1427,6 +1435,11 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	override final void accept(PropertyVisitor visitor) {
 		visitor.visit(this)
 	}
+
+	/** Copy the value of the Property from the source to the target */
+	override final void copyValue(OWNER_TYPE source, OWNER_TYPE target) {
+		setBoolean(target, getBoolean(source))
+	}
 }
 
 
@@ -1509,6 +1522,11 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	override final void accept(PropertyVisitor visitor) {
 		visitor.visit(this)
 	}
+
+	/** Copy the value of the Property from the source to the target */
+	override final void copyValue(OWNER_TYPE source, OWNER_TYPE target) {
+		setByte(target, getByte(source))
+	}
 }
 
 
@@ -1590,6 +1608,11 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** Accepts the visitor */
 	override final void accept(PropertyVisitor visitor) {
 		visitor.visit(this)
+	}
+
+	/** Copy the value of the Property from the source to the target */
+	override final void copyValue(OWNER_TYPE source, OWNER_TYPE target) {
+		setChar(target, getChar(source))
 	}
 }
 
@@ -1674,6 +1697,11 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	override final void accept(PropertyVisitor visitor) {
 		visitor.visit(this)
 	}
+
+	/** Copy the value of the Property from the source to the target */
+	override final void copyValue(OWNER_TYPE source, OWNER_TYPE target) {
+		setShort(target, getShort(source))
+	}
 }
 
 
@@ -1755,6 +1783,11 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** Accepts the visitor */
 	override final void accept(PropertyVisitor visitor) {
 		visitor.visit(this)
+	}
+
+	/** Copy the value of the Property from the source to the target */
+	override final void copyValue(OWNER_TYPE source, OWNER_TYPE target) {
+		setInt(target, getInt(source))
 	}
 }
 
@@ -1838,6 +1871,11 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	override final void accept(PropertyVisitor visitor) {
 		visitor.visit(this)
 	}
+
+	/** Copy the value of the Property from the source to the target */
+	override final void copyValue(OWNER_TYPE source, OWNER_TYPE target) {
+		setFloat(target, getFloat(source))
+	}
 }
 
 
@@ -1919,6 +1957,11 @@ extends SixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** Accepts the visitor */
 	override final void accept(PropertyVisitor visitor) {
 		visitor.visit(this)
+	}
+
+	/** Copy the value of the Property from the source to the target */
+	override final void copyValue(OWNER_TYPE source, OWNER_TYPE target) {
+		setLong(target, getLong(source))
 	}
 }
 
@@ -2002,6 +2045,11 @@ extends SixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** Accepts the visitor */
 	override final void accept(PropertyVisitor visitor) {
 		visitor.visit(this)
+	}
+
+	/** Copy the value of the Property from the source to the target */
+	override final void copyValue(OWNER_TYPE source, OWNER_TYPE target) {
+		setDouble(target, getDouble(source))
 	}
 }
 

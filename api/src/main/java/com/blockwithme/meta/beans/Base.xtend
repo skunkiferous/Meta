@@ -33,14 +33,14 @@ public interface Bean {
 	/** Returns the true if the instance is immutable */
     def boolean isImmutable()
 
-//    /** Returns a full mutable copy */
-//    def Bean copy()
-//
-//    /** Returns an immutable copy */
-//    def Bean snapshot()
-//
-//    /** Returns a lightweight mutable copy */
-//    def Bean wrapper()
+    /** Returns a full mutable copy */
+    def Bean copy()
+
+    /** Returns an immutable copy */
+    def Bean snapshot()
+
+    /** Returns a lightweight mutable copy */
+    def Bean wrapper()
 }
 
 /**
@@ -65,6 +65,10 @@ public interface _Bean extends Bean {
     def _Bean getDelegate()
 
 	/** Sets the delegate (can be null) */
+    def void setDelegate(_Bean delegate, boolean clearSelection,
+            boolean alsoClearChangeCounter, boolean clearRecursively)
+
+	/** Sets the delegate (can be null); does not clear selection */
     def void setDelegate(_Bean delegate)
 
 	/** Returns the interceptor (cannot be null) */

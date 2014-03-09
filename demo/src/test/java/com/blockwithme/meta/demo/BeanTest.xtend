@@ -119,9 +119,7 @@ class BeanTest {
 		person1.name = "John"
 		person1.profession = "Admin"
 
-		val person2 = new PersonProvider().get as PersonImpl
-		Assert.assertEquals("person2.interceptor", DefaultInterceptor.INSTANCE, person2.interceptor)
-		person2.delegate = person1
+		val person2 = person1.wrapper as PersonImpl
 		Assert.assertEquals("person2.interceptor", WrapperInterceptor.INSTANCE, person2.interceptor)
 		Assert.assertEquals("person2.age", 33, person2.age)
 		Assert.assertEquals("person2.name", "John", person2.name)
@@ -141,6 +139,42 @@ class BeanTest {
 		Assert.assertEquals("person2.toString",
 		'{"#":0,"class":"com.blockwithme.meta.demo.impl.PersonImpl","age":16,"name":"Susy","profession":"Admin"}',
 		person2.toString)
+	}
+
+	@Test
+	def void testCopy() {
+		val provider = new PersonProvider()
+		val person1 = provider.get
+		person1.age = 33
+		person1.name = "John"
+		person1.profession = "Admin"
+		(person1 as PersonImpl).makeImmutable
+		val person2 = person1.copy
+		Assert.assertNotSame(person1, person2)
+		Assert.assertEquals(person1, person2)
+		Assert.assertFalse("person2.immutable", person2.immutable)
+
+		val dtc = new DemoTypeChildProvider().get as DemoTypeChildImpl
+		dtc.childProp = person2
+		val dtc2 = dtc.copy
+		Assert.assertNotSame(dtc, dtc2)
+		Assert.assertEquals(dtc, dtc2)
+		Assert.assertNotSame(dtc.childProp, dtc2.childProp)
+	}
+
+	@Test
+	def void testSnapshot() {
+		val provider = new PersonProvider()
+		val person1 = provider.get
+		person1.age = 33
+		person1.name = "John"
+		person1.profession = "Admin"
+		val person2 = person1.snapshot
+		Assert.assertNotSame(person1, person2)
+		Assert.assertEquals(person1, person2)
+		Assert.assertTrue("person2.immutable", person2.immutable)
+		val person3 = person2.snapshot
+		Assert.assertSame(person2, person3)
 	}
 
 	@Test

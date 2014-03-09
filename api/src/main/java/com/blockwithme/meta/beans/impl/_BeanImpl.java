@@ -36,7 +36,7 @@ import com.blockwithme.murmur.MurmurHash;
  *
  * @author monster
  */
-public class _BeanImpl implements _Bean {
+public abstract class _BeanImpl implements _Bean {
     /** Empty long[], used in selectedArray */
     private static final long[] NO_LONG = new long[0];
 
@@ -368,17 +368,29 @@ public class _BeanImpl implements _Bean {
         return delegate;
     }
 
-    /** Sets the delegate */
+    /** Sets the delegate (can be null); does not clear selection */
     @Override
     public final void setDelegate(final _Bean delegate) {
+        setDelegate(delegate, false, false, false);
+    }
+
+    /** Sets the delegate */
+    @Override
+    public final void setDelegate(final _Bean delegate,
+            final boolean clearSelection, final boolean alsoClearChangeCounter,
+            final boolean clearRecursively) {
         if (this.delegate != delegate) {
             if ((delegate != null) && (delegate.getClass() != getClass())) {
                 throw new IllegalArgumentException("Expected type: "
                         + getClass() + " Actual type: " + delegate.getClass());
             }
-            if (delegate == this) {
-                throw new IllegalArgumentException(
-                        "Self-reference not allowed!");
+            _Bean d = delegate;
+            while (d != null) {
+                if (d == this) {
+                    throw new IllegalArgumentException(
+                            "Self-reference not allowed!");
+                }
+                d = d.getDelegate();
             }
             // Does NOT affect "selected state"
             this.delegate = delegate;
@@ -389,6 +401,9 @@ public class _BeanImpl implements _Bean {
             } else {
                 interceptor = WrapperInterceptor.INSTANCE;
             }
+        }
+        if (clearSelection) {
+            clearSelection(alsoClearChangeCounter, clearRecursively);
         }
     }
 
@@ -467,15 +482,71 @@ public class _BeanImpl implements _Bean {
         changeCounter = newValue;
     }
 
-//    /** Copies the content of another instance of the same type. */
-//    private void copyFrom(final BeanImpl other) {
-//        if (other == null) {
-//            throw new IllegalArgumentException("other cannot be null");
-//        }
-//        if (other.getClass() != getClass()) {
-//            throw new IllegalArgumentException("Expected type: "
-//                    + getClass() + " Actual type: " + other.getClass());
-//        }
-//        // TODO
-//    }
+    /** Copies the content of another instance of the same type. */
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    private void copyFrom(final _BeanImpl other, final boolean immutably) {
+        if (other == null) {
+            throw new IllegalArgumentException("other cannot be null");
+        }
+        if (other.getClass() != getClass()) {
+            throw new IllegalArgumentException("Expected type: " + getClass()
+                    + " Actual type: " + other.getClass());
+        }
+        if (other == this) {
+            throw new IllegalArgumentException("other cannot be self");
+        }
+        for (final Property p : metaType.inheritedProperties) {
+            if ((p instanceof ObjectProperty) && ((ObjectProperty) p).bean) {
+                final _BeanImpl value = (_BeanImpl) p.getObject(other);
+                if (value != null) {
+                    if (immutably) {
+                        p.setObject(this, value.doSnapshot());
+                    } else {
+                        p.setObject(this, value.doCopy());
+                    }
+                }
+                // else nothing to do
+            } else {
+                p.copyValue(other, this);
+            }
+        }
+    }
+
+    /** Make a new instance of the same type as self. */
+    private _BeanImpl newInstance() {
+        final _BeanImpl result = (_BeanImpl) metaType.constructor.get();
+        copyOtherData(result);
+        return result;
+    }
+
+    /** Copy the "non-property" data. */
+    protected void copyOtherData(final _BeanImpl result) {
+        result.toStringHashCode64 = toStringHashCode64;
+        result.toString = toString;
+    }
+
+    /** Returns a full mutable copy */
+    protected final _BeanImpl doCopy() {
+        final _BeanImpl result = newInstance();
+        result.copyFrom(this, false);
+        return result;
+    }
+
+    /** Returns an immutable copy */
+    protected final _BeanImpl doSnapshot() {
+        if (immutable) {
+            return this;
+        }
+        final _BeanImpl result = newInstance();
+        result.copyFrom(this, true);
+        result.makeImmutable();
+        return result;
+    }
+
+    /** Returns a lightweight mutable copy */
+    protected final _BeanImpl doWrapper() {
+        final _BeanImpl result = newInstance();
+        result.setDelegate(this);
+        return result;
+    }
 }

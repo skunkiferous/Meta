@@ -201,6 +201,8 @@ annotation Instance {
  * 34) @_BeanInfo must be generated on the type
  * 35) Make sure inheritance work across file boundaries
  * 36) Type should extend Bean
+ * 37) Generate the "copy methods" in the Type
+ * 38) Generate the "copy methods" in the implementation
  *
  * TODO: Review the whole code, adding comments, and fixing log-levels
  *
@@ -1108,8 +1110,91 @@ return this;'''
 			isBean, isInstance)
 	}
 
+	/** Generates the "copy methods" */
+	private def genCopyMethods(MutableInterfaceDeclaration mtd, MutableClassDeclaration impl) {
+	    // STEP 37
+	    // Generate the "copy methods" in the Type
+		if (mtd.findDeclaredMethod("copy") === null) {
+			mtd.addMethod("copy") [
+				visibility = Visibility.PUBLIC
+				final = false
+				static = false
+				returnType = newTypeReference(mtd)
+				docComment = "Returns a full mutable copy"
+			]
+			warn(BeanProcessor, "transform", mtd, "copy() added to "+mtd.qualifiedName)
+		}
+
+		if (mtd.findDeclaredMethod("snapshot") === null) {
+			mtd.addMethod("snapshot") [
+				visibility = Visibility.PUBLIC
+				final = false
+				static = false
+				returnType = newTypeReference(mtd)
+				docComment = "Returns an immutable copy"
+			]
+			warn(BeanProcessor, "transform", mtd, "snapshot() added to "+mtd.qualifiedName)
+		}
+
+		if (mtd.findDeclaredMethod("wrapper") === null) {
+			mtd.addMethod("wrapper") [
+				visibility = Visibility.PUBLIC
+				final = false
+				static = false
+				returnType = newTypeReference(mtd)
+				docComment = "Returns a lightweight mutable copy"
+			]
+			warn(BeanProcessor, "transform", mtd, "wrapper() added to "+mtd.qualifiedName)
+		}
+
+		// STEP 38
+		// Generate the "copy methods" in the implementation
+		if (impl.findDeclaredMethod("copy") === null) {
+			impl.addMethod("copy") [
+				visibility = Visibility.PUBLIC
+				final = false
+				static = false
+				returnType = newTypeReference(mtd)
+				body = [
+					'''return («mtd.qualifiedName») doCopy();'''
+				]
+				docComment = "Returns a full mutable copy"
+			]
+			warn(BeanProcessor, "transform", impl, "copy() added to "+impl.qualifiedName)
+		}
+
+		if (impl.findDeclaredMethod("snapshot") === null) {
+			impl.addMethod("snapshot") [
+				visibility = Visibility.PUBLIC
+				final = false
+				static = false
+				returnType = newTypeReference(mtd)
+				body = [
+					'''return («mtd.qualifiedName») doSnapshot();'''
+				]
+				docComment = "Returns an immutable copy"
+			]
+			warn(BeanProcessor, "transform", impl, "snapshot() added to "+impl.qualifiedName)
+		}
+
+		if (impl.findDeclaredMethod("wrapper") === null) {
+			impl.addMethod("wrapper") [
+				visibility = Visibility.PUBLIC
+				final = false
+				static = false
+				returnType = newTypeReference(mtd)
+				body = [
+					'''return («mtd.qualifiedName») doWrapper();'''
+				]
+				docComment = "Returns a lightweight mutable copy"
+			]
+			warn(BeanProcessor, "transform", impl, "wrapper() added to "+impl.qualifiedName)
+		}
+	}
+
 	/** Register new types, to be generated later. */
-	override void register(Map<String,Object> processingContext, InterfaceDeclaration td, RegisterGlobalsContext context) {
+	override void register(Map<String,Object> processingContext, InterfaceDeclaration td,
+		RegisterGlobalsContext context) {
 		if (td !== null) {
 			val qualifiedName = td.qualifiedName
 			// STEP 1-4
@@ -1153,7 +1238,8 @@ return this;'''
 	}
 
 	/** Transform types, new or old. */
-	override void transform(Map<String,Object> processingContext, MutableInterfaceDeclaration mtd, TransformationContext context) {
+	override void transform(Map<String,Object> processingContext, MutableInterfaceDeclaration mtd,
+		TransformationContext context) {
 		val beanInfo = beanInfo(processingContext, mtd)
 		val qualifiedName = beanInfo.qualifiedName
 		if (beanInfo.validity.empty) {
@@ -1264,6 +1350,7 @@ return this;'''
 			recordBeanInfo(mtd, beanInfo)
 
 			// STEP 36
+			// Type should extend Bean
 			val bean = findTypeGlobally(com.blockwithme.meta.beans.Bean)
 			if (!bean.isAssignableFrom(mtd)) {
 				val parents = <TypeReference>newArrayList()
@@ -1271,6 +1358,8 @@ return this;'''
 				parents.add(newTypeReference(com.blockwithme.meta.beans.Bean))
 				mtd.extendedInterfaces = parents
 			}
+
+			genCopyMethods(mtd, impl)
 		} else {
 			warn(BeanProcessor, "transform", mtd, qualifiedName
 				+" will NOT be transformed, because: "+beanInfo.validity)

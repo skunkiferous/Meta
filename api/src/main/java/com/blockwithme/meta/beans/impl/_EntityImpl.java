@@ -24,7 +24,7 @@ import com.blockwithme.meta.beans._Entity;
  *
  * @author monster
  */
-public class _EntityImpl extends _BeanImpl implements _Entity {
+public abstract class _EntityImpl extends _BeanImpl implements _Entity {
     /**
      * @param type
      */
@@ -69,5 +69,15 @@ public class _EntityImpl extends _BeanImpl implements _Entity {
     @Override
     public final void setLastModificationTime(final long lastModificationTime) {
         this.lastModificationTime = lastModificationTime;
+    }
+
+    /** Copy the "non-property" data. */
+    @Override
+    protected void copyOtherData(final _BeanImpl result) {
+        super.copyOtherData(result);
+        final _EntityImpl entity = (_EntityImpl) result;
+        entity.entityContext = entityContext;
+        entity.creationTime = creationTime;
+        entity.lastModificationTime = lastModificationTime;
     }
 }
