@@ -18,6 +18,8 @@ package com.blockwithme.meta.beans.impl;
 import java.io.IOException;
 import java.lang.reflect.UndeclaredThrowableException;
 import java.util.Collection;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 
 import com.blockwithme.meta.ObjectProperty;
@@ -37,6 +39,79 @@ import com.blockwithme.murmur.MurmurHash;
  * @author monster
  */
 public abstract class _BeanImpl implements _Bean {
+
+    /** An Iterable<_Bean>, over the property values */
+    private class SubBeanIterator implements Iterable<_Bean>, Iterator<_Bean> {
+
+        /** The properties */
+        @SuppressWarnings("rawtypes")
+        private final ObjectProperty[] properties = metaType.inheritedObjectProperties;
+
+        /** The next _Bean, if any. */
+        private _Bean next;
+
+        /** Next property index to check. */
+        private int nextIndex;
+
+        @SuppressWarnings({ "rawtypes", "unchecked" })
+        private void findNext() {
+            while (nextIndex < properties.length) {
+                final ObjectProperty p = properties[nextIndex];
+                if (p.bean) {
+                    next = (_Bean) p.getObject(_BeanImpl.this);
+                    if (next != null) {
+                        break;
+                    }
+                }
+                nextIndex++;
+            }
+            next = null;
+        }
+
+        /** Constructor */
+        public SubBeanIterator() {
+            findNext();
+        }
+
+        /* (non-Javadoc)
+         * @see java.lang.Iterable#iterator()
+         */
+        @Override
+        public final Iterator<_Bean> iterator() {
+            return this;
+        }
+
+        /* (non-Javadoc)
+         * @see java.util.Iterator#remove()
+         */
+        @Override
+        public final void remove() {
+            throw new UnsupportedOperationException();
+        }
+
+        /* (non-Javadoc)
+         * @see java.util.Iterator#hasNext()
+         */
+        @Override
+        public final boolean hasNext() {
+            return next != null;
+        }
+
+        /* (non-Javadoc)
+         * @see java.util.Iterator#next()
+         */
+        @Override
+        public final _Bean next() {
+            if (hasNext()) {
+                final _Bean result = next;
+                findNext();
+                return result;
+            }
+            throw new NoSuchElementException();
+        }
+
+    }
+
     /** Empty long[], used in selectedArray */
     private static final long[] NO_LONG = new long[0];
 
@@ -95,6 +170,53 @@ public abstract class _BeanImpl implements _Bean {
         toString = null;
     }
 
+    /** Compares two boolean */
+    protected final int compare(final boolean a, final boolean b) {
+        return (a == b) ? 0 : (a ? 1 : -1);
+    }
+
+    /** Compares two byte */
+    protected final int compare(final byte a, final byte b) {
+        return a - b;
+    }
+
+    /** Compares two short */
+    protected final int compare(final short a, final short b) {
+        return a - b;
+    }
+
+    /** Compares two char */
+    protected final int compare(final char a, final char b) {
+        return a - b;
+    }
+
+    /** Compares two int */
+    protected final int compare(final int a, final int b) {
+        return a - b;
+    }
+
+    /** Compares two long */
+    protected final int compare(final long a, final long b) {
+        return (a < b) ? -1 : ((a == b) ? 0 : 1);
+    }
+
+    /** Compares two float */
+    protected final int compare(final float a, final float b) {
+        return Float.compare(a, b);
+    }
+
+    /** Compares two double */
+    protected final int compare(final double a, final double b) {
+        return Double.compare(a, b);
+    }
+
+    /** Compares two Object */
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    protected final int compare(final Comparable a, final Comparable b) {
+        return (a == null) ? ((b == null) ? 0 : -1) : ((b == null) ? 1 : a
+                .compareTo(b));
+    }
+
     /** The constructor; metaType is required. */
     public _BeanImpl(final Type<?> metaType) {
         Objects.requireNonNull(metaType, "metaType");
@@ -113,7 +235,7 @@ public abstract class _BeanImpl implements _Bean {
         this.metaType = metaType;
         // Setup the selectedArray. The idea is that small objects do not
         // require an additional long[] instance, making small more lightweight.
-        final int propertyCount = metaType.inheritedPropertyCount;
+        final int propertyCount = getSelectionCount();
         int arraySizePlusOne = propertyCount / 64;
         if (propertyCount % 64 != 0) {
             arraySizePlusOne++;
@@ -161,17 +283,9 @@ public abstract class _BeanImpl implements _Bean {
         if (isSelected()) {
             return true;
         }
-        for (@SuppressWarnings("rawtypes")
-        final ObjectProperty p : metaType.inheritedObjectProperties) {
-            if (p.bean) {
-                @SuppressWarnings("unchecked")
-                final _Bean value = (_Bean) p.getObject(this);
-                if (value != null) {
-                    if (value.isSelectedRecursive()) {
-                        return true;
-                    }
-                    value.setSelectionRecursive();
-                }
+        for (final _Bean value : getBeanIterator()) {
+            if (value.isSelectedRecursive()) {
+                return true;
             }
         }
         return false;
@@ -180,7 +294,12 @@ public abstract class _BeanImpl implements _Bean {
     /** Returns true if the specified property was selected */
     @Override
     public final boolean isSelected(final Property<?, ?> prop) {
-        final int index = indexOf(prop);
+        return isSelected(indexOf(prop));
+    }
+
+    /** Returns true if the specified property at the given index was selected */
+    @Override
+    public final boolean isSelected(final int index) {
         if (index < 64) {
             return (selected & (1L << index)) != 0;
         }
@@ -201,11 +320,16 @@ public abstract class _BeanImpl implements _Bean {
     /** Marks the specified property as selected */
     @Override
     public final void setSelected(final Property<?, ?> prop) {
+        setSelected(indexOf(prop));
+    }
+
+    /** Marks the specified property as selected */
+    @Override
+    public final void setSelected(final int index) {
         if (immutable) {
             throw new UnsupportedOperationException(this + " is immutable!");
         }
         changeCounter++;
-        final int index = indexOf(prop);
         if (index < 64) {
             selected |= (1L << index);
         } else {
@@ -241,15 +365,8 @@ public abstract class _BeanImpl implements _Bean {
             changeCounter = 0;
         }
         if (recursively) {
-            for (@SuppressWarnings("rawtypes")
-            final ObjectProperty p : metaType.inheritedObjectProperties) {
-                if (p.bean) {
-                    @SuppressWarnings("unchecked")
-                    final _Bean value = (_Bean) p.getObject(this);
-                    if (value != null) {
-                        value.clearSelection(alsoChangeCounter, true);
-                    }
-                }
+            for (final _Bean value : getBeanIterator()) {
+                value.clearSelection(alsoChangeCounter, true);
             }
         }
     }
@@ -260,9 +377,11 @@ public abstract class _BeanImpl implements _Bean {
             final Collection<Property<?, ?>> selected) {
         selected.clear();
         if (isSelected()) {
-            for (final Property<?, ?> p : metaType.inheritedProperties) {
-                if (isSelected(p)) {
-                    selected.add(p);
+            final Property<?, ?>[] props = metaType.inheritedProperties;
+            final int propertyCount = props.length;
+            for (int i = 0; i < propertyCount; i++) {
+                if (isSelected(i)) {
+                    selected.add(props[i]);
                 }
             }
         }
@@ -277,7 +396,7 @@ public abstract class _BeanImpl implements _Bean {
         for (int i = 0; i < length; i++) {
             array[i] = -1L;
         }
-        final int rest = metaType.inheritedPropertyCount % 64;
+        final int rest = getSelectionCount() % 64;
         if (rest != 0) {
             // If we were to set too many bits to 1, then isSelected() would return the wrong value
             if (length == 0) {
@@ -286,15 +405,8 @@ public abstract class _BeanImpl implements _Bean {
                 array[length - 1] = (1L << rest) - 1L;
             }
         }
-        for (@SuppressWarnings("rawtypes")
-        final ObjectProperty p : metaType.inheritedObjectProperties) {
-            if (p.bean) {
-                @SuppressWarnings("unchecked")
-                final _Bean value = (_Bean) p.getObject(this);
-                if (value != null) {
-                    value.setSelectionRecursive();
-                }
-            }
+        for (final _Bean value : getBeanIterator()) {
+            value.setSelectionRecursive();
         }
     }
 
@@ -548,5 +660,15 @@ public abstract class _BeanImpl implements _Bean {
         final _BeanImpl result = newInstance();
         result.setDelegate(this);
         return result;
+    }
+
+    /** Returns an Iterable<_Bean>, over the property values */
+    protected Iterable<_Bean> getBeanIterator() {
+        return new SubBeanIterator();
+    }
+
+    /** Returns the number of possible selections. */
+    protected int getSelectionCount() {
+        return metaType.inheritedPropertyCount;
     }
 }

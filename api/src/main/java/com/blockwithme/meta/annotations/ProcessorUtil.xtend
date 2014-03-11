@@ -353,10 +353,12 @@ class ProcessorUtil implements TypeReferenceProvider {
 	 */
 	private def TypeDeclaration lookup2(TypeDeclaration td,
 		boolean isInterface, String typeName) {
+		val index = typeName.indexOf("<")
+		val typeName2 = if (index > 0) typeName.substring(0,index) else typeName
 		val compilationUnit = td.compilationUnit as CompilationUnitImpl
 		val parentIsJvmType = (td instanceof JvmType) || (td instanceof JvmTypeDeclarationImpl)
 		if (parentIsJvmType) {
-			val tmp = getMutableTypes().findFirst[it.qualifiedName == typeName]
+			val tmp = getMutableTypes().findFirst[it.qualifiedName == typeName2]
 			if (tmp !== null) {
 				return tmp
 			}
@@ -370,20 +372,20 @@ class ProcessorUtil implements TypeReferenceProvider {
 //				}
 //			}
 		} else {
-			val tmp = getXtendTypes().findFirst[it.qualifiedName == typeName]
+			val tmp = getXtendTypes().findFirst[it.qualifiedName == typeName2]
 			if (tmp !== null) {
 				return tmp
 			}
 		}
 		// Not found. Maybe it lives outside the file?
-		val foreign = compilationUnit.typeReferences.findDeclaredType(typeName, compilationUnit.xtendFile)
+		val foreign = compilationUnit.typeReferences.findDeclaredType(typeName2, compilationUnit.xtendFile)
 		if (foreign == null) {
-			val foreign2 = findTypeGlobally(typeName)
+			val foreign2 = findTypeGlobally(typeName2)
 			if (foreign2 instanceof TypeDeclaration) {
 				return foreign2
 			}
 			// Ouch!
-			throw new IllegalStateException("Could not find parent type "+typeName+" of type "+td.qualifiedName)
+			throw new IllegalStateException("Could not find parent type "+typeName2+" of type "+td.qualifiedName)
 		} else {
 			fixInterface(foreign, isInterface)
 			return compilationUnit.toType(foreign) as TypeDeclaration

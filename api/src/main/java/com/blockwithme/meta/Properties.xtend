@@ -60,6 +60,7 @@ import java.util.concurrent.atomic.AtomicReference
 import java.util.Arrays
 import javax.inject.Provider
 import com.blockwithme.meta.beans.Bean
+import java.lang.reflect.Array
 
 /**
  * Hierarchy represents a Type hierarchy. It is not limited to types in the
@@ -542,6 +543,9 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	// TODO Allow fully generic types (no Class?)
 	public val Class<JAVA_TYPE> type
 
+	/** The empty array of "type" */
+	public val JAVA_TYPE[] empty
+
 	/** Does this type represents a primitive/primitive-wrapper type? */
 	public val boolean primitive
 
@@ -694,6 +698,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 		}
 		primitive = primTypes.contains(theType)
 		type = theType
+		empty = Array.newInstance(type, 0) as JAVA_TYPE[]
 		constructor = if (theConstructor == null) asProvider(theType) else theConstructor
 		kind = requireNonNull(theKind, "theKind")
 		val TreeSet<Type<?>> pset = new TreeSet(checkArray(theParents, "theParents"))
@@ -852,6 +857,14 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 		}
 		inheritedFootprint = total + Footprint.OBJECT_SIZE
 	}
+
+    /** Returns a new E array of given size. */
+    def final JAVA_TYPE[] newArray(int length) {
+    	if (length == 0) {
+    		return empty
+    	}
+        java.lang.reflect.Array.newInstance(type, length) as JAVA_TYPE[]
+    }
 
 	/** The package */
 	def final TypePackage pkg() {

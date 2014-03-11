@@ -18,7 +18,6 @@ package com.blockwithme.meta.demo.sub
 import com.blockwithme.meta.annotations.Bean
 import com.blockwithme.meta.demo.Person
 import com.blockwithme.meta.demo.Root
-import com.blockwithme.meta.annotations.Instance
 
 @Bean
 interface LandMoving extends Root {
@@ -26,8 +25,7 @@ interface LandMoving extends Root {
 	float landMovingSpeed
 }
 
-@Bean
-@Instance
+@Bean(instance=true)
 interface MovingPerson extends Person, LandMoving {
 
 }

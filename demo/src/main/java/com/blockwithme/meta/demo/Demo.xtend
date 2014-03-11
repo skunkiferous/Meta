@@ -17,7 +17,6 @@ package com.blockwithme.meta.demo
 
 import com.blockwithme.meta.annotations.Bean
 import com.blockwithme.meta.annotations.Trace
-import com.blockwithme.meta.annotations.Instance
 
 /**
  * Hierarchy "root".
@@ -63,7 +62,7 @@ interface DemoType extends Root {
 }
 
 /** Example of a child type */
-@Instance
+@Bean(instance=true)
 interface DemoTypeChild extends DemoType {
 
   /** Internal property */
@@ -100,8 +99,7 @@ interface Named extends Root {
  * A Person is an example of Multiple Inheritance.
  * In combines both Named and Aged with it's own data.
  */
-@Bean
-@Instance
+@Bean(instance=true,sortKeyes=#["name","age"])
 interface Person extends Named, Aged {
 	/** profession of someone */
 	String profession
@@ -116,8 +114,7 @@ class PersonExt {
 }
 
 /** Example that has more then 64 properties */
-@Bean
-@Instance
+@Bean(instance=true)
 interface SixtyFiveProps extends Root {
 	boolean prop00
 	boolean prop01

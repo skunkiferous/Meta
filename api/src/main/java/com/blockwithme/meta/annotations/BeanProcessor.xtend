@@ -64,6 +64,8 @@ import com.blockwithme.meta.HierarchyBuilderFactory
 @Inherited
 @Active(MagicAnnotationProcessor)
 annotation Bean {
+	boolean instance = false
+	String[] sortKeyes = #[]
 }
 
 @Data
@@ -81,6 +83,7 @@ package class BeanInfo {
   List<String> validity
   boolean isBean
   boolean isInstance
+  String[] sortKeyes
   def pkgName() {
     qualifiedName.substring(0,qualifiedName.lastIndexOf('.'))
   }
@@ -141,22 +144,9 @@ annotation _BeanInfo {
     Class<?>[] parents = #[]
     String[] properties = #[] //name0,type0,comment0,...
     String[] validity = #[]
+	String[] sortKeyes = #[]
     boolean isBean
     boolean isInstance
-}
-
-
-/**
- * Marks a Type as "instantiable".
- * The default for all other types is "abstract".
- *
- * Note that additional "scope requirements" might still apply.
- */
-@Target(ElementType.TYPE)
-@Retention(RetentionPolicy.CLASS)
-@Inherited
-@Active(MagicAnnotationProcessor)
-annotation Instance {
 }
 
 /**
@@ -203,6 +193,8 @@ annotation Instance {
  * 36) Type should extend Bean
  * 37) Generate the "copy methods" in the Type
  * 38) Generate the "copy methods" in the implementation
+ * 39) Optionally extend Comparable in Type
+ * 40) Generate optional compareTo() method in implementation
  *
  * TODO: Review the whole code, adding comments, and fixing log-levels
  *
@@ -232,10 +224,6 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	  	if (type.findAnnotation(beanAnn) != null) {
 	  		return true
 	  	}
-	  	val instAnn = findTypeGlobally(Instance)
-	  	if (type.findAnnotation(instAnn) != null) {
-	  		return true
-	  	}
   	}
   	false
   }
@@ -243,7 +231,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
   /** Public constructor for this class. */
   new() {
     // Step 0, make sure we have an interface, annotated with @Bean
-    super(and(isInterface,or(withAnnotation(Bean), withAnnotation(Instance))))
+    super(and(isInterface,withAnnotation(Bean)))
   }
 
   /** Converts CamelCase to CAMEL_CASE */
@@ -399,7 +387,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
     if (td === null) {
       // Unknown/undefined type (too early to query?)
       val result = new BeanInfo(qualifiedName,NO_PARENTS,NO_PROPERTIES,
-        newArrayList("Undefined: "+qualifiedName), false, false)
+        newArrayList("Undefined: "+qualifiedName), false, false, #[])
       result.check()
       val key = cacheKey(qualifiedName)
       val simpleName = qualifiedName.substring(qualifiedName.lastIndexOf(DOT)+1)
@@ -414,10 +402,10 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
   private def BeanInfo beanInfo(Map<String,Object> processingContext, TypeDeclaration td) {
     // Lazy init
     if (!processingContext.containsKey(BEAN_KEY)) {
-      val b = new BeanInfo(BEAN_QUALIFIED_NAME,NO_PARENTS,NO_PROPERTIES, newArrayList(), true, false)
+      val b = new BeanInfo(BEAN_QUALIFIED_NAME,NO_PARENTS,NO_PROPERTIES, newArrayList(), true, false, #[])
       b.check()
       processingContext.put(BEAN_KEY, b)
-      val bi = new BeanInfo(ENTITY_QUALIFIED_NAME,newArrayList(b),NO_PROPERTIES, newArrayList(), true, false)
+      val bi = new BeanInfo(ENTITY_QUALIFIED_NAME,newArrayList(b),NO_PROPERTIES, newArrayList(), true, false, #[])
       bi.check()
       processingContext.put(ENTITY_KEY, bi)
     }
@@ -428,7 +416,8 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
     val noSameSimpleNameKey = noSameSimpleNameKey(simpleName)
     var result = processingContext.get(key) as BeanInfo
     if (result === null) {
-	  val isInstance = (td.findAnnotation(findTypeGlobally(Instance)) !== null)
+      val bean = td.findAnnotation(findTypeGlobally(Bean))
+	  val isInstance = (bean !== null) && bean.getBooleanValue("instance")
       if (td instanceof TypeDeclaration) {
         val filePkg = (processingContext.get(Processor.PC_PACKAGE) as String)
         // OK, this type comes from a *dependency*
@@ -452,18 +441,19 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
           msg = msg + " because of "+check
         }
         result = new BeanInfo(qualifiedName,NO_PARENTS,NO_PROPERTIES,
-          newArrayList(msg), false, isInstance)
+          newArrayList(msg), false, isInstance, #[])
         result.check()
         putInCache(processingContext, key, noSameSimpleNameKey, result)
       } else {
         // Could be OK type ...
+	    val String[] sortKeyes = if (bean !== null) bean.getStringArrayValue("sortKeyes") else #[]
         val parentsTD = findDirectParents(td)
         val fields = td.declaredFields
         // Add early in cache, to prevent infinite loops
         val parents = <BeanInfo>newArrayOfSize(parentsTD.size)
         val properties = <PropertyInfo>newArrayOfSize(fields.size)
         result = new BeanInfo(qualifiedName,parents,properties,
-          newArrayList(), accept(processingContext, td), isInstance)
+          newArrayList(), accept(processingContext, td), isInstance, sortKeyes)
         putInCache(processingContext, key, noSameSimpleNameKey, result)
         // Find parents
         var index = 0
@@ -504,6 +494,18 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
         val methods = td.declaredMethods
         if (methods.iterator.hasNext) {
           result.validity.add("Has methods: "+methods.toList)
+        }
+        val allProps = result.allProperties.values
+        for (sortKey : sortKeyes) {
+        	var found = false
+        	for (array : allProps) {
+        		if (array.exists[name == sortKey]) {
+        			found = true
+        		}
+        	}
+        	if (!found) {
+            	result.validity.add("sortKey "+sortKey+" not found in properties")
+        	}
         }
         result.check()
         debug(BeanProcessor, "putInCache", null, "Updating BeanInfo("+qualifiedName+","
@@ -582,7 +584,6 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
   /** Returns the name of the hierarchy root of this interface. */
   private def String getHierarchyRoot(MutableInterfaceDeclaration mtd) {
 	val bean = findTypeGlobally(Bean)
-	val inst = findTypeGlobally(Instance)
 	val todo = <TypeDeclaration>newArrayList(findParents(mtd))
 	val done = <TypeDeclaration>newArrayList()
 	val roots = <TypeDeclaration>newArrayList()
@@ -593,11 +594,11 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		val parents = findParents(last).iterator
 		while (parents.hasNext && !parentHasGotIt) {
 			val p = parents.next
-			if ((p !== last) && ((p.findAnnotation(bean) !== null) || (p.findAnnotation(inst) !== null))) {
+			if ((p !== last) && (p.findAnnotation(bean) !== null)) {
 				parentHasGotIt = true
 			}
 		}
-		if (!parentHasGotIt && ((last.findAnnotation(bean) !== null) || (last.findAnnotation(inst) !== null))) {
+		if (!parentHasGotIt && (last.findAnnotation(bean) !== null)) {
 			roots.add(last)
 		}
 	}
@@ -1084,6 +1085,7 @@ return this;'''
 		val _validity = annotRef.getStringArrayValue("validity")
 		val isBean = annotRef.getBooleanValue("isBean")
 		val isInstance = annotRef.getBooleanValue("isInstance")
+		val sortKeyes = annotRef.getStringArrayValue("sortKeyes")
 
 		val parentList = <BeanInfo>newArrayList()
 		for (p : _parents) {
@@ -1107,7 +1109,7 @@ return this;'''
 			parentList.toArray(newArrayOfSize(parentList.size)),
 			properties,
 			newArrayList(_validity),
-			isBean, isInstance)
+			isBean, isInstance, sortKeyes)
 	}
 
 	/** Generates the "copy methods" */
@@ -1189,6 +1191,55 @@ return this;'''
 				docComment = "Returns a lightweight mutable copy"
 			]
 			warn(BeanProcessor, "transform", impl, "wrapper() added to "+impl.qualifiedName)
+		}
+	}
+
+	/** Comparable type name */
+	static val COMPARABLE = Comparable.name
+
+	/** Generates the "compareTo() methods" */
+	private def genCompareToMethods(MutableInterfaceDeclaration mtd, MutableClassDeclaration impl,
+		String[] sortKeyes) {
+		if (sortKeyes.length > 0) {
+			val primitiveInt = processorUtil.primitiveInt
+			val param = mtd.newTypeReference()
+			val paramList = #[param]
+			// STEP 39
+			// Optionally extend Comparable in Type
+			if (!mtd.extendedInterfaces.exists[name == COMPARABLE]) {
+				val newIntfs = <TypeReference>newArrayList()
+				newIntfs.addAll(mtd.extendedInterfaces)
+				newIntfs.add(newTypeReference(COMPARABLE, param))
+				mtd.extendedInterfaces = newIntfs
+				warn(BeanProcessor, "genCompareToMethods", mtd, COMPARABLE+" extended in "+mtd.qualifiedName)
+			}
+
+			// STEP 40
+			// Generate optional compareTo() method in implementation
+			if (impl.findDeclaredMethod("compareTo", paramList) === null) {
+				impl.addMethod("compareTo") [
+					visibility = Visibility.PUBLIC
+					final = false
+					static = false
+					addParameter("other", param)
+					returnType = primitiveInt
+					body = [
+						'''
+						if (other == null) {
+							return 1;
+						}
+						int result = 0;
+						«FOR sortKey : sortKeyes»
+						if (result == 0) {
+							result = compare(get«to_FirstUpper(sortKey)»(), other.get«to_FirstUpper(sortKey)»());
+						}
+						«ENDFOR»
+						return result;'''
+					]
+					docComment = "Compares to other"
+				]
+				warn(BeanProcessor, "genCompareToMethods", impl, "compareTo(?) added to "+impl.qualifiedName)
+			}
 		}
 	}
 
@@ -1360,6 +1411,8 @@ return this;'''
 			}
 
 			genCopyMethods(mtd, impl)
+
+			genCompareToMethods(mtd, impl, beanInfo.sortKeyes)
 		} else {
 			warn(BeanProcessor, "transform", mtd, qualifiedName
 				+" will NOT be transformed, because: "+beanInfo.validity)

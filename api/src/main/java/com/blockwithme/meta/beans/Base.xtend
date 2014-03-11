@@ -92,8 +92,14 @@ public interface _Bean extends Bean {
 	/** Returns true, if the specified property was selected */
     def boolean isSelected(Property<?,?> prop)
 
+    /** Returns true if the specified property at the given index was selected */
+    def boolean isSelected(int index)
+
 	/** Marks the specified property as selected */
     def void setSelected(Property<?,?> prop)
+
+	/** Marks the specified property at the given index as selected */
+    def void setSelected(int index)
 
 	/** Adds all the selected properties to "selected" */
     def void getSelectedProperty(Collection<Property<?,?>> selected)
