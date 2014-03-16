@@ -24,6 +24,8 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 
 import com.blockwithme.meta.Type;
+import com.blockwithme.meta.beans.CollectionBean;
+import com.blockwithme.meta.beans.ObjectCollectionInterceptor;
 import com.blockwithme.meta.beans._Bean;
 
 /**
@@ -31,8 +33,8 @@ import com.blockwithme.meta.beans._Bean;
  *
  * @author monster
  */
-public abstract class CollectionBeanImpl<E> extends _BeanImpl implements
-        List<E> {
+public class CollectionBeanImpl<E> extends _BeanImpl implements
+        CollectionBean<E> {
 
     /** An Iterable<_Bean>, over the Collection values */
     private class BeanCollectionIterator implements Iterable<_Bean>,
@@ -41,7 +43,7 @@ public abstract class CollectionBeanImpl<E> extends _BeanImpl implements
         /** The next bean */
         private _Bean next;
 
-        /** Next property index to check. */
+        /** The index of "next". */
         private int nextIndex;
 
         private void findNext() {
@@ -92,6 +94,7 @@ public abstract class CollectionBeanImpl<E> extends _BeanImpl implements
         public final _Bean next() {
             if (hasNext()) {
                 final _Bean result = next;
+                nextIndex++;
                 findNext();
                 return result;
             }
@@ -101,7 +104,7 @@ public abstract class CollectionBeanImpl<E> extends _BeanImpl implements
     }
 
     /**
-     * An optimized version of AbstractList.Itr
+     * Basic Collection Iterator
      */
     private class Itr implements Iterator<E> {
         int cursor;       // index of next element to return
@@ -141,7 +144,7 @@ public abstract class CollectionBeanImpl<E> extends _BeanImpl implements
     }
 
     /**
-     * An optimized version of AbstractList.ListItr
+     * A ListIterator
      */
     private class ListItr extends Itr implements ListIterator<E> {
         ListItr(final int index) {
@@ -202,6 +205,9 @@ public abstract class CollectionBeanImpl<E> extends _BeanImpl implements
         }
     }
 
+    /** Minimum size */
+    private static final int MIN_SIZE = 8;
+
     /** The CollectionBeanConfig */
     private final CollectionBeanConfig config;
 
@@ -222,23 +228,37 @@ public abstract class CollectionBeanImpl<E> extends _BeanImpl implements
      */
     private void rangeCheck(final int index) {
         if (index >= size)
-            throw new IndexOutOfBoundsException("Index: " + index);
+            throw new IndexOutOfBoundsException("Index: " + index + " Size: "
+                    + size);
     }
 
+    /** Increases the array size, if needed. */
     private void ensureCapacityInternal(final int minCapacity) {
+        // ensureSelectionCapacity() makes sure that the value of minCapacity is "reasonable"
+        ensureSelectionCapacity(minCapacity);
         final E[] array = data;
-        final int oldCapacity = (array == null) ? 0 : array.length;
+        final int oldCapacity = array.length;
         if (minCapacity > oldCapacity) {
-            final E[] newArray = newArray(minCapacity);
-            if (array != null) {
-                System.arraycopy(array, 0, newArray, 0, oldCapacity);
+            int newCapacity;
+            if (minCapacity < MIN_SIZE) {
+                newCapacity = MIN_SIZE;
+            } else {
+                newCapacity = oldCapacity;
+                while (newCapacity < minCapacity) {
+                    newCapacity *= 2;
+                }
             }
+            final E[] newArray = newArray(newCapacity);
+            System.arraycopy(array, 0, newArray, 0, oldCapacity);
             data = newArray;
         }
     }
 
     /**
-     * @param metaType
+     * Creates a new CollectionBeanImpl with the given Type and configuration.
+     *
+     * @param metaType The type of the Bean (not of the component); required
+     * @param config The collection bean configuration; required.
      */
     @SuppressWarnings("unchecked")
     public CollectionBeanImpl(final Type<?> metaType,
@@ -289,19 +309,6 @@ public abstract class CollectionBeanImpl<E> extends _BeanImpl implements
     @Override
     public final boolean contains(final Object o) {
         return indexOf(o) != -1;
-    }
-
-    /* (non-Javadoc)
-     * @see java.util.Collection#clear()
-     */
-    @SuppressWarnings("unchecked")
-    @Override
-    public final void clear() {
-        if (config.getFixedSize() != -1) {
-            throw new UnsupportedOperationException("Fixed-size!");
-        }
-        size = 0;
-        data = (E[]) getMetaType().empty;
     }
 
     /* (non-Javadoc)
@@ -471,78 +478,6 @@ public abstract class CollectionBeanImpl<E> extends _BeanImpl implements
     }
 
     /* (non-Javadoc)
-     * @see java.util.List#set(int,java.lang.Object)
-     */
-    @Override
-    public final E set(final int index, final E element) {
-        rangeCheck(index);
-        if ((element == null) && !config.isNullAllowed()) {
-            throw new IllegalArgumentException("Null not allowed!");
-        }
-        if (config.isSet()) {
-            throw new IllegalArgumentException(
-                    "set(int,E) not allowed for Set!");
-        }
-        final E[] array = data;
-        final E oldValue = array[index];
-        array[index] = element;
-        return oldValue;
-    }
-
-    /* (non-Javadoc)
-     * @see java.util.List#add(int,java.lang.Object)
-     */
-    private boolean add2(final int index, final E element) {
-        if (index > size || index < 0)
-            throw new IndexOutOfBoundsException("Index: " + index);
-        if (config.getFixedSize() != -1) {
-            throw new UnsupportedOperationException("Fixed-size!");
-        }
-        if ((element == null) && !config.isNullAllowed()) {
-            throw new IllegalArgumentException("Null not allowed!");
-        }
-        ensureCapacityInternal(size + 1);
-        final E[] array = data;
-        if (index == size) {
-            if (config.isSet()) {
-                if (!contains(element)) {
-                    if (config.isOrderedSet()) {
-                        array[index] = element;
-                        size++;
-                    } else {
-                        final Comparable cmp = (Comparable) element;
-                        boolean added = false;
-                        for (int i = 0; !added && (i < array.length); i++) {
-                            if (cmp.compareTo(array[i]) < 0) {
-                                System.arraycopy(array, i, array, i + 1, size
-                                        - i);
-                                array[i] = element;
-                                added = true;
-                            }
-                        }
-                        if (!added) {
-                            array[index] = element;
-                        }
-                        size++;
-                    }
-                }
-            } else {
-                array[index] = element;
-                size++;
-            }
-        } else {
-            if (config.isSet()) {
-                throw new IllegalArgumentException(
-                        "add(int,E) not allowed for Set!");
-            }
-            System.arraycopy(array, index, array, index + 1, size - index);
-            array[index] = element;
-            size++;
-        }
-        return true;
-    }
-
-    /* (non-Javadoc)
      * @see java.util.Collection#add(java.lang.Object)
      */
     @Override
@@ -556,24 +491,6 @@ public abstract class CollectionBeanImpl<E> extends _BeanImpl implements
     @Override
     public final void add(final int index, final E element) {
         add2(index, element);
-    }
-
-    /* (non-Javadoc)
-     * @see java.util.List#remove(int)
-     */
-    @Override
-    public final E remove(final int index) {
-        rangeCheck(index);
-        if (config.getFixedSize() != -1) {
-            throw new UnsupportedOperationException("Fixed-size!");
-        }
-        final E[] array = data;
-        final E result = array[index];
-        final int length = size - index - 1;
-        System.arraycopy(array, index + 1, array, index, length);
-        size--;
-        array[size] = null;
-        return result;
     }
 
     /* (non-Javadoc)
@@ -595,6 +512,186 @@ public abstract class CollectionBeanImpl<E> extends _BeanImpl implements
     @Override
     public final List<E> subList(final int fromIndex, final int toIndex) {
         throw new UnsupportedOperationException("TODO!");
+    }
+
+    /** Returns the collection interceptor. */
+    @SuppressWarnings("unchecked")
+    private ObjectCollectionInterceptor<E> interceptor() {
+        return (ObjectCollectionInterceptor<E>) interceptor;
+    }
+
+    /** Validate the new value, based on the expected type, and acceptance of null values. */
+    private void validateNewValue(final E element) {
+        if (element == null) {
+            if (!config.isNullAllowed()) {
+                throw new IllegalArgumentException("Null not allowed!");
+            }
+        } else if (config.isOnlyExactType()) {
+            final Class<?> elementType = element.getClass();
+            final Class<?> expectedType = getMetaType().type;
+            if (elementType != expectedType) {
+                throw new IllegalArgumentException("Expected type: "
+                        + expectedType + " Actual type: " + elementType);
+            }
+        } else {
+            // Just to be safe ...
+            final Class<?> elementType = element.getClass();
+            final Class<?> expectedType = getMetaType().type;
+            if (!expectedType.isAssignableFrom(elementType)) {
+                throw new IllegalArgumentException("Expected type: "
+                        + expectedType + " Actual type: " + elementType);
+            }
+        }
+    }
+
+    /* (non-Javadoc)
+     * @see java.util.List#set(int,java.lang.Object)
+     */
+    @Override
+    public final E set(final int index, final E newValue) {
+        rangeCheck(index);
+        validateNewValue(newValue);
+        if (config.isSet()) {
+            throw new IllegalArgumentException(
+                    "set(int,E) not allowed for Set!");
+        }
+        final E[] array = data;
+        final E oldValue = array[index];
+        array[index] = interceptor().setObjectAtIndex(this, index, oldValue,
+                newValue);
+        return oldValue;
+    }
+
+    /* (non-Javadoc)
+     * @see java.util.List#remove(int)
+     */
+    @Override
+    public final E remove(final int index) {
+        rangeCheck(index);
+        if (config.getFixedSize() == -1) {
+            final E[] array = data;
+            final E result = array[index];
+            if (config.isUnorderedSet()) {
+                interceptor().removeObjectAtIndex(this, index, result, false);
+                array[index] = array[size - 1];
+            } else {
+                interceptor().removeObjectAtIndex(this, index, result, true);
+                final int length = size - index - 1;
+                System.arraycopy(array, index + 1, array, index, length);
+            }
+            size--;
+            array[size] = null;
+            return result;
+        }
+        // In fixed-size lists, "removing" means setting to null.
+        return set(index, null);
+    }
+
+    /* (non-Javadoc)
+     * @see java.util.Collection#clear()
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public final void clear() {
+        if (config.getFixedSize() == -1) {
+            interceptor().clear(this);
+            size = 0;
+            data = (E[]) getMetaType().empty;
+            clearSelectionArray();
+            clearSelection(false, false);
+            incrementChangeCounter();
+        } else {
+            final E[] array = data;
+            for (int i = 0; i < size; i++) {
+                array[i] = interceptor().setObjectAtIndex(this, i, array[i],
+                        null);
+            }
+        }
+    }
+
+    /* (non-Javadoc)
+     * @see java.util.List#add(int,java.lang.Object)
+     */
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    private boolean add2(final int index, final E element) {
+        if (index > size || index < 0)
+            throw new IndexOutOfBoundsException("Index: " + index);
+        if (config.getFixedSize() != -1) {
+            throw new UnsupportedOperationException("Fixed-size!");
+        }
+        validateNewValue(element);
+        ensureCapacityInternal(size + 1);
+        final E[] array = data;
+        if (index == size) {
+            if (config.isSet()) {
+                if (!contains(element)) {
+                    if (!config.isSortedSet()) {
+                        size++;
+                        array[index] = interceptor().addObjectAtIndex(this,
+                                index, element, false);
+                    } else {
+                        final Comparable cmp = (Comparable) element;
+                        boolean added = false;
+                        for (int i = 0; !added && (i < array.length); i++) {
+                            if (cmp.compareTo(array[i]) < 0) {
+                                System.arraycopy(array, i, array, i + 1, size
+                                        - i);
+                                size++;
+                                array[i] = interceptor().addObjectAtIndex(this,
+                                        i, element, true);
+                                added = true;
+                            }
+                        }
+                        if (!added) {
+                            size++;
+                            array[index] = interceptor().addObjectAtIndex(this,
+                                    index, element, false);
+                        }
+                    }
+                }
+            } else {
+                size++;
+                array[index] = interceptor().addObjectAtIndex(this, index,
+                        element, false);
+            }
+        } else {
+            if (config.isSet()) {
+                throw new IllegalArgumentException(
+                        "add(int,E) not allowed for Set!");
+            }
+            System.arraycopy(array, index, array, index + 1, size - index);
+            size++;
+            array[index] = interceptor().addObjectAtIndex(this, index, element,
+                    true);
+        }
+        return true;
+    }
+
+    /* (non-Javadoc)
+     * @see com.blockwithme.meta.beans.Bean#copy()
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public final CollectionBeanImpl<E> copy() {
+        return (CollectionBeanImpl<E>) doCopy();
+    }
+
+    /* (non-Javadoc)
+     * @see com.blockwithme.meta.beans.Bean#snapshot()
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public final CollectionBeanImpl<E> snapshot() {
+        return (CollectionBeanImpl<E>) doSnapshot();
+    }
+
+    /* (non-Javadoc)
+     * @see com.blockwithme.meta.beans.Bean#wrapper()
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public final CollectionBeanImpl<E> wrapper() {
+        return (CollectionBeanImpl<E>) doWrapper();
     }
 
 }

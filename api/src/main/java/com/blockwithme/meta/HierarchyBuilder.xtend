@@ -743,35 +743,47 @@ class HierarchyBuilder {
 	/** Creates a Object Property */
 	def <OWNER_TYPE, PROPERTY_TYPE> ObjectProperty<OWNER_TYPE, PROPERTY_TYPE> newObjectProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
-		Class<PROPERTY_TYPE> theContentType, boolean theShared, boolean theActualInstance,
+		Class<?> theContentType, boolean theShared, boolean theActualInstance,
 		boolean theExactType, ObjectFuncObject<PROPERTY_TYPE,OWNER_TYPE> theGetter,
 		ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> theSetter) {
+		// theContentType is not typesafe on purpose, as this makes the code
+		// generation much easier for object properties
 		new ObjectProperty<OWNER_TYPE, PROPERTY_TYPE>(this, theOwner, theSimpleName,
-			theContentType, theShared, theActualInstance, theExactType, theGetter, theSetter
+			theContentType as Class<PROPERTY_TYPE>, theShared, theActualInstance, theExactType, theGetter, theSetter
 		)
 	}
 
 	/** Creates a Object Property */
 	def <OWNER_TYPE, PROPERTY_TYPE> ObjectProperty<OWNER_TYPE, PROPERTY_TYPE> newObjectProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
-		Class<PROPERTY_TYPE> theContentType, boolean theShared, boolean theActualInstance,
+		Class<?> theContentType, boolean theShared, boolean theActualInstance,
 		boolean theExactType, ObjectPropertyAccessor<OWNER_TYPE,PROPERTY_TYPE> theAccessor) {
+		// theContentType is not typesafe on purpose, as this makes the code
+		// generation much easier for object properties
 		new ObjectProperty<OWNER_TYPE, PROPERTY_TYPE>(this, theOwner, theSimpleName,
-			theContentType, theShared, theActualInstance, theExactType, theAccessor, theAccessor)
+			theContentType as Class<PROPERTY_TYPE>, theShared, theActualInstance, theExactType, theAccessor, theAccessor)
 	}
 
 	/** Creates a new Type */
 	def <JAVA_TYPE> Type<JAVA_TYPE> newType(Class<JAVA_TYPE> theType,
 		Provider<JAVA_TYPE> theConstructor, Kind theKind,
 		Property<JAVA_TYPE,?> ... theProperties) {
-		new Type(this, theType, theConstructor, theKind, theProperties)
+		newType(theType, theConstructor, theKind, Type.NO_TYPE, theProperties, Type.NO_TYPE)
 	}
 
-	/** Creates a new Type */
+	/** Creates a new Type with parents */
 	def <JAVA_TYPE> Type<JAVA_TYPE> newType(Class<JAVA_TYPE> theType,
 		Provider<JAVA_TYPE> theConstructor, Kind theKind, Type<?>[] theParents,
 		Property<JAVA_TYPE,?> ... theProperties) {
-		new Type(this, theType, theConstructor, theKind, theParents, theProperties)
+		newType(theType, theConstructor, theKind, theParents, theProperties, Type.NO_TYPE)
+	}
+
+	/** Creates a new Type with parents and component types */
+	def <JAVA_TYPE> Type<JAVA_TYPE> newType(Class<JAVA_TYPE> theType,
+		Provider<JAVA_TYPE> theConstructor, Kind theKind, Type<?>[] theParents,
+		Property<JAVA_TYPE,?>[] theProperties, Type<?> ... theComponents) {
+		new Type(preRegisterType(theType), theType, theConstructor, theKind,
+			theParents, theProperties, theComponents)
 	}
 
 	/** Creates a new TypePackage */

@@ -115,8 +115,11 @@ public abstract class _BeanImpl implements _Bean {
     /** Empty long[], used in selectedArray */
     private static final long[] NO_LONG = new long[0];
 
+    /** Reasonable maximum size. */
+    private static final int MAX_SIZE = 65536;
+
     /** Our meta type */
-    private final Type<?> metaType;
+    protected final Type<?> metaType;
 
     /**
      * The required interceptor. It allows customizing the behavior of Beans
@@ -147,7 +150,7 @@ public abstract class _BeanImpl implements _Bean {
     private long selected;
 
     /** More "selected" flags, if 64 is not enough, or if the number varies */
-    private final long[] selectedArray;
+    private long[] selectedArray;
 
     /** The change counter */
     private int changeCounter;
@@ -215,6 +218,34 @@ public abstract class _BeanImpl implements _Bean {
     protected final int compare(final Comparable a, final Comparable b) {
         return (a == null) ? ((b == null) ? 0 : -1) : ((b == null) ? 1 : a
                 .compareTo(b));
+    }
+
+    /** For special beans with variable size, we can grow the selection range. */
+    protected final void ensureSelectionCapacity(final int bitsMinCapacity) {
+        if (bitsMinCapacity < 0) {
+            throw new IllegalArgumentException("bitsMinCapacity="
+                    + bitsMinCapacity);
+        }
+        if (bitsMinCapacity > MAX_SIZE) {
+            throw new IllegalArgumentException("bitsMinCapacity ("
+                    + bitsMinCapacity + ") > MAX_SIZE=" + MAX_SIZE);
+        }
+        final long[] array = selectedArray;
+        final int oldArrayCapacity = array.length;
+        int minCapacity = bitsMinCapacity / 64;
+        if (bitsMinCapacity % 64 != 0) {
+            minCapacity++;
+        }
+        // +1 because of the "selected" long field
+        if (minCapacity > oldArrayCapacity + 1) {
+            selectedArray = new long[minCapacity - 1];
+            System.arraycopy(array, 0, selectedArray, 0, oldArrayCapacity);
+        }
+    }
+
+    /** For special beans with variable size, we can clear the selection array. */
+    protected final void clearSelectionArray() {
+        selectedArray = NO_LONG;
     }
 
     /** The constructor; metaType is required. */
@@ -308,7 +339,8 @@ public abstract class _BeanImpl implements _Bean {
     }
 
     /** Returns the index to use for this property. */
-    private int indexOf(final Property<?, ?> prop) {
+    @Override
+    public final int indexOf(final Property<?, ?> prop) {
         final int result = prop.inheritedPropertyId(metaType);
         if (result < 0) {
             throw new IllegalArgumentException("Property " + prop.fullName
@@ -334,6 +366,29 @@ public abstract class _BeanImpl implements _Bean {
             selected |= (1L << index);
         } else {
             selectedArray[index / 64 - 1] |= (1L << (index % 64));
+        }
+        // Setting the selected flag also means the content will probably change
+        // so we reset the cached state.
+        resetCachedState();
+    }
+
+    /**
+     * Marks the specified property at the given index as selected,
+     * as well as all the properties that follow.
+     */
+    @Override
+    public final void setSelectedFrom(final int index) {
+        if (immutable) {
+            throw new UnsupportedOperationException(this + " is immutable!");
+        }
+        changeCounter++;
+        final int end = getSelectionCount();
+        for (int i = index; i < end; i++) {
+            if (i < 64) {
+                selected |= (1L << i);
+            } else {
+                selectedArray[i / 64 - 1] |= (1L << (i % 64));
+            }
         }
         // Setting the selected flag also means the content will probably change
         // so we reset the cached state.
@@ -592,6 +647,11 @@ public abstract class _BeanImpl implements _Bean {
     @Override
     public final void setChangeCounter(final int newValue) {
         changeCounter = newValue;
+    }
+
+    /** Increments the change counter. */
+    protected final void incrementChangeCounter() {
+        changeCounter++;
     }
 
     /** Copies the content of another instance of the same type. */

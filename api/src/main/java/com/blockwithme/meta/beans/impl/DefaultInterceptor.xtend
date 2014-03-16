@@ -138,6 +138,11 @@ class DefaultInterceptor implements Interceptor {
 	}
 
 	override <E> setObjectProperty(_Bean instance, ObjectProperty<?, E> prop, E oldValue, E newValue) {
+		objectPropertyChanged(instance, prop.fullName, instance.indexOf(prop), oldValue, newValue)
+	}
+
+	protected def <E> objectPropertyChanged(_Bean instance, Object propId,
+		int propIndex, E oldValue, E newValue) {
         if (oldValue !== newValue) {
             // Note: oldValue must be cleared *before* checking for cycles.
             if (oldValue instanceof _Bean) {
@@ -151,7 +156,7 @@ class DefaultInterceptor implements Interceptor {
 			            	oldValue.setParent(instance)
 			            }
 			            throw new IllegalStateException("Cycles not permitted on "
-			            	+prop.fullName+" of "+instance.class.name)
+			            	+propId+" of "+instance.class.name)
 	            	}
 	            	newValue.setParent(instance)
 	            	newValue.setSelectionRecursive()
@@ -159,7 +164,7 @@ class DefaultInterceptor implements Interceptor {
             } else if (newValue !== null) {
             	validateObjectType(newValue)
             }
-            instance.setSelected(prop)
+            instance.setSelected(propIndex)
         }
         newValue
 	}

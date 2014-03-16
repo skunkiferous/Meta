@@ -747,13 +747,22 @@ class ProcessorUtil implements TypeReferenceProvider {
 
 	/** Builds the standard log message format */
 	private def buildMessage(boolean debug, Class<?> who, String where, String message, Throwable t) {
-		val phase = if (debug) "DEBUG: "+this.phase else phase
-		var msg = message.replaceAll("com.blockwithme.meta.annotations.","cbma.")
-			.replaceAll("com.blockwithme.meta.","cbm.")
+		var phase = if (debug) "DEBUG: "+this.phase else phase
+		if (phase === null) {
+			phase = "phase?"
+		}
+		var msg = "null"
+		if (message !== null)
+			msg = message.replaceAll("com.blockwithme.meta.annotations.","cbma.")
+				.replaceAll("com.blockwithme.meta.","cbm.")
 		if (t != null) {
 			msg = msg+"\n"+asString(t)
 		}
-		ProcessorUtil.time+phase+": "+who.simpleName+"."+where+": "+msg
+		var who2 = "who?"
+		if (who !== null) {
+			who2 = who.simpleName
+		}
+		ProcessorUtil.time+phase+": "+who2+"."+where+": "+msg
 	}
 
 	/** Returns the element to use when logging */
@@ -1142,6 +1151,22 @@ class ProcessorUtil implements TypeReferenceProvider {
 
 	override newWildcardTypeReferenceWithLowerBound(TypeReference lowerBound) {
 		Objects.requireNonNull(compilationUnit.typeReferenceProvider.newWildcardTypeReferenceWithLowerBound(lowerBound), "newWildcardTypeReferenceWithLowerBound(lowerBound)")
+	}
+
+	def TypeReference newTypeReferenceWithGenerics(String typeName) {
+		if (typeName.endsWith(">")) {
+			val list = <TypeReference>newArrayList()
+			val index = typeName.indexOf("<")
+			val typeParams = typeName.substring(index+1, typeName.length-1)
+			for (t : typeParams.split(",")) {
+				val t2 = t.trim()
+				if (!t2.empty) {
+					list.add(newTypeReferenceWithGenerics(t2))
+				}
+			}
+			return newTypeReference(typeName.substring(0,index), list)
+		}
+		newTypeReference(typeName)
 	}
 
 }

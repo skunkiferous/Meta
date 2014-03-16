@@ -17,6 +17,8 @@ package com.blockwithme.meta.demo
 
 import com.blockwithme.meta.annotations.Bean
 import com.blockwithme.meta.annotations.Trace
+import com.blockwithme.meta.annotations.CollectionProperty
+import com.blockwithme.meta.annotations.CollectionPropertyType
 
 /**
  * Hierarchy "root".
@@ -59,6 +61,9 @@ interface DemoType extends Root {
 
   /** Object property */
   String objectProp
+
+  @CollectionProperty(type=CollectionPropertyType::list, fixedSize=10)
+  String[] arrayProp
 }
 
 /** Example of a child type */

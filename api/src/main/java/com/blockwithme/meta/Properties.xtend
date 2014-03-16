@@ -61,6 +61,9 @@ import java.util.Arrays
 import javax.inject.Provider
 import com.blockwithme.meta.beans.Bean
 import java.lang.reflect.Array
+import java.util.Collection
+import java.util.List
+import java.util.ArrayList
 
 /**
  * Hierarchy represents a Type hierarchy. It is not limited to types in the
@@ -533,7 +536,16 @@ package class NoConstructor<JAVA_TYPE> implements Provider<JAVA_TYPE> {
 class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 
 	/** When a Type has no parents */
-	public static val Type<?>[] NO_PARENT = <Type>newArrayOfSize(0)
+	public static val Type<?>[] NO_TYPE = <Type>newArrayOfSize(0)
+
+	/** The index of the VALUE component type */
+	public static val VALUE_COMPONENT = 0
+
+	/** The index of the KEY component type */
+	public static val KEY_COMPONENT = 1
+
+	/** The index of the "generic" third component type */
+	public static val THIRD_COMPONENT = 3
 
 	/** Helper to detect primitive wrappers. */
 	package static val primTypes = newHashSet(
@@ -596,6 +608,17 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	 * Do not modify!
 	 */
 	public val PrimitiveProperty<JAVA_TYPE,?,?>[] inheritedPrimitiveProperties
+
+	/**
+	 * The Types of the "components" of this Type:
+	 *
+	 * VALUE_COMPONENT for array, collection, map
+	 * KEY_COMPONENT for map
+	 * THIRD_COMPONENT for (triplet?)
+	 *
+	 * Do not modify!
+	 */
+	public val Type<?>[] componentTypes
 
 	/** The zero-based type ID */
 	public val int typeId
@@ -673,23 +696,10 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	}
 
 	/** Constructor */
-	protected new(HierarchyBuilder builder, Class<JAVA_TYPE> theType,
+	protected new(TypeRegistration registration, Class<JAVA_TYPE> theType,
 		Provider<JAVA_TYPE> theConstructor, Kind theKind,
-		Property<JAVA_TYPE,?> ... theProperties) {
-		this(builder.preRegisterType(theType), theType, theConstructor, theKind, Type::NO_PARENT, theProperties)
-	}
-
-	/** Constructor */
-	protected new(HierarchyBuilder builder, Class<JAVA_TYPE> theType,
-		Provider<JAVA_TYPE> theConstructor, Kind theKind, Type<?>[] theParents,
-		Property<JAVA_TYPE,?> ... theProperties) {
-		this(builder.preRegisterType(theType), theType, theConstructor, theKind, theParents, theProperties)
-	}
-
-	/** Constructor */
-	private new(TypeRegistration registration, Class<JAVA_TYPE> theType,
-		Provider<JAVA_TYPE> theConstructor, Kind theKind,
-		Type<?>[] theParents, Property<JAVA_TYPE,?>[] theProperties) {
+		Type<?>[] theParents, Property<JAVA_TYPE,?>[] theProperties,
+		Type<?>[] componentTypes) {
 		super(requireNonNull(theType, "theType").name,
 			theType.simpleName, requireNonNull(registration, "registration").globalId)
 		if (theType.primitive) {
@@ -701,6 +711,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 		empty = Array.newInstance(type, 0) as JAVA_TYPE[]
 		constructor = if (theConstructor == null) asProvider(theType) else theConstructor
 		kind = requireNonNull(theKind, "theKind")
+		this.componentTypes = requireContainsNoNull(componentTypes, "componentTypes")
 		val TreeSet<Type<?>> pset = new TreeSet(checkArray(theParents, "theParents"))
 		val TreeSet<Type<?>> pallset = new TreeSet(pset)
 		for (p : pset) {
@@ -711,6 +722,18 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 		// the JAVA Hierarchy, we cannot inherit OBJECT as parent by default.
 		// Not sure yet if this is the right thing to do.
 		inheritedParents = pallset
+
+		if (type !== Iterable) {
+			var iterable = false
+			for (p : inheritedParents) {
+				if (p.type === Iterable) {
+					iterable = true
+				}
+			}
+			if (iterable && componentTypes.empty) {
+				throw new IllegalStateException("Types extending Iterable must have at least one component type!")
+			}
+		}
 
 		// Eliminate direct parents that we also get indirectly ...
 		// 1: Remove direct parents from pallset
@@ -858,6 +881,30 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 		inheritedFootprint = total + Footprint.OBJECT_SIZE
 	}
 
+	/** Returns the VALUE component type, if available, or null */
+	def final Type<?> getValueComponentType() {
+		if (componentTypes.length > VALUE_COMPONENT)
+			componentTypes.get(VALUE_COMPONENT)
+		else
+			null
+	}
+
+	/** Returns the KEY component type, if available, or null */
+	def final Type<?> getKeyComponentType() {
+		if (componentTypes.length > KEY_COMPONENT)
+			componentTypes.get(KEY_COMPONENT)
+		else
+			null
+	}
+
+	/** Returns the THIRD component type, if available, or null */
+	def final Type<?> getThirdComponentType() {
+		if (componentTypes.length > THIRD_COMPONENT)
+			componentTypes.get(THIRD_COMPONENT)
+		else
+			null
+	}
+
     /** Returns a new E array of given size. */
     def final JAVA_TYPE[] newArray(int length) {
     	if (length == 0) {
@@ -957,7 +1004,7 @@ interface PropertyVisitor {
 abstract class Property<OWNER_TYPE, PROPERTY_TYPE>
 extends MetaBase<Type<OWNER_TYPE>> {
 	/** When a Type has no properties */
-	public static val Property<?,?>[] NO_PROPERTIES = <Property>newArrayOfSize(0)
+	public static val Property[] NO_PROPERTIES = <Property>newArrayOfSize(0)
 
 	/** Only for internal validation ... */
 	package val Class<OWNER_TYPE> ownerClass
@@ -2210,6 +2257,67 @@ class TypePackage extends MetaBase<Hierarchy> {
 	}
 }
 
+/** A Provider that always returns the same value */
+public final class ConstantProvider<E> implements Provider<E> {
+
+	/** The constant */
+	val E constant
+
+	/** Creates a new ConstantProvider */
+	new (E theConstant) {
+		constant = requireNonNull(theConstant, "theConstant")
+	}
+
+	/** Returns the constant */
+	override get() {
+		constant
+	}
+}
+
+/** A Provider that returns Objects */
+package final class ObjectProvider implements Provider<Object> {
+	/** Returns the constant */
+	override get() {
+		new Object
+	}
+
+	/** The singleton instance */
+	public static val INSTANCE = new ObjectProvider
+}
+
+/** A Provider that returns Lists */
+package final class ListProvider implements Provider<List> {
+	/** Returns the constant */
+	override get() {
+		new ArrayList
+	}
+
+	/** The singleton instance */
+	public static val INSTANCE = new ListProvider
+}
+
+/** A Provider that returns Sets */
+package final class SetProvider implements Provider<Set> {
+	/** Returns the constant */
+	override get() {
+		new HashSet
+	}
+
+	/** The singleton instance */
+	public static val INSTANCE = new SetProvider
+}
+
+/** A Provider that returns Maps */
+package final class MapProvider implements Provider<Map> {
+	/** Returns the constant */
+	override get() {
+		new HashMap
+	}
+
+	/** The singleton instance */
+	public static val INSTANCE = new MapProvider
+}
+
 /**
  * The "Meta" constant-holding interface for the java.* types.
  */
@@ -2223,7 +2331,7 @@ public interface JavaMeta {
 	public static val SERIALIZABLE = BUILDER.newType(Serializable, null, Kind.Trait)
 
 	/** The primitive Object Type */
-	public static val OBJECT = BUILDER.newType(Object, null /*[|new Object]*/, Kind.Data)
+	public static val OBJECT = BUILDER.newType(Object, ObjectProvider.INSTANCE, Kind.Data)
 
 	/** The primitive Void Type */
 	public static val VOID = BUILDER.newType(Void, null, Kind.Data)
@@ -2235,47 +2343,71 @@ public interface JavaMeta {
 	public static val NUMBER = BUILDER.newType(Number, null, Kind.Data, #[SERIALIZABLE])
 
 	/** The primitive Boolean Type */
-	public static val BOOLEAN = BUILDER.newType(Boolean, null /*[|Boolean.FALSE]*/, Kind.Data, #[SERIALIZABLE, COMPARABLE])
+	public static val BOOLEAN = BUILDER.newType(Boolean, new ConstantProvider(Boolean.FALSE), Kind.Data, #[SERIALIZABLE, COMPARABLE])
 
 	/** The primitive Byte Type */
-	public static val BYTE = BUILDER.newType(Byte, null /*[|new Byte(0 as byte)]*/, Kind.Data, #[NUMBER, COMPARABLE])
+	public static val BYTE = BUILDER.newType(Byte, new ConstantProvider(0 as byte), Kind.Data, #[NUMBER, COMPARABLE])
 
 	/** The primitive Character Type */
-	public static val CHARACTER = BUILDER.newType(Character, null /*[|new Character(0 as char)]*/, Kind.Data, #[SERIALIZABLE, COMPARABLE])
+	public static val CHARACTER = BUILDER.newType(Character, new ConstantProvider(0 as char), Kind.Data, #[SERIALIZABLE, COMPARABLE])
 
 	/** The primitive Short Type */
-	public static val SHORT = BUILDER.newType(Short, null /*[|new Short(0 as short)]*/, Kind.Data, #[NUMBER, COMPARABLE])
+	public static val SHORT = BUILDER.newType(Short, new ConstantProvider(0 as short), Kind.Data, #[NUMBER, COMPARABLE])
 
 	/** The primitive Integer Type */
-	public static val INTEGER = BUILDER.newType(Integer, null /*[|new Integer(0)]*/, Kind.Data, #[NUMBER, COMPARABLE])
+	public static val INTEGER = BUILDER.newType(Integer, new ConstantProvider(0), Kind.Data, #[NUMBER, COMPARABLE])
 
 	/** The primitive Long Type */
-	public static val LONG = BUILDER.newType(Long, null /*[|new Long(0)]*/, Kind.Data, #[NUMBER, COMPARABLE])
+	public static val LONG = BUILDER.newType(Long, new ConstantProvider(0L), Kind.Data, #[NUMBER, COMPARABLE])
 
 	/** The primitive Float Type */
-	public static val FLOAT = BUILDER.newType(Float, null /*[|new Float(0)]*/, Kind.Data, #[NUMBER, COMPARABLE])
+	public static val FLOAT = BUILDER.newType(Float, new ConstantProvider(0.0f), Kind.Data, #[NUMBER, COMPARABLE])
 
 	/** The primitive Double Type */
-	public static val DOUBLE = BUILDER.newType(Double, null /*[|new Double(0)]*/, Kind.Data, #[NUMBER, COMPARABLE])
+	public static val DOUBLE = BUILDER.newType(Double, new ConstantProvider(0.0), Kind.Data, #[NUMBER, COMPARABLE])
 
 	/** The primitive CharSequence Type */
 	public static val CHAR_SEQUENCE = BUILDER.newType(CharSequence, null, Kind.Trait)
 
 	/** The primitive String Type */
 	public static val STRING = BUILDER.newType(String,
-		null /*[|""]*/, Kind.Data, #[SERIALIZABLE, CHAR_SEQUENCE, COMPARABLE])
+		new ConstantProvider(""), Kind.Data, #[SERIALIZABLE, CHAR_SEQUENCE, COMPARABLE])
+
+	/** The Iterable Type */
+	public static val ITERABLE = BUILDER.newType(Iterable, new ConstantProvider(Collections.emptyList),
+		Kind.Trait, Type.NO_TYPE, Property.NO_PROPERTIES, #[OBJECT])
+
+	/** The Collection Type */
+	public static val COLLECTION = BUILDER.newType(Collection,
+		ListProvider.INSTANCE as Provider as Provider<Collection>, Kind.Trait, #[ITERABLE],
+		Property.NO_PROPERTIES, #[OBJECT])
+
+	/** The List Type */
+	public static val LIST = BUILDER.newType(List, ListProvider.INSTANCE, Kind.Trait,
+		#[COLLECTION], Property.NO_PROPERTIES, #[OBJECT])
+
+	/** The Set Type */
+	public static val SET = BUILDER.newType(Set, SetProvider.INSTANCE, Kind.Trait,
+		#[COLLECTION], Property.NO_PROPERTIES, #[OBJECT])
+
+	/** The Map Type */
+	public static val MAP = BUILDER.newType(Map, MapProvider.INSTANCE, Kind.Trait,
+		Type.NO_TYPE, Property.NO_PROPERTIES, #[OBJECT,OBJECT])
 
 	/** The java.lang package */
 	public static val JAVA_LANG_PACKAGE = BUILDER.newTypePackage(OBJECT, VOID,
 		COMPARABLE, NUMBER, BOOLEAN, BYTE, CHARACTER, SHORT, INTEGER, LONG,
-		FLOAT, DOUBLE, CHAR_SEQUENCE, STRING
+		FLOAT, DOUBLE, CHAR_SEQUENCE, STRING, ITERABLE
 	)
 
 	/** The java.io package */
 	public static val JAVA_IO_PACKAGE = BUILDER.newTypePackage(SERIALIZABLE)
 
+	/** The java.util package */
+	public static val JAVA_UTIL_PACKAGE = BUILDER.newTypePackage(COLLECTION, LIST, SET, MAP)
+
 	/** The Hierarchy of Java's Runtime Types */
-	public static val HIERARCHY = BUILDER.newHierarchy(JAVA_LANG_PACKAGE, JAVA_IO_PACKAGE)
+	public static val HIERARCHY = BUILDER.newHierarchy(JAVA_LANG_PACKAGE, JAVA_IO_PACKAGE, JAVA_UTIL_PACKAGE)
 
 }
 

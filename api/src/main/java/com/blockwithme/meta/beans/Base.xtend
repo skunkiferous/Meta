@@ -27,6 +27,13 @@ import com.blockwithme.meta.Property
 import com.blockwithme.meta.ShortProperty
 import com.blockwithme.meta.Type
 import java.util.Collection
+import java.util.List
+import java.util.Set
+import com.blockwithme.meta.HierarchyBuilderFactory
+import com.blockwithme.meta.Kind
+import com.blockwithme.meta.JavaMeta
+import javax.inject.Provider
+import com.blockwithme.meta.beans.impl.CollectionBeanImpl
 
 /** Base for all data/bean objects */
 public interface Bean {
@@ -101,6 +108,12 @@ public interface _Bean extends Bean {
 	/** Marks the specified property at the given index as selected */
     def void setSelected(int index)
 
+	/**
+	 * Marks the specified property at the given index as selected,
+	 * as well as all the properties that follow.
+	 */
+    def void setSelectedFrom(int index)
+
 	/** Adds all the selected properties to "selected" */
     def void getSelectedProperty(Collection<Property<?,?>> selected)
 
@@ -121,6 +134,9 @@ public interface _Bean extends Bean {
 
     /** Returns true, if this Bean has the same (non-null) root as the Bean passed as parameter */
     def boolean hasSameRoot(_Bean other)
+
+    /** Returns the index to use for this property. */
+    def int indexOf(Property<?, ?> prop)
 }
 
 
@@ -235,5 +251,73 @@ public interface Interceptor {
 	/** Intercept the write access to a Object property */
     def <E> E setObjectProperty(_Bean instance, ObjectProperty<?,E> prop, E oldValue,
             E newValue)
+}
 
+/** Interceptor for collections of objects */
+public interface ObjectCollectionInterceptor<E> extends Interceptor {
+	/** Intercept the read access to a Object element in a collection */
+    def E getObjectAtIndex(_Bean instance, int index, E value)
+
+	/** Intercept the write access to a Object element in a collection */
+    def E setObjectAtIndex(_Bean instance, int index, E oldValue,
+            E newValue)
+
+	/** Intercept the insert access to a Object element in a collection */
+    def E addObjectAtIndex(_Bean instance, int index, E newValue, boolean followingElementsChanged)
+
+	/** Intercept the remove access to a Object element in a collection */
+    def void removeObjectAtIndex(_Bean instance, int index, E value, boolean followingElementsChanged)
+
+	/** Intercept the clear to a collection */
+    def void clear(_Bean instance)
+
+}
+
+/** A Bean that represents a Collection (either List or Set) */
+public interface CollectionBean<E> extends List<E>, Set<E>, Bean {
+	// NOP
+}
+
+/** A Bean that represents a Collection (either List or Set) */
+public interface _CollectionBean<E> extends CollectionBean<E>, _Bean {
+	// NOP
+}
+
+/**
+ * The "Meta" constant-holding interface for the meta-types themselves.
+ *
+ * The call to JavaMeta.HIERARCHY.findType() in META_BASE forces the Java
+ * Hierarchy to be initialized before the Meta Hierarchy.
+ */
+ @SuppressWarnings("rawtypes")
+public interface BeansMeta {
+	/** The Hierarchy of Meta Types */
+	public static val BUILDER = HierarchyBuilderFactory.getHierarchyBuilder(Bean.name)
+
+	/** The Bean Type */
+	public static val BEAN = BUILDER.newType(Bean, null, Kind.Trait)
+
+	/** The _Bean Type */
+	public static val _BEAN = BUILDER.newType(_Bean, null, Kind.Trait, #[BEAN])
+
+	/** The Entity Type */
+	public static val ENTITY = BUILDER.newType(Entity, null, Kind.Trait, #[BEAN])
+
+	/** The _Entity Type */
+	public static val _ENTITY = BUILDER.newType(_Entity, null, Kind.Trait, #[ENTITY, _BEAN])
+
+	/** The CollectionBean Type */
+	public static val COLLECTION_BEAN = BUILDER.newType(CollectionBean, null, Kind.Trait,
+		#[BEAN, JavaMeta.LIST, JavaMeta.SET], Property.NO_PROPERTIES, #[JavaMeta.OBJECT])
+
+	/** The _CollectionBean Type */
+	public static val _COLLECTION_BEAN = BUILDER.newType(_CollectionBean, null, Kind.Trait,
+		#[COLLECTION_BEAN, _BEAN], Property.NO_PROPERTIES, #[JavaMeta.OBJECT])
+
+	/** The Beans package */
+	public static val COM_BLOCKWITHME_META_BEANS_PACKAGE = BUILDER.newTypePackage(
+		BEAN, _BEAN, ENTITY, _ENTITY, COLLECTION_BEAN, _COLLECTION_BEAN)
+
+	/** The Hierarchy of Meta Types */
+	public static val HIERARCHY = BUILDER.newHierarchy(COM_BLOCKWITHME_META_BEANS_PACKAGE)
 }
