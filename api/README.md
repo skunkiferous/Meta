@@ -237,3 +237,72 @@ global IDs computed as "type.xxxOffset + localID", instead of recorded in each p
 
 When we add support for Methods, we should have the Properties reference the getter and setter
 Methods, instead of using lambdas.
+
+We need a SELF-type. It would be replaced by the type using it. WHen used as parameter, no compile-time check is performed, so a runtime check is needed.
+
+Should the serialisation simulate "composition" instead of "inheritance"? The "wrapper object" could use the "component type" as a key/field-name.
+
+Factories could be implicitly defined by calling a field newXXX, OR we have a @Factory annotation, and all feilds become newXXX. One Factory per package would be simpler.
+
+If we limit the bean properties to primitives, Beans, and a small set of pre-defined types, we could generate a "tree size" for each Type. But restricting non-bean types to a fixed list is not good.
+
+We could enable the creation and application of "patches", by serializing the "selected" (dirty) properties only.
+
+We could allow the definition of "real" constants in the beans, by having the fields (which are constants anyway) have a specified value. Could the constant values be overwritten in subtypes? This would require the constants to be turned to "getters" that return a constant.
+
+For each "parent", we should compute the number of properties. The parent with the greatest number of properties should be used as base-class.
+
+Apache Common Lang defines mutable primitive types. Maybe those could be used for "primitive collections"?
+
+We should add "implicit extension", called "retrofitting", to our feature-set. This would allow forcing all instances of type X in the application to also implement type Y, such that this relationship is defined on extended type, and not on the extending type.
+
+An alternative to bytecode manipulation to implement retrofitting is to use the "extender pattern", where composition adds the additional retrofitted data. We could use either an extension array, or a linked list, of extensions, or just one mutiple-inherited extension.
+
+Beans could offer a "map view" of their properties. Any code that "knows" about the Properties does not need to use a map view, so we should use Strings as the map key.
+
+If we have "read-only", "computed" properties, we need to have new property lists, which contains only "real" properties.
+
+If the API type of a property is NOT a bean, then we should check that no bean can be set in this property.
+
+If we force the use of a "unique prefix" to prevent name clashes, this prefix should represent the "Maven group-ID", rather then then Maven artifact-ID or the hierarchy-ID. Group-IDs are orthogonal to hierarchies.
+
+Hierarchies should take the group prefix as parameter and validate all "names".
+
+Could we have one "stateful" interceptor per reactor? Immutable "traveling" beans would use a stateless global interceptor?
+
+All "convertible" should be immutable.
+
+"Accepted types" are then primitives, immutable, array/collection, and beans.
+
+We should allow the definition of virtual properties just by annotating the interface field with an annotation that defines the getter and setter implementations as Strings.
+
+Bean properties should have their own property list in the Type.
+
+We need a method in the Bean that takes some kind of "filter", and returns all the "matching properties", and some annotation that allows generating a "getter" returning the "matching properties" based on some pre-defined filter.
+
+Entities should be Blades.
+
+We also need an "invalid" flag. I'm not sure yet how the propagation should work, but the flag would indicate that the bean *cannot be serialized/saved*, and so any parent cannot be serialized either.
+
+I need a better name for my "Beans"; they aren't really beans (like EJB beans). Maybe I can use the term "trait", in which case I could rename the whole API to "Traitor".
+
+Check that the immutable flag is respected everywhere.
+
+Should setting the immutable flag to true cause a propagation to all children?
+
+The bean reference to it's parent should also include either the property, or the collection index or the map key.
+
+Can the parent of an immutable bean change? If we also store the parent property and optional index/key, we can't even mutate it atomically. So should we require from immutable that their parent be either nul or also immutable?
+
+Using immutabiltiy propagation would ensure that "Requests" be thread-safe.
+
+Instead of defining simply "properties" and "constants", we should switch to defining every property to have a "scope", where "instance scope" is the default scope, and "constant" is just one possible scope.
+
+"Exact type mathcing" (for collections and properties) should use the Type of a bean, instad of it's class (which is used for non-beans).
+
+The "create" method for collection properties should be called "get", with the normal get being called "getRaw".
+
+Add an "empty arrray" instance to every type instance.
+
+The part of the bean processor that generates the property code should be separated into it's own class, so that property generation become customizable.
+
