@@ -100,6 +100,7 @@ class TypeTest {
     	assertEquals(0.0, TestMeta.DOUBLE_PROP.getDouble(obj), 0.001)
     	assertEquals("", TestMeta.OBJECT_PROP.getObject(obj))
     	assertEquals(MyEnum.A, TestMeta.ENUM_PROP.getObject(obj))
+    	assertEquals(false, TestMeta.VIRTUAL_BOOL_PROP.getBoolean(obj))
 
     	obj.boolProp = true
     	obj.byteProp = 42 as byte
@@ -122,6 +123,7 @@ class TypeTest {
     	assertEquals(42.0, TestMeta.DOUBLE_PROP.getDouble(obj), 0.001)
     	assertEquals("42", TestMeta.OBJECT_PROP.getObject(obj))
     	assertEquals(MyEnum.C, TestMeta.ENUM_PROP.getObject(obj))
+    	assertEquals(true, TestMeta.VIRTUAL_BOOL_PROP.getBoolean(obj))
     }
 
     @Test
@@ -160,6 +162,9 @@ class TypeTest {
     	assertEquals(42.0, obj.doubleProp, 0.001)
     	assertEquals("42", obj.objectProp)
     	assertEquals(EnumConverter.DEFAULT.fromObject(obj, MyEnum.C), obj.enumProp)
+
+    	assertEquals(obj, TestMeta.VIRTUAL_BOOL_PROP.setBoolean(obj, false))
+    	assertEquals(false, obj.boolProp)
     }
 
     @Test
@@ -176,6 +181,7 @@ class TypeTest {
     	assertEquals(new Double(0.0), TestMeta.DOUBLE_PROP.getObject(obj))
     	assertEquals("", TestMeta.OBJECT_PROP.getObject(obj))
     	assertEquals(MyEnum.A, TestMeta.ENUM_PROP.getObject(obj))
+    	assertEquals(Boolean.FALSE, TestMeta.VIRTUAL_BOOL_PROP.getObject(obj))
 
     	obj.boolProp = true
     	obj.byteProp = 42 as byte
@@ -198,6 +204,7 @@ class TypeTest {
     	assertEquals(new Double(42.0), TestMeta.DOUBLE_PROP.getObject(obj))
     	assertEquals("42", TestMeta.OBJECT_PROP.getObject(obj))
     	assertEquals(MyEnum.C, TestMeta.ENUM_PROP.getObject(obj))
+    	assertEquals(Boolean.TRUE, TestMeta.VIRTUAL_BOOL_PROP.getObject(obj))
     }
 
     @Test
@@ -236,6 +243,9 @@ class TypeTest {
     	assertEquals(42.0, obj.doubleProp, 0.001)
     	assertEquals("42", obj.objectProp)
     	assertEquals(EnumConverter.DEFAULT.fromObject(obj, MyEnum.C), obj.enumProp)
+
+    	TestMeta.VIRTUAL_BOOL_PROP.setObject(obj, false)
+    	assertEquals(false, obj.boolProp)
     }
 
     @Test
@@ -287,6 +297,7 @@ class TypeTest {
     	assertEquals(JavaMeta.DOUBLE, TestMeta.DOUBLE_PROP.contentType)
     	assertEquals(JavaMeta.STRING, TestMeta.OBJECT_PROP.contentType)
     	assertEquals(TestMeta.ENUM_TYPE, TestMeta.ENUM_PROP.contentType)
+    	assertEquals(JavaMeta.BOOLEAN, TestMeta.VIRTUAL_BOOL_PROP.contentType)
     }
 
     @Test
@@ -301,6 +312,7 @@ class TypeTest {
     	assertEquals(PropertyType.DOUBLE, TestMeta.DOUBLE_PROP.type)
     	assertEquals(PropertyType.OBJECT, TestMeta.OBJECT_PROP.type)
     	assertEquals(PropertyType.INTEGER, TestMeta.ENUM_PROP.type)
+    	assertEquals(PropertyType.BOOLEAN, TestMeta.VIRTUAL_BOOL_PROP.type)
     }
 
     @Test
@@ -316,6 +328,7 @@ class TypeTest {
     	assertFalse(TestMeta.OBJECT_PROP.primitive)
     	assertFalse(TestMeta.ENUM_PROP.primitive)
     	assertFalse(TestMeta.META_PROP.primitive)
+    	assertTrue(TestMeta.VIRTUAL_BOOL_PROP.primitive)
     }
 
     @Test
@@ -331,6 +344,7 @@ class TypeTest {
     	assertFalse(TestMeta.OBJECT_PROP.meta)
     	assertTrue(TestMeta.META_PROP.meta)
     	assertFalse(TestMeta.ENUM_PROP.meta)
+    	assertFalse(TestMeta.VIRTUAL_BOOL_PROP.meta)
     }
 
     @Test
@@ -344,6 +358,7 @@ class TypeTest {
     	assertTrue(TestMeta.FLOAT_PROP.floatingPoint)
     	assertTrue(TestMeta.DOUBLE_PROP.floatingPoint)
     	assertFalse(TestMeta.ENUM_PROP.floatingPoint)
+    	assertFalse(TestMeta.VIRTUAL_BOOL_PROP.floatingPoint)
     }
 
     @Test
@@ -357,6 +372,7 @@ class TypeTest {
     	assertFalse(TestMeta.FLOAT_PROP.sixtyFourBit)
     	assertTrue(TestMeta.DOUBLE_PROP.sixtyFourBit)
     	assertFalse(TestMeta.ENUM_PROP.sixtyFourBit)
+    	assertFalse(TestMeta.VIRTUAL_BOOL_PROP.sixtyFourBit)
     }
 
     @Test
@@ -370,6 +386,7 @@ class TypeTest {
     	assertTrue(TestMeta.FLOAT_PROP.signed)
     	assertTrue(TestMeta.DOUBLE_PROP.signed)
     	assertTrue(TestMeta.ENUM_PROP.signed)
+    	assertFalse(TestMeta.VIRTUAL_BOOL_PROP.signed)
     }
 
     @Test
@@ -383,6 +400,7 @@ class TypeTest {
     	assertTrue(TestMeta.FLOAT_PROP.wrapper)
     	assertTrue(TestMeta.DOUBLE_PROP.wrapper)
     	assertFalse(TestMeta.ENUM_PROP.wrapper)
+    	assertTrue(TestMeta.VIRTUAL_BOOL_PROP.wrapper)
     }
 
     @Test
@@ -396,6 +414,7 @@ class TypeTest {
     	assertEquals(32, TestMeta.FLOAT_PROP.bits)
     	assertEquals(64, TestMeta.DOUBLE_PROP.bits)
     	assertEquals(32, TestMeta.ENUM_PROP.bits)
+    	assertEquals(1, TestMeta.VIRTUAL_BOOL_PROP.bits)
     }
 
     @Test
@@ -409,6 +428,7 @@ class TypeTest {
     	assertEquals(4, TestMeta.FLOAT_PROP.bytes)
     	assertEquals(8, TestMeta.DOUBLE_PROP.bytes)
     	assertEquals(4, TestMeta.ENUM_PROP.bytes)
+    	assertEquals(1, TestMeta.VIRTUAL_BOOL_PROP.bytes)
     }
 
     @Test
@@ -422,6 +442,7 @@ class TypeTest {
     	assertEquals(FloatConverter.DEFAULT, TestMeta.FLOAT_PROP.converter)
     	assertEquals(DoubleConverter.DEFAULT, TestMeta.DOUBLE_PROP.converter)
     	assertEquals(EnumConverter.DEFAULT, TestMeta.ENUM_PROP.converter)
+    	assertEquals(BooleanConverter.DEFAULT, TestMeta.VIRTUAL_BOOL_PROP.converter)
     }
 
     @Test
@@ -436,6 +457,21 @@ class TypeTest {
     	assertEquals(TestMeta.MY_TYPE, TestMeta.DOUBLE_PROP.owner)
     	assertEquals(MetaMeta.TYPE, TestMeta.META_PROP.owner)
     	assertEquals(TestMeta.MY_TYPE, TestMeta.ENUM_PROP.owner)
+    	assertEquals(TestMeta.MY_TYPE, TestMeta.VIRTUAL_BOOL_PROP.owner)
+    }
+
+    @Test
+    public def void testVirtualPropIDs() {
+    	assertEquals(-1, TestMeta.BOOL_PROP.virtualPropertyId)
+    	assertEquals(-1, TestMeta.BYTE_PROP.virtualPropertyId)
+    	assertEquals(-1, TestMeta.SHORT_PROP.virtualPropertyId)
+    	assertEquals(-1, TestMeta.CHAR_PROP.virtualPropertyId)
+    	assertEquals(-1, TestMeta.INT_PROP.virtualPropertyId)
+    	assertEquals(-1, TestMeta.LONG_PROP.virtualPropertyId)
+    	assertEquals(-1, TestMeta.FLOAT_PROP.virtualPropertyId)
+    	assertEquals(-1, TestMeta.DOUBLE_PROP.virtualPropertyId)
+    	assertEquals(-1, TestMeta.ENUM_PROP.virtualPropertyId)
+    	assertEquals(0, TestMeta.VIRTUAL_BOOL_PROP.virtualPropertyId)
     }
 
     @Test
@@ -558,6 +594,30 @@ class TypeTest {
     }
 
     @Test
+    public def void testInt2Prop() {
+     	assertEquals(10, TestMeta.INT_PROP2.globalPropertyId)
+     	assertEquals(0, TestMeta.INT_PROP2.propertyId)
+     	assertEquals(0, TestMeta.INT_PROP2.primitivePropertyId)
+     	assertEquals(0, TestMeta.INT_PROP2.integerPropertyId)
+     	assertEquals(0, TestMeta.INT_PROP2.nonSixtyFourBitPropertyId)
+     	assertEquals(-1, TestMeta.INT_PROP2.sixtyFourBitPropertyId)
+     	assertEquals(0, TestMeta.INT_PROP2.nonLongPropertyId)
+     	assertEquals(-1, TestMeta.INT_PROP2.longOrObjectPropertyId)
+    }
+
+    @Test
+    public def void testVirtualBoolProp() {
+     	assertEquals(11, TestMeta.VIRTUAL_BOOL_PROP.globalPropertyId)
+     	assertEquals(10, TestMeta.VIRTUAL_BOOL_PROP.propertyId)
+     	assertEquals(-1, TestMeta.VIRTUAL_BOOL_PROP.primitivePropertyId)
+     	assertEquals(-1, TestMeta.VIRTUAL_BOOL_PROP.booleanPropertyId)
+     	assertEquals(-1, TestMeta.VIRTUAL_BOOL_PROP.nonSixtyFourBitPropertyId)
+     	assertEquals(-1, TestMeta.VIRTUAL_BOOL_PROP.sixtyFourBitPropertyId)
+     	assertEquals(-1, TestMeta.VIRTUAL_BOOL_PROP.nonLongPropertyId)
+     	assertEquals(-1, TestMeta.VIRTUAL_BOOL_PROP.longOrObjectPropertyId)
+    }
+
+    @Test
     public def void testTypePackage() {
      	assertEquals(0, TestMeta.MY_TYPE.pkg.packageId)
      	assertEquals(TestMeta.package, TestMeta.MY_TYPE.pkg.pkg)
@@ -603,6 +663,10 @@ class TypeTest {
      	assertEquals(<Object>TestMeta.MY_TYPE.primitiveProperties.toList,
      		<Object>TestMeta.MY_TYPE.inheritedPrimitiveProperties.toList)
      	assertEquals(10, TestMeta.MY_TYPE.inheritedProperties.length)
+     	assertEquals(newArrayList(TestMeta.VIRTUAL_BOOL_PROP
+     	).toSet, TestMeta.MY_TYPE.virtualProperties.toSet)
+     	assertEquals(newArrayList(TestMeta.VIRTUAL_BOOL_PROP
+     	).toSet, TestMeta.MY_TYPE.inheritedVirtualProperties.toSet)
      	assertEquals(10, TestMeta.MY_TYPE.inheritedPropertyCount)
      	assertEquals(1, TestMeta.MY_TYPE.typeId)
      	assertEquals(9, TestMeta.MY_TYPE.primitivePropertyCount)
@@ -628,6 +692,9 @@ class TypeTest {
 		val Map<String,com.blockwithme.meta.Property> map = newHashMap()
 		map.putAll(TestMeta.MY_TYPE.simpleNameToProperty as Map)
 		for (p : TestMeta.MY_TYPE.properties) {
+			assertEquals(p, map.remove(p.simpleName))
+		}
+		for (p : TestMeta.MY_TYPE.virtualProperties) {
 			assertEquals(p, map.remove(p.simpleName))
 		}
     	assertTrue(map.empty)
@@ -688,6 +755,9 @@ class TypeTest {
 		val Map<String,com.blockwithme.meta.Property> map = newHashMap()
 		map.putAll(TestMeta.MY_SUB_TYPE.simpleNameToProperty as Map)
 		for (p : TestMeta.MY_SUB_TYPE.inheritedProperties) {
+			assertEquals(p, map.remove(p.simpleName))
+		}
+		for (p : TestMeta.MY_SUB_TYPE.inheritedVirtualProperties) {
 			assertEquals(p, map.remove(p.simpleName))
 		}
     	assertTrue(map.empty)

@@ -101,48 +101,48 @@ class TestMeta {
 
   public static val BOOL_PROP = BUILDER.newBooleanProperty(
     MyType, "boolProp",
-    [boolProp], [obj,value|obj.boolProp = value;obj]
+    [boolProp], [obj,value|obj.boolProp = value;obj], false
   )
 
   public static val BYTE_PROP = BUILDER.newByteProperty(
     MyType, "byteProp",
-    [byteProp], [obj,value|obj.byteProp = value;obj]
+    [byteProp], [obj,value|obj.byteProp = value;obj], false
   )
 
   public static val CHAR_PROP = BUILDER.newCharacterProperty(
     MyType, "charProp",
-    [charProp], [obj,value|obj.charProp = value;obj]
+    [charProp], [obj,value|obj.charProp = value;obj], false
   )
 
   public static val SHORT_PROP = BUILDER.newShortProperty(
     MyType, "shortProp",
-    [shortProp], [obj,value|obj.shortProp = value;obj]
+    [shortProp], [obj,value|obj.shortProp = value;obj], false
   )
 
   public static val INT_PROP = BUILDER.newIntegerProperty(
     MyType, "intProp",
-    [intProp], [obj,value|obj.intProp = value;obj]
+    [intProp], [obj,value|obj.intProp = value;obj], false
   )
 
   public static val LONG_PROP = BUILDER.newLongProperty(
     MyType, "longProp",
-    [longProp], [obj,value|obj.longProp = value;obj]
+    [longProp], [obj,value|obj.longProp = value;obj], false
   )
 
   public static val FLOAT_PROP = BUILDER.newFloatProperty(
     MyType, "floatProp",
-    [floatProp], [obj,value|obj.floatProp = value;obj]
+    [floatProp], [obj,value|obj.floatProp = value;obj], false
   )
 
   public static val DOUBLE_PROP = BUILDER.newDoubleProperty(
     MyType, "doubleProp",
-    [doubleProp], [obj,value|obj.doubleProp = value;obj]
+    [doubleProp], [obj,value|obj.doubleProp = value;obj], false
   )
 
   public static val OBJECT_PROP = BUILDER.newObjectProperty(
     MyType, "objectProp",
     String, true, true, true,
-    [objectProp], [obj,value|obj.objectProp = value;obj]
+    [objectProp], [obj,value|obj.objectProp = value;obj], false
   )
 
   public static val ENUM_PROP = BUILDER.newIntegerProperty(
@@ -150,22 +150,27 @@ class TestMeta {
     // Why does "EnumConverter.DEFAULT as IntConverter<MyType,MyEnum>" not compile *in Java*?
     EnumConverter.DEFAULT as IntConverter as IntConverter<MyType,MyEnum>, 32,
     MyEnum,
-    [enumProp], [obj,value|obj.enumProp = value;obj]
+    [enumProp], [obj,value|obj.enumProp = value;obj], false
   )
 
   public static val INT_PROP2 = BUILDER.newIntegerProperty(
     MySubType, "intProp2",
-    [intProp2], [obj,value|obj.intProp2 = value;obj]
+    [intProp2], [obj,value|obj.intProp2 = value;obj], false
+  )
+
+  public static val VIRTUAL_BOOL_PROP = BUILDER.newBooleanProperty(
+    MyType, "virtualBoolProp",
+    [boolProp], [obj,value|obj.boolProp = value;obj], true
   )
 
     public static val META_PROP = Hierarchy.postCreateMetaProperty(
       MetaMeta.BUILDER.newMetaProperty(
-        MetaMeta.TYPE, "persistent", Boolean, Boolean.FALSE))
+        MetaMeta.TYPE, "persistent", Boolean, Boolean.FALSE, false))
 
   public static val Type<MyType> MY_TYPE = BUILDER.newType(MyType,
     null/*[new MyType]*/, Kind.Implementation, BOOL_PROP, BYTE_PROP,
       CHAR_PROP, SHORT_PROP, INT_PROP, LONG_PROP, FLOAT_PROP,
-      DOUBLE_PROP, OBJECT_PROP, ENUM_PROP)
+      DOUBLE_PROP, OBJECT_PROP, ENUM_PROP, VIRTUAL_BOOL_PROP)
 
   public static val Type<MySubType> MY_SUB_TYPE
     = BUILDER.newType(MySubType, null /*[new MySubType]*/,

@@ -292,17 +292,28 @@ Should setting the immutable flag to true cause a propagation to all children?
 
 The bean reference to it's parent should also include either the property, or the collection index or the map key.
 
-Can the parent of an immutable bean change? If we also store the parent property and optional index/key, we can't even mutate it atomically. So should we require from immutable that their parent be either nul or also immutable?
+Can the parent of an immutable bean change? If we also store the parent property and optional index/key, we can't even mutate it atomically. So should we require from immutable that their parent be either null or also immutable?
 
-Using immutabiltiy propagation would ensure that "Requests" be thread-safe.
+Using immutability propagation would ensure that "Requests" be thread-safe.
 
 Instead of defining simply "properties" and "constants", we should switch to defining every property to have a "scope", where "instance scope" is the default scope, and "constant" is just one possible scope.
 
-"Exact type mathcing" (for collections and properties) should use the Type of a bean, instad of it's class (which is used for non-beans).
+"Exact type matching" (for collections and properties) should use the Type of a bean, instead of it's class (which is used for non-beans).
 
 The "create" method for collection properties should be called "get", with the normal get being called "getRaw".
 
-Add an "empty arrray" instance to every type instance.
+Add an "empty array" instance to every type instance.
 
 The part of the bean processor that generates the property code should be separated into it's own class, so that property generation become customizable.
+
+We need to have a Collection Bean property that returns the "content". That is the only way to get equals/hashCode/toString, ... to work correctly. We should also have at least size as virtual property.
+
+Once we have virtual properties, we need to add some to Bean and Entity.
+
+When using extension/retrofitting, there must be *no* overlap between the Bean and all it's extensions, and between the extensions themselves.
+
+Extensions need a back-reference to the Bean itself. This will allow something like a castTo() method to also work correctly on extensions.
+
+Can access rights have a direct effect on the Bean design? The access rights should be based on the owning Entity of a Bean. The interceptor can be in charge of doing that validation.
+
 

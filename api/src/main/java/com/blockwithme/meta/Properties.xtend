@@ -64,6 +64,7 @@ import java.lang.reflect.Array
 import java.util.Collection
 import java.util.List
 import java.util.ArrayList
+import java.util.Iterator
 
 /**
  * Hierarchy represents a Type hierarchy. It is not limited to types in the
@@ -459,6 +460,8 @@ package class PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends 
 	CONVERTER converter
 	PropertyType type
 	boolean meta
+	/** Does this represent a "virtual" property? */
+	boolean virtual
 	Class<PROPERTY_TYPE> dataType
 	/** Special; normally null element 0. Used by meta-properties */
 	Type<OWNER_TYPE>[] ownerType = <Type>newArrayOfSize(1)
@@ -467,6 +470,7 @@ package class PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends 
 	int globalPropertyId
 	int propertyId
 	int specificTypePropId
+	int virtualPropertyId
 	// For primitive properties
 	int bits
 	int primitivePropertyId
@@ -574,7 +578,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	public val Type<?>[] inheritedParents
 
 	/**
-	 * The direct Properties
+	 * The direct Properties (*without* the virtual properties)
 	 * Do not modify!
 	 */
 	public val Property<JAVA_TYPE,?>[] properties
@@ -592,7 +596,13 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	public val PrimitiveProperty<JAVA_TYPE,?,?>[] primitiveProperties
 
 	/**
-	 * The properties of this type, and all it's parents
+	 * The direct virtual Properties
+	 * Do not modify!
+	 */
+	public val Property<JAVA_TYPE,?>[] virtualProperties
+
+	/**
+	 * The properties of this type, and all it's parents (*without* the virtual properties)
 	 * Do not modify!
 	 */
 	public val Property<?,?>[] inheritedProperties
@@ -608,6 +618,12 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	 * Do not modify!
 	 */
 	public val PrimitiveProperty<JAVA_TYPE,?,?>[] inheritedPrimitiveProperties
+
+	/**
+	 * The virtual properties of this type, and all it's parents
+	 * Do not modify!
+	 */
+	public val Property<JAVA_TYPE,?>[] inheritedVirtualProperties
 
 	/**
 	 * The Types of the "components" of this Type:
@@ -635,7 +651,10 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	/** The direct object property count */
 	public val int objectPropertyCount
 
-	/** The direct property count */
+	/** The direct virtual property count */
+	public val int virtualPropertyCount
+
+	/** The direct property count (*without* the virtual properties) */
 	public val int propertyCount
 
 	/** The direct 64-bit primitive property count */
@@ -671,7 +690,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	/** The direct non-long primitive property count */
 	public val int nonLongPrimitivePropertyCount
 
-	/** The inherited property count */
+	/** The inherited property count (*without* the virtual properties) */
 	public val int inheritedPropertyCount
 
 	/** Shallow own footprint, without Object overhead */
@@ -780,9 +799,20 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 			}
 			prop.parent = me
 		}
+		val virtualProps = new ArrayList<Property<JAVA_TYPE,?>>
+		val iter = ownset.iterator
+		while (iter.hasNext) {
+			val prop = iter.next
+			if (prop.virtual) {
+				iter.remove
+				virtualProps.add(prop)
+			}
+		}
 		properties = ownset
 		objectProperties = ownset.filter(ObjectProperty)
 		primitiveProperties = ownset.filter(PrimitiveProperty)
+		virtualProperties = virtualProps
+		virtualPropertyCount = virtualProperties.length
 		if (properties.length != (objectProperties.length + primitiveProperties.length)) {
 			throw new IllegalStateException(theType
 				+": all properties must be either ObjectProperty or PrimitiveProperty")
@@ -793,8 +823,10 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 		// Merge all properties in allProperties
 		for (p : parents) {
 			ownset.addAll(p.inheritedProperties as Property<JAVA_TYPE,?>[])
+			virtualProps.addAll(p.inheritedVirtualProperties as Property<JAVA_TYPE,?>[])
 		}
 		inheritedProperties = ownset
+		inheritedVirtualProperties = virtualProps
 		inheritedPropertyCount = inheritedProperties.length
 		inheritedObjectProperties = ownset.filter(ObjectProperty)
 		inheritedPrimitiveProperties = ownset.filter(PrimitiveProperty)
@@ -847,6 +879,15 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 			}
 		}
 		for (prop : inheritedProperties) {
+			// Property name clash is not allowed between parent either
+			val other = _simpleNameToProperty.put(prop.simpleName, prop)
+			if (other != null) {
+				throw new IllegalStateException(theType
+					+" inherits multiple properties with simpleName "+prop.simpleName
+					+" (at least "+prop.fullName+" and "+other.fullName+")")
+			}
+		}
+		for (prop : inheritedVirtualProperties) {
 			// Property name clash is not allowed between parent either
 			val other = _simpleNameToProperty.put(prop.simpleName, prop)
 			if (other != null) {
@@ -1024,7 +1065,6 @@ extends MetaBase<Type<OWNER_TYPE>> {
 	public val PropertyType type
 	/** Does this represent a "meta" property? */
 	public val boolean meta
-
 	/**
 	 * The zero-based Long-or-Object property ID, within the owner type.
 	 *
@@ -1034,6 +1074,10 @@ extends MetaBase<Type<OWNER_TYPE>> {
 	 * as a double, and the rest, which are Long and Objects.
 	 */
 	public val int longOrObjectPropertyId
+	/** Does this represent a "virtual" property? */
+	public val boolean virtual
+	/** The virtual property ID */
+	public val int virtualPropertyId
 
 	/** Constructor */
 	package new(PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, ? extends Converter<PROPERTY_TYPE>> theData) {
@@ -1053,6 +1097,8 @@ extends MetaBase<Type<OWNER_TYPE>> {
 		// Only not-null at this point for meta-properties
 		// (which never get registered as part of the Type instantiation)
 		parent = theData.ownerType.get(0)
+		virtual = theData.virtual
+		virtualPropertyId = theData.virtualPropertyId
 	}
 
 	/**
@@ -1207,10 +1253,11 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
 	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
 		Class<PROPERTY_TYPE> theContentType, boolean theShared, boolean theActualInstance,
 		boolean theExactType, ObjectFuncObject<PROPERTY_TYPE,OWNER_TYPE> theGetter,
-		ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> theSetter) {
+		ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> theSetter, boolean theVirtual) {
 		this(builder.preRegisterProperty(theOwner, theSimpleName, new DummyConverter(theContentType),
-			PropertyType::OBJECT, -1, theContentType), theShared, theActualInstance,
-			theExactType, requireNonNull(theGetter, "theGetter"), requireNonNull(theSetter, "theSetter"))
+			PropertyType::OBJECT, -1, theContentType, theVirtual), theShared, theActualInstance,
+			theExactType, requireNonNull(theGetter, "theGetter"),
+			theSetter)
 	}
 
 	override final getObject(OWNER_TYPE object) {
@@ -1324,16 +1371,16 @@ extends ObjectProperty<OWNER_TYPE, PROPERTY_TYPE> {
 
 	/** Constructor */
 	protected new(HierarchyBuilder builder, Type<OWNER_TYPE> theOwner, String theSimpleName,
-		Class<PROPERTY_TYPE> theContentType) {
-		this(builder, theOwner, theSimpleName, theContentType, null)
+		Class<PROPERTY_TYPE> theContentType, boolean theVirtual) {
+		this(builder, theOwner, theSimpleName, theContentType, null, theVirtual)
 	}
 
 	/** Constructor */
 	protected new(HierarchyBuilder builder, Type<OWNER_TYPE> theOwner, String theSimpleName,
-		Class<PROPERTY_TYPE> theContentType, PROPERTY_TYPE theDefaultValue) {
+		Class<PROPERTY_TYPE> theContentType, PROPERTY_TYPE theDefaultValue, boolean theVirtual) {
 		this(builder.preRegisterProperty(checkOwnerType(theOwner).type as Class<OWNER_TYPE>,
 			theSimpleName, new DummyConverter(theContentType),
-			PropertyType::OBJECT, -1, theContentType), theDefaultValue)
+			PropertyType::OBJECT, -1, theContentType, theVirtual), theDefaultValue)
 		parent = theOwner
 	}
 }
@@ -1465,10 +1512,10 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner,
 		String theSimpleName, CONVERTER theConverter, Class<PROPERTY_TYPE> dataType,
 		BooleanFuncObject<OWNER_TYPE> theGetter,
-		ObjectFuncObjectBoolean<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		ObjectFuncObjectBoolean<OWNER_TYPE,OWNER_TYPE> theSetter, boolean theVirtual) {
 		this(builder.preRegisterProperty(theOwner, theSimpleName, theConverter,
-			PropertyType::BOOLEAN, 1, dataType), requireNonNull(theGetter, "theGetter"),
-			requireNonNull(theSetter, "theSetter"))
+			PropertyType::BOOLEAN, 1, dataType, theVirtual), requireNonNull(theGetter, "theGetter"),
+			theSetter)
 	}
 
 	/** Returns the value of this property, as an Object */
@@ -1513,10 +1560,10 @@ extends BooleanProperty<OWNER_TYPE, Boolean, BooleanConverter<OWNER_TYPE, Boolea
 	/** Constructor */
 	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
 		BooleanFuncObject<OWNER_TYPE> theGetter,
-		ObjectFuncObjectBoolean<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		ObjectFuncObjectBoolean<OWNER_TYPE,OWNER_TYPE> theSetter, boolean theVirtual) {
 		super(builder, theOwner, theSimpleName,
 			BooleanConverter.DEFAULT as BooleanConverter<OWNER_TYPE, Boolean>, Boolean,
-			theGetter, theSetter
+			theGetter, theSetter, theVirtual
 		)
 	}
 }
@@ -1552,10 +1599,10 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
 		ByteFuncObject<OWNER_TYPE> theGetter,
-		ObjectFuncObjectByte<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		ObjectFuncObjectByte<OWNER_TYPE,OWNER_TYPE> theSetter, boolean theVirtual) {
 		this(builder.preRegisterProperty(theOwner, theSimpleName, theConverter,
-			PropertyType::BYTE, theBits, dataType
-		), requireNonNull(theGetter, "theGetter"), requireNonNull(theSetter, "theSetter"))
+			PropertyType::BYTE, theBits, dataType, theVirtual
+		), requireNonNull(theGetter, "theGetter"), theSetter)
 	}
 
 	/** Returns the value of this property, as an Object */
@@ -1600,10 +1647,10 @@ extends ByteProperty<OWNER_TYPE, Byte, ByteConverter<OWNER_TYPE, Byte>> {
 	/** Constructor */
 	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
 		ByteFuncObject<OWNER_TYPE> theGetter,
-		ObjectFuncObjectByte<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		ObjectFuncObjectByte<OWNER_TYPE,OWNER_TYPE> theSetter, boolean theVirtual) {
 		super(builder, theOwner, theSimpleName,
 			ByteConverter.DEFAULT as ByteConverter<OWNER_TYPE, Byte>, 8,
-			Byte, theGetter, theSetter
+			Byte, theGetter, theSetter, theVirtual
 		)
 	}
 }
@@ -1639,10 +1686,10 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
 		CharFuncObject<OWNER_TYPE> theGetter,
-		ObjectFuncObjectChar<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		ObjectFuncObjectChar<OWNER_TYPE,OWNER_TYPE> theSetter, boolean theVirtual) {
 		this(builder.preRegisterProperty(theOwner, theSimpleName, theConverter,
-			PropertyType::CHARACTER, theBits, dataType
-		), requireNonNull(theGetter, "theGetter"), requireNonNull(theSetter, "theSetter"))
+			PropertyType::CHARACTER, theBits, dataType, theVirtual
+		), requireNonNull(theGetter, "theGetter"), theSetter)
 	}
 
 	/** Returns the value of this property, as an Object */
@@ -1687,10 +1734,10 @@ extends CharacterProperty<OWNER_TYPE, Character, CharConverter<OWNER_TYPE, Chara
 	/** Constructor */
 	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner,
 		String theSimpleName, CharFuncObject<OWNER_TYPE> theGetter,
-		ObjectFuncObjectChar<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		ObjectFuncObjectChar<OWNER_TYPE,OWNER_TYPE> theSetter, boolean theVirtual) {
 		super(builder, theOwner, theSimpleName,
 			CharConverter.DEFAULT as CharConverter<OWNER_TYPE, Character>,
-			16, Character, theGetter, theSetter
+			16, Character, theGetter, theSetter, theVirtual
 		)
 	}
 }
@@ -1727,10 +1774,10 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
 		ShortFuncObject<OWNER_TYPE> theGetter,
-		ObjectFuncObjectShort<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		ObjectFuncObjectShort<OWNER_TYPE,OWNER_TYPE> theSetter, boolean theVirtual) {
 		this(builder.preRegisterProperty(theOwner, theSimpleName, theConverter,
-			PropertyType::SHORT, theBits, dataType
-		), requireNonNull(theGetter, "theGetter"), requireNonNull(theSetter, "theSetter"))
+			PropertyType::SHORT, theBits, dataType, theVirtual
+		), requireNonNull(theGetter, "theGetter"), theSetter)
 	}
 
 	/** Returns the value of this property, as an Object */
@@ -1775,10 +1822,10 @@ extends ShortProperty<OWNER_TYPE, Short, ShortConverter<OWNER_TYPE, Short>> {
 	/** Constructor */
 	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
 		ShortFuncObject<OWNER_TYPE> theGetter,
-		ObjectFuncObjectShort<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		ObjectFuncObjectShort<OWNER_TYPE,OWNER_TYPE> theSetter, boolean theVirtual) {
 		super(builder, theOwner, theSimpleName,
 			ShortConverter.DEFAULT as ShortConverter<OWNER_TYPE, Short>,
-			16, Short, theGetter, theSetter
+			16, Short, theGetter, theSetter, theVirtual
 		)
 	}
 }
@@ -1814,10 +1861,10 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
 		IntFuncObject<OWNER_TYPE> theGetter,
-		ObjectFuncObjectInt<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		ObjectFuncObjectInt<OWNER_TYPE,OWNER_TYPE> theSetter, boolean theVirtual) {
 		this(builder.preRegisterProperty(theOwner, theSimpleName, theConverter,
-			PropertyType::INTEGER, theBits, dataType
-		), requireNonNull(theGetter, "theGetter"), requireNonNull(theSetter, "theSetter"))
+			PropertyType::INTEGER, theBits, dataType, theVirtual
+		), requireNonNull(theGetter, "theGetter"), theSetter)
 	}
 
 	/** Returns the value of this property, as an Object */
@@ -1862,10 +1909,10 @@ extends IntegerProperty<OWNER_TYPE, Integer, IntConverter<OWNER_TYPE, Integer>> 
 	/** Constructor */
 	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner,
 		String theSimpleName, IntFuncObject<OWNER_TYPE> theGetter,
-		ObjectFuncObjectInt<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		ObjectFuncObjectInt<OWNER_TYPE,OWNER_TYPE> theSetter, boolean theVirtual) {
 		super(builder, theOwner, theSimpleName,
 			IntConverter.DEFAULT as IntConverter<OWNER_TYPE, Integer>, 32,
-			Integer, theGetter, theSetter
+			Integer, theGetter, theSetter, theVirtual
 		)
 	}
 }
@@ -1901,10 +1948,10 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, Class<PROPERTY_TYPE> dataType,
 		FloatFuncObject<OWNER_TYPE> theGetter,
-		ObjectFuncObjectFloat<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		ObjectFuncObjectFloat<OWNER_TYPE,OWNER_TYPE> theSetter, boolean theVirtual) {
 		this(builder.preRegisterProperty(theOwner, theSimpleName, theConverter,
-			PropertyType::FLOAT, 32, dataType
-		), requireNonNull(theGetter, "theGetter"), requireNonNull(theSetter, "theSetter"))
+			PropertyType::FLOAT, 32, dataType, theVirtual
+		), requireNonNull(theGetter, "theGetter"), theSetter)
 	}
 
 	/** Returns the value of this property, as an Object */
@@ -1949,10 +1996,10 @@ extends FloatProperty<OWNER_TYPE, Float, FloatConverter<OWNER_TYPE, Float>> {
 	/** Constructor */
 	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
 		FloatFuncObject<OWNER_TYPE> theGetter,
-		ObjectFuncObjectFloat<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		ObjectFuncObjectFloat<OWNER_TYPE,OWNER_TYPE> theSetter, boolean theVirtual) {
 		super(builder, theOwner, theSimpleName,
 			FloatConverter.DEFAULT as FloatConverter<OWNER_TYPE, Float>,
-			Float, theGetter, theSetter
+			Float, theGetter, theSetter, theVirtual
 		)
 	}
 }
@@ -1988,10 +2035,10 @@ extends SixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
 		LongFuncObject<OWNER_TYPE> theGetter,
-		ObjectFuncObjectLong<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		ObjectFuncObjectLong<OWNER_TYPE,OWNER_TYPE> theSetter, boolean theVirtual) {
 		this(builder.preRegisterProperty(theOwner, theSimpleName, theConverter,
-			PropertyType::LONG, theBits, dataType
-		), requireNonNull(theGetter, "theGetter"), requireNonNull(theSetter, "theSetter"))
+			PropertyType::LONG, theBits, dataType, theVirtual
+		), requireNonNull(theGetter, "theGetter"), theSetter)
 	}
 
 	/** Returns the value of this property, as an Object */
@@ -2036,10 +2083,10 @@ extends LongProperty<OWNER_TYPE, Long, LongConverter<OWNER_TYPE, Long>> {
 	/** Constructor */
 	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
 		LongFuncObject<OWNER_TYPE> theGetter,
-		ObjectFuncObjectLong<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		ObjectFuncObjectLong<OWNER_TYPE,OWNER_TYPE> theSetter, boolean theVirtual) {
 		super(builder, theOwner, theSimpleName,
 			LongConverter.DEFAULT as LongConverter<OWNER_TYPE, Long>,
-			64, Long, theGetter, theSetter
+			64, Long, theGetter, theSetter, theVirtual
 		)
 	}
 }
@@ -2076,10 +2123,10 @@ extends SixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner,
 		String theSimpleName, CONVERTER theConverter, Class<PROPERTY_TYPE> dataType,
 		DoubleFuncObject<OWNER_TYPE> theGetter,
-		ObjectFuncObjectDouble<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		ObjectFuncObjectDouble<OWNER_TYPE,OWNER_TYPE> theSetter, boolean theVirtual) {
 		this(builder.preRegisterProperty(theOwner, theSimpleName, theConverter,
-			PropertyType::DOUBLE, 64, dataType
-		), requireNonNull(theGetter, "theGetter"), requireNonNull(theSetter, "theSetter"))
+			PropertyType::DOUBLE, 64, dataType, theVirtual
+		), requireNonNull(theGetter, "theGetter"), theSetter)
 	}
 
 	/** Returns the value of this property, as an Object */
@@ -2124,10 +2171,10 @@ extends DoubleProperty<OWNER_TYPE, Double, DoubleConverter<OWNER_TYPE, Double>> 
 	/** Constructor */
 	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner,
 		String theSimpleName, DoubleFuncObject<OWNER_TYPE> theGetter,
-		ObjectFuncObjectDouble<OWNER_TYPE,OWNER_TYPE> theSetter) {
+		ObjectFuncObjectDouble<OWNER_TYPE,OWNER_TYPE> theSetter, boolean theVirtual) {
 		super(builder, theOwner, theSimpleName,
 			DoubleConverter.DEFAULT as DoubleConverter<OWNER_TYPE, Double>,
-			Double, theGetter, theSetter
+			Double, theGetter, theSetter, theVirtual
 		)
 	}
 }
@@ -2161,13 +2208,13 @@ public class MetaHierarchyBuilder extends HierarchyBuilder {
 	PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> doPreRegisterProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, PropertyType thePropType,
-		int theBits, boolean theMeta, Class<PROPERTY_TYPE> dataType) {
+		int theBits, boolean theMeta, Class<PROPERTY_TYPE> dataType, boolean theVirtual) {
 		if (!theMeta) {
 			throw new IllegalArgumentException(
 				"MetaHierarchy supports only meta-properties: "+theSimpleName)
 		}
 		val result = super.doPreRegisterProperty(theOwner, theSimpleName, theConverter,
-			thePropType, theBits, theMeta, dataType)
+			thePropType, theBits, theMeta, dataType, theVirtual)
 		// Meta properties are never actually registered as part of the (meta) type creation
 		val Type metaType = MetaMeta.HIERARCHY.findType(theOwner as Class)
 		// metaType must be found, since theMeta is true
@@ -2181,16 +2228,16 @@ public class MetaHierarchyBuilder extends HierarchyBuilder {
 	def <OWNER_TYPE extends MetaBase<?>, PROPERTY_TYPE> MetaProperty<OWNER_TYPE, PROPERTY_TYPE>
 		newMetaProperty(
 		Type<OWNER_TYPE> theOwner, String theSimpleName,
-		Class<PROPERTY_TYPE> theContentType) {
-		new MetaProperty(this, theOwner, theSimpleName, theContentType, null)
+		Class<PROPERTY_TYPE> theContentType, boolean theVirtual) {
+		new MetaProperty(this, theOwner, theSimpleName, theContentType, null, theVirtual)
 	}
 
 	/** Creates a Meta Property */
 	def <OWNER_TYPE extends MetaBase<?>, PROPERTY_TYPE> MetaProperty<OWNER_TYPE, PROPERTY_TYPE>
 		newMetaProperty(
 		Type<OWNER_TYPE> theOwner, String theSimpleName,
-		Class<PROPERTY_TYPE> theContentType, PROPERTY_TYPE theDefaultValue) {
-		new MetaProperty(this, theOwner, theSimpleName, theContentType, theDefaultValue)
+		Class<PROPERTY_TYPE> theContentType, PROPERTY_TYPE theDefaultValue, boolean theVirtual) {
+		new MetaProperty(this, theOwner, theSimpleName, theContentType, theDefaultValue, theVirtual)
 	}
 }
 
@@ -2373,14 +2420,35 @@ public interface JavaMeta {
 	public static val STRING = BUILDER.newType(String,
 		new ConstantProvider(""), Kind.Data, #[SERIALIZABLE, CHAR_SEQUENCE, COMPARABLE])
 
+	/** The Iterator Type */
+	public static val ITERATOR = BUILDER.newType(Iterator, new ConstantProvider(Collections.emptyList.iterator),
+		Kind.Trait, Type.NO_TYPE, Property.NO_PROPERTIES, #[OBJECT])
+
+	/** The iterator virtual property of the Iterables */
+    public static val ITERABLE_ITERATOR_PROP = BUILDER.newObjectProperty(
+    	Iterable, "iterator", Iterator, false, false, false, [iterator], null, true)
+
 	/** The Iterable Type */
 	public static val ITERABLE = BUILDER.newType(Iterable, new ConstantProvider(Collections.emptyList),
-		Kind.Trait, Type.NO_TYPE, Property.NO_PROPERTIES, #[OBJECT])
+		Kind.Trait, Type.NO_TYPE, <Property>newArrayList(ITERABLE_ITERATOR_PROP), #[OBJECT])
+
+	/** The empty virtual property of the collections */
+    public static val COLLECTION_EMPTY_PROP = BUILDER.newBooleanProperty(
+    	Collection, "empty", [empty], null, true)
+
+	/** The size virtual property of the collections */
+    public static val COLLECTION_SIZE_PROP = BUILDER.newIntegerProperty(
+    	Collection, "size", [size], null, true)
+
+	/** The toArray() "property" of the collections */
+    public static val COLLECTION_TO_ARRAY_PROP = BUILDER.newObjectProperty(
+    	Collection, "toArray", typeof(Object[]), false, false, false,
+    	[toArray], [obj,value|obj.clear;obj.addAll(Arrays.asList(value));obj], false)
 
 	/** The Collection Type */
 	public static val COLLECTION = BUILDER.newType(Collection,
 		ListProvider.INSTANCE as Provider as Provider<Collection>, Kind.Trait, #[ITERABLE],
-		Property.NO_PROPERTIES, #[OBJECT])
+		<Property>newArrayList(COLLECTION_EMPTY_PROP, COLLECTION_SIZE_PROP, COLLECTION_TO_ARRAY_PROP), #[OBJECT])
 
 	/** The List Type */
 	public static val LIST = BUILDER.newType(List, ListProvider.INSTANCE, Kind.Trait,
@@ -2390,14 +2458,26 @@ public interface JavaMeta {
 	public static val SET = BUILDER.newType(Set, SetProvider.INSTANCE, Kind.Trait,
 		#[COLLECTION], Property.NO_PROPERTIES, #[OBJECT])
 
+	/** The empty virtual property of the Maps */
+    public static val MAP_EMPTY_PROP = BUILDER.newBooleanProperty(
+    	Map, "empty", [empty], null, true)
+
+	/** The size virtual property of the Maps */
+    public static val MAP_SIZE_PROP = BUILDER.newIntegerProperty(
+    	Map, "size", [size], null, true)
+
+	/** The iterator virtual property of the Map.entrySet */
+    public static val MAP_ITERATOR_PROP = BUILDER.newObjectProperty(
+    	Map, "iterator", Iterator, false, false, false, [entrySet.iterator], null, true)
+
 	/** The Map Type */
 	public static val MAP = BUILDER.newType(Map, MapProvider.INSTANCE, Kind.Trait,
-		Type.NO_TYPE, Property.NO_PROPERTIES, #[OBJECT,OBJECT])
+		Type.NO_TYPE, <Property>newArrayList(MAP_EMPTY_PROP, MAP_SIZE_PROP), #[OBJECT,OBJECT])
 
 	/** The java.lang package */
 	public static val JAVA_LANG_PACKAGE = BUILDER.newTypePackage(OBJECT, VOID,
 		COMPARABLE, NUMBER, BOOLEAN, BYTE, CHARACTER, SHORT, INTEGER, LONG,
-		FLOAT, DOUBLE, CHAR_SEQUENCE, STRING, ITERABLE
+		FLOAT, DOUBLE, CHAR_SEQUENCE, STRING, ITERATOR, ITERABLE
 	)
 
 	/** The java.io package */

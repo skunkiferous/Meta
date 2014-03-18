@@ -24,6 +24,6 @@ import com.blockwithme.meta.MetaMeta
  */
 class MyLazyLoadListenerTST {
         public static val TST = Hierarchy.postCreateMetaProperty(
-        	MetaMeta.BUILDER.newMetaProperty(MetaMeta.TYPE, "tst", Boolean)
+        	MetaMeta.BUILDER.newMetaProperty(MetaMeta.TYPE, "tst", Boolean, false)
         )
 }
