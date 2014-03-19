@@ -42,6 +42,17 @@ v0.0.4
 DONE:
 =====
 
+
+Add an "empty array" instance to every type instance.
+
+We need to have a Collection Bean property that returns the "content". That is the only way to get equals/hashCode/toString, ... to work correctly. We should also have at least size as virtual property.
+
+The Collection Bean *interface* should provide a getter for the collection bean configuration.
+
+The Collection "toArray" property should be renamed to "content". The rational is that the "content" need not map one-to-one with the output of toArray. This is required, so that content can be used to make the Collection Bean correctly comparable. For unordered sets, we would "sort" the content, such that is is comparable.
+
+The "sorting" for unordered sets could go like this: if the base type is comparable, then use that. If not, sort based on hashcode. On duplicate hashcode, call equals. If not equals, then compare the toString form.
+
 TODO:
 =====
 
@@ -302,11 +313,7 @@ Instead of defining simply "properties" and "constants", we should switch to def
 
 The "create" method for collection properties should be called "get", with the normal get being called "getRaw".
 
-Add an "empty array" instance to every type instance.
-
 The part of the bean processor that generates the property code should be separated into it's own class, so that property generation become customizable.
-
-We need to have a Collection Bean property that returns the "content". That is the only way to get equals/hashCode/toString, ... to work correctly. We should also have at least size as virtual property.
 
 Once we have virtual properties, we need to add some to Bean and Entity.
 
@@ -316,4 +323,9 @@ Extensions need a back-reference to the Bean itself. This will allow something l
 
 Can access rights have a direct effect on the Bean design? The access rights should be based on the owning Entity of a Bean. The interceptor can be in charge of doing that validation.
 
+Since both JSON and serialization can be realized using the Properties accessors, they should not be part of the class, but rather be defined in the Type. This would allow JSON output and serialization of types whose implementation was not "generated" (third-party types).
+
+If we assume generic parameters are bound to instances, rather then to Types, and this is done by defining Properties that return the generic parameters, then the Type should have a list of those Properties.
+
+What if we needed to access historical data? Do we need some kind of "old" flag in Properties, so the "old values" can still be read (until the old Properties are dropped completely)? Or can we instead have the old property values read into a generic object, which can be discarded, after the values where "migrated" to the new schema?
 

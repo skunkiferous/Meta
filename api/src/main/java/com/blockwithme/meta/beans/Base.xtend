@@ -34,9 +34,11 @@ import com.blockwithme.meta.Kind
 import com.blockwithme.meta.JavaMeta
 import javax.inject.Provider
 import com.blockwithme.meta.beans.impl.CollectionBeanImpl
+import com.blockwithme.meta.ContentOwner
+import com.blockwithme.meta.beans.impl.CollectionBeanConfig
 
 /** Base for all data/bean objects */
-public interface Bean {
+interface Bean {
 	/** Returns the true if the instance is immutable */
     def boolean isImmutable()
 
@@ -55,7 +57,7 @@ public interface Bean {
  *
  * The "selected" state is usually used to keep track of the "dirty" state.
  */
-public interface _Bean extends Bean {
+interface _Bean extends Bean {
 	/** Returns the Type of the instance */
     def Type<?> getMetaType()
 
@@ -144,7 +146,7 @@ public interface _Bean extends Bean {
  * The "context" within which an Entity exists.
  * It could be a JPA table, or anything that contains entities.
  */
-public interface EntityContext {
+interface EntityContext {
 	/**
 	 * Returns the unique ID (within this context) of the entity.
 	 * Null maps to null.
@@ -160,14 +162,14 @@ public interface EntityContext {
  * If an Entity is the root of a Bean tree, it "owns" that tree.
  * Otherwise, it is just "referenced" by the tree.
  */
-public interface Entity extends Bean {
+interface Entity extends Bean {
 	// NOP
 }
 
 /**
  * "Internal" Entity interface.
  */
-public interface _Entity extends Entity, _Bean {
+interface _Entity extends Entity, _Bean {
 	/** Return the context owning this entity. */
 	def EntityContext getEntityContext()
 
@@ -188,7 +190,7 @@ public interface _Entity extends Entity, _Bean {
 }
 
 /** Interceptor allows "delegation", "validation", ... */
-public interface Interceptor {
+interface Interceptor {
 	/** Intercept the read access to a boolean property */
     def boolean getBooleanProperty(_Bean instance, BooleanProperty<?,?,?> prop, boolean value)
 
@@ -254,7 +256,7 @@ public interface Interceptor {
 }
 
 /** Interceptor for collections of objects */
-public interface ObjectCollectionInterceptor<E> extends Interceptor {
+interface ObjectCollectionInterceptor<E> extends Interceptor {
 	/** Intercept the read access to a Object element in a collection */
     def E getObjectAtIndex(_Bean instance, int index, E value)
 
@@ -274,12 +276,13 @@ public interface ObjectCollectionInterceptor<E> extends Interceptor {
 }
 
 /** A Bean that represents a Collection (either List or Set) */
-public interface CollectionBean<E> extends List<E>, Set<E>, Bean {
-	// NOP
+interface CollectionBean<E> extends List<E>, Set<E>, ContentOwner<E>, Bean {
+    /** Returns the CollectionBeanConfig */
+    def CollectionBeanConfig getConfig()
 }
 
 /** A Bean that represents a Collection (either List or Set) */
-public interface _CollectionBean<E> extends CollectionBean<E>, _Bean {
+interface _CollectionBean<E> extends CollectionBean<E>, _Bean {
 	// NOP
 }
 
@@ -290,34 +293,38 @@ public interface _CollectionBean<E> extends CollectionBean<E>, _Bean {
  * Hierarchy to be initialized before the Meta Hierarchy.
  */
  @SuppressWarnings("rawtypes")
-public interface BeansMeta {
+interface BeansMeta {
 	/** The Hierarchy of Meta Types */
-	public static val BUILDER = HierarchyBuilderFactory.getHierarchyBuilder(Bean.name)
+	val BUILDER = HierarchyBuilderFactory.getHierarchyBuilder(Bean.name)
 
 	/** The Bean Type */
-	public static val BEAN = BUILDER.newType(Bean, null, Kind.Trait)
+	val BEAN = BUILDER.newType(Bean, null, Kind.Trait)
 
 	/** The _Bean Type */
-	public static val _BEAN = BUILDER.newType(_Bean, null, Kind.Trait, #[BEAN])
+	val _BEAN = BUILDER.newType(_Bean, null, Kind.Trait, #[BEAN])
 
 	/** The Entity Type */
-	public static val ENTITY = BUILDER.newType(Entity, null, Kind.Trait, #[BEAN])
+	val ENTITY = BUILDER.newType(Entity, null, Kind.Trait, #[BEAN])
 
 	/** The _Entity Type */
-	public static val _ENTITY = BUILDER.newType(_Entity, null, Kind.Trait, #[ENTITY, _BEAN])
+	val _ENTITY = BUILDER.newType(_Entity, null, Kind.Trait, #[ENTITY, _BEAN])
+
+	/** The configuration property of the collection beans */
+    val COLLECTION_CONFIG_PROP = BUILDER.newObjectProperty(
+    	CollectionBean, "config", CollectionBeanConfig, true, true, true, [config], null, false)
 
 	/** The CollectionBean Type */
-	public static val COLLECTION_BEAN = BUILDER.newType(CollectionBean, null, Kind.Trait,
-		#[BEAN, JavaMeta.LIST, JavaMeta.SET], Property.NO_PROPERTIES, #[JavaMeta.OBJECT])
+	val COLLECTION_BEAN = BUILDER.newType(CollectionBean, null, Kind.Trait,
+		#[BEAN, JavaMeta.LIST, JavaMeta.SET], <Property>newArrayList(COLLECTION_CONFIG_PROP), #[JavaMeta.OBJECT])
 
 	/** The _CollectionBean Type */
-	public static val _COLLECTION_BEAN = BUILDER.newType(_CollectionBean, null, Kind.Trait,
+	val _COLLECTION_BEAN = BUILDER.newType(_CollectionBean, null, Kind.Trait,
 		#[COLLECTION_BEAN, _BEAN], Property.NO_PROPERTIES, #[JavaMeta.OBJECT])
 
 	/** The Beans package */
-	public static val COM_BLOCKWITHME_META_BEANS_PACKAGE = BUILDER.newTypePackage(
+	val COM_BLOCKWITHME_META_BEANS_PACKAGE = BUILDER.newTypePackage(
 		BEAN, _BEAN, ENTITY, _ENTITY, COLLECTION_BEAN, _COLLECTION_BEAN)
 
 	/** The Hierarchy of Meta Types */
-	public static val HIERARCHY = BUILDER.newHierarchy(COM_BLOCKWITHME_META_BEANS_PACKAGE)
+	val HIERARCHY = BUILDER.newHierarchy(COM_BLOCKWITHME_META_BEANS_PACKAGE)
 }

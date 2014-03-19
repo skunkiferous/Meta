@@ -2365,6 +2365,12 @@ package final class MapProvider implements Provider<Map> {
 	public static val INSTANCE = new MapProvider
 }
 
+/** Implemented by Collections that want a different "content" the toArray */
+public interface ContentOwner<E> {
+	/** Returns the content */
+	def E[] getContent();
+}
+
 /**
  * The "Meta" constant-holding interface for the java.* types.
  */
@@ -2440,15 +2446,16 @@ public interface JavaMeta {
     public static val COLLECTION_SIZE_PROP = BUILDER.newIntegerProperty(
     	Collection, "size", [size], null, true)
 
-	/** The toArray() "property" of the collections */
-    public static val COLLECTION_TO_ARRAY_PROP = BUILDER.newObjectProperty(
-    	Collection, "toArray", typeof(Object[]), false, false, false,
-    	[toArray], [obj,value|obj.clear;obj.addAll(Arrays.asList(value));obj], false)
+	/** The content/toArray "property" of the collections */
+    public static val COLLECTION_CONTENT_PROP = BUILDER.newObjectProperty(
+    	Collection, "content", typeof(Object[]), false, false, false,
+    	[ if(it instanceof ContentOwner) content else toArray],
+    	[obj,value|obj.clear;obj.addAll(Arrays.asList(value));obj], false)
 
 	/** The Collection Type */
 	public static val COLLECTION = BUILDER.newType(Collection,
 		ListProvider.INSTANCE as Provider as Provider<Collection>, Kind.Trait, #[ITERABLE],
-		<Property>newArrayList(COLLECTION_EMPTY_PROP, COLLECTION_SIZE_PROP, COLLECTION_TO_ARRAY_PROP), #[OBJECT])
+		<Property>newArrayList(COLLECTION_EMPTY_PROP, COLLECTION_SIZE_PROP, COLLECTION_CONTENT_PROP), #[OBJECT])
 
 	/** The List Type */
 	public static val LIST = BUILDER.newType(List, ListProvider.INSTANCE, Kind.Trait,

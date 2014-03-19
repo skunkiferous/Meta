@@ -15,7 +15,9 @@
  */
 package com.blockwithme.meta.beans.impl;
 
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.List;
@@ -35,6 +37,31 @@ import com.blockwithme.meta.beans._Bean;
  */
 public class CollectionBeanImpl<E> extends _BeanImpl implements
         CollectionBean<E> {
+
+    /** Non-comparable Comparator. */
+    private static final Comparator<Object> CMP = new Comparator<Object>() {
+        @Override
+        public int compare(final Object o1, final Object o2) {
+            if (o1 == null) {
+                if (o2 == null) {
+                    return 0;
+                }
+                return -1;
+            }
+            if (o2 == null) {
+                return 1;
+            }
+            final int hash1 = o1.hashCode();
+            final int hash2 = o2.hashCode();
+            if (hash1 == hash2) {
+                if (o1.equals(o2)) {
+                    return 0;
+                }
+                return o1.toString().compareTo(o2.toString());
+            }
+            return hash1 - hash2;
+        }
+    };
 
     /** An Iterable<_Bean>, over the Collection values */
     private class BeanCollectionIterator implements Iterable<_Bean>,
@@ -327,7 +354,7 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
      */
     @Override
     public final Object[] toArray() {
-        return toArray(new Object[size]);
+        return toArray(newArray(size));
     }
 
     /* (non-Javadoc)
@@ -694,4 +721,28 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
         return (CollectionBeanImpl<E>) doWrapper();
     }
 
+    /* (non-Javadoc)
+     * @see com.blockwithme.meta.ContentOwner#getContent()
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public final E[] getContent() {
+        final E[] result = (E[]) toArray();
+        if (config.isUnorderedSet()) {
+            if (Comparable.class.isAssignableFrom(getMetaType().type)) {
+                Arrays.sort(result);
+            } else {
+                Arrays.sort(result, CMP);
+            }
+        }
+        return result;
+    }
+
+    /* (non-Javadoc)
+     * @see com.blockwithme.meta.beans.CollectionBean#getConfig()
+     */
+    @Override
+    public final CollectionBeanConfig getConfig() {
+        return config;
+    }
 }
