@@ -621,19 +621,19 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
       warn(BeanProcessor, "transform", interf, "Adding " + setter+" to "+interf.qualifiedName)
     }
     if (fieldType.array) {
-	    val creator = 'create' + toFirstUpper
-	    if (interf.findDeclaredMethod(creator) === null) {
-	      interf.addMethod(creator) [
+	    val getter2 = 'getRaw' + toFirstUpper
+	    if (interf.findDeclaredMethod(getter2) === null) {
+	      interf.addMethod(getter2) [
 	        returnType = propertyType
 	        // STEP 31
 	        // Comments on properties must be transfered to generated code
 	        if (doc.empty) {
-	          docComment = "Creator for "+fieldName
+	          docComment = "Raw Getter for "+fieldName
 	        } else {
-	          docComment = "Creator for "+doc
+	          docComment = "Raw Getter for "+doc
 	        }
 	      ]
-	      warn(BeanProcessor, "transform", interf, "Adding "+creator+" to "+interf.qualifiedName)
+	      warn(BeanProcessor, "transform", interf, "Adding "+getter2+" to "+interf.qualifiedName)
 	    }
     }
     warn(BeanProcessor, "transform", interf, "Removing "+fieldName+" from "+interf.qualifiedName)
@@ -1067,7 +1067,9 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		val propertyFieldName = beanInfo.pkgName+".Meta."+getPropertyFieldNameInMeta(beanInfo.simpleName, propInfo)
 		val doc = propInfo.comment
 		val propTypeRef = newTypeReferenceWithGenerics(propInfo.type)
-		val getter = "get"+to_FirstUpper(propInfo.name)
+		val colType = propInfo.colType
+		val tfu = to_FirstUpper(propInfo.name)
+		val getter = if (colType !== null) "getRaw"+tfu else "get"+tfu
 		if (impl.findDeclaredMethod(getter) === null) {
 			impl.addMethod(getter) [
 				visibility = Visibility.PUBLIC
@@ -1087,7 +1089,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 			]
 			warn(BeanProcessor, "transform", impl, getter+" added to "+impl.qualifiedName)
 		}
-		val setter = "set"+to_FirstUpper(propInfo.name)
+		val setter = "set"+tfu
 		val valueType = propTypeRef
 		if (impl.findDeclaredMethod(setter, valueType) === null) {
 			impl.addMethod(setter) [
@@ -1110,9 +1112,8 @@ return this;'''
 			]
 			warn(BeanProcessor, "transform", impl, setter+" added to "+impl.qualifiedName)
 		}
-		val colType = propInfo.colType
 		if (colType !== null) {
-			val creator = "create"+to_FirstUpper(propInfo.name)
+			val creator = "get"+tfu
 			if (impl.findDeclaredMethod(creator) === null) {
 				// TODO Verify if we should match "exact type" for the values, and specify
 				// it in the call to newFixedSizeList() and possibly use different config constants

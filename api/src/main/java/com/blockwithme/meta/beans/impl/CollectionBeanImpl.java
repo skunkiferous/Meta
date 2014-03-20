@@ -238,6 +238,9 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
     /** The CollectionBeanConfig */
     private final CollectionBeanConfig config;
 
+    /** The Type of the values. */
+    private final Type<E> valueType;
+
     /** The collection size */
     private int size;
 
@@ -245,9 +248,8 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
     private E[] data;
 
     /** Returns a new E array of given size. */
-    @SuppressWarnings("unchecked")
     private E[] newArray(final int length) {
-        return (E[]) getMetaType().newArray(length);
+        return valueType.newArray(length);
     }
 
     /**
@@ -285,13 +287,15 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
      * Creates a new CollectionBeanImpl with the given Type and configuration.
      *
      * @param metaType The type of the Bean (not of the component); required
+     * @param valueType The type of the component; required
      * @param config The collection bean configuration; required.
      */
     @SuppressWarnings("unchecked")
-    public CollectionBeanImpl(final Type<?> metaType,
+    public CollectionBeanImpl(final Type<?> metaType, final Type<E> valueType,
             final CollectionBeanConfig config) {
         super(metaType);
-        Objects.requireNonNull(config, "config").validate(metaType);
+        this.valueType = Objects.requireNonNull(valueType, "valueType");
+        Objects.requireNonNull(config, "config").validate(valueType);
         this.config = config;
         final int fixedSize = config.getFixedSize();
         if (fixedSize != -1) {
@@ -300,6 +304,14 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
         } else {
             data = (E[]) metaType.empty;
         }
+    }
+
+    /* (non-Javadoc)
+     * @see com.blockwithme.meta.beans.CollectionBean#getValueType()
+     */
+    @Override
+    public final Type<E> getValueType() {
+        return valueType;
     }
 
     /** Returns an Iterable<_Bean>, over the property values */
@@ -576,6 +588,9 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
      */
     @Override
     public final E set(final int index, final E newValue) {
+        if (isImmutable()) {
+            throw new UnsupportedOperationException(this + " is immutable!");
+        }
         rangeCheck(index);
         validateNewValue(newValue);
         if (config.isSet()) {
@@ -594,6 +609,9 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
      */
     @Override
     public final E remove(final int index) {
+        if (isImmutable()) {
+            throw new UnsupportedOperationException(this + " is immutable!");
+        }
         rangeCheck(index);
         if (config.getFixedSize() == -1) {
             final E[] array = data;
@@ -620,6 +638,9 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
     @SuppressWarnings("unchecked")
     @Override
     public final void clear() {
+        if (isImmutable()) {
+            throw new UnsupportedOperationException(this + " is immutable!");
+        }
         if (config.getFixedSize() == -1) {
             interceptor().clear(this);
             size = 0;
@@ -645,6 +666,9 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
             throw new IndexOutOfBoundsException("Index: " + index);
         if (config.getFixedSize() != -1) {
             throw new UnsupportedOperationException("Fixed-size!");
+        }
+        if (isImmutable()) {
+            throw new UnsupportedOperationException(this + " is immutable!");
         }
         validateNewValue(element);
         ensureCapacityInternal(size + 1);

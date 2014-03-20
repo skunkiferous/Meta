@@ -65,6 +65,7 @@ import java.util.Collection
 import java.util.List
 import java.util.ArrayList
 import java.util.Iterator
+import java.util.Objects
 
 /**
  * Hierarchy represents a Type hierarchy. It is not limited to types in the
@@ -626,15 +627,17 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	public val Property<JAVA_TYPE,?>[] inheritedVirtualProperties
 
 	/**
-	 * The Types of the "components" of this Type:
+	 * The Properties returning the generic Types of the "components" of this Type:
 	 *
 	 * VALUE_COMPONENT for array, collection, map
 	 * KEY_COMPONENT for map
 	 * THIRD_COMPONENT for (triplet?)
 	 *
+	 * Note that some of those properties might belong to super-types.
+	 *
 	 * Do not modify!
 	 */
-	public val Type<?>[] componentTypes
+	public val ObjectProperty<JAVA_TYPE,Type<?>>[] componentTypes
 
 	/** The zero-based type ID */
 	public val int typeId
@@ -718,7 +721,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	protected new(TypeRegistration registration, Class<JAVA_TYPE> theType,
 		Provider<JAVA_TYPE> theConstructor, Kind theKind,
 		Type<?>[] theParents, Property<JAVA_TYPE,?>[] theProperties,
-		Type<?>[] componentTypes) {
+		ObjectProperty<JAVA_TYPE,Type<?>>[] componentTypes) {
 		super(requireNonNull(theType, "theType").name,
 			theType.simpleName, requireNonNull(registration, "registration").globalId)
 		if (theType.primitive) {
@@ -730,7 +733,8 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 		empty = Array.newInstance(type, 0) as JAVA_TYPE[]
 		constructor = if (theConstructor == null) asProvider(theType) else theConstructor
 		kind = requireNonNull(theKind, "theKind")
-		this.componentTypes = requireContainsNoNull(componentTypes, "componentTypes")
+		// componentTypes *can* contain null. This just mean the type is "unknown"
+		this.componentTypes = requireNonNull(componentTypes, "componentTypes")
 		val TreeSet<Type<?>> pset = new TreeSet(checkArray(theParents, "theParents"))
 		val TreeSet<Type<?>> pallset = new TreeSet(pset)
 		for (p : pset) {
@@ -923,25 +927,25 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	}
 
 	/** Returns the VALUE component type, if available, or null */
-	def final Type<?> getValueComponentType() {
-		if (componentTypes.length > VALUE_COMPONENT)
-			componentTypes.get(VALUE_COMPONENT)
-		else
+	def final Type<?> getValueComponentType(JAVA_TYPE instance) {
+		if (componentTypes.length > VALUE_COMPONENT) {
+			componentTypes.get(VALUE_COMPONENT).getObject(instance)
+		} else
 			null
 	}
 
 	/** Returns the KEY component type, if available, or null */
-	def final Type<?> getKeyComponentType() {
+	def final Type<?> getKeyComponentType(JAVA_TYPE instance) {
 		if (componentTypes.length > KEY_COMPONENT)
-			componentTypes.get(KEY_COMPONENT)
+			componentTypes.get(KEY_COMPONENT).getObject(instance)
 		else
 			null
 	}
 
 	/** Returns the THIRD component type, if available, or null */
-	def final Type<?> getThirdComponentType() {
+	def final Type<?> getThirdComponentType(JAVA_TYPE instance) {
 		if (componentTypes.length > THIRD_COMPONENT)
-			componentTypes.get(THIRD_COMPONENT)
+			componentTypes.get(THIRD_COMPONENT).getObject(instance)
 		else
 			null
 	}
@@ -2376,6 +2380,11 @@ public interface ContentOwner<E> {
  */
  @SuppressWarnings("rawtypes")
 public interface JavaMeta {
+	/** Used to represent single-parameter generic types, with unknown value type */
+	val ObjectProperty[] ONE_NULL_OBJECT_PROP = newArrayOfSize(1)
+
+	/** Used to represent dual-parameter generic types, with unknown value type */
+	val ObjectProperty[] TWO_NULL_OBJECT_PROPS = newArrayOfSize(2)
 
 	/** The Hierarchy of Java's Runtime Types */
 	public static val BUILDER = HierarchyBuilderFactory.getHierarchyBuilder(Object.name)
@@ -2428,7 +2437,7 @@ public interface JavaMeta {
 
 	/** The Iterator Type */
 	public static val ITERATOR = BUILDER.newType(Iterator, new ConstantProvider(Collections.emptyList.iterator),
-		Kind.Trait, Type.NO_TYPE, Property.NO_PROPERTIES, #[OBJECT])
+		Kind.Trait, Type.NO_TYPE, Property.NO_PROPERTIES, ONE_NULL_OBJECT_PROP)
 
 	/** The iterator virtual property of the Iterables */
     public static val ITERABLE_ITERATOR_PROP = BUILDER.newObjectProperty(
@@ -2436,7 +2445,13 @@ public interface JavaMeta {
 
 	/** The Iterable Type */
 	public static val ITERABLE = BUILDER.newType(Iterable, new ConstantProvider(Collections.emptyList),
-		Kind.Trait, Type.NO_TYPE, <Property>newArrayList(ITERABLE_ITERATOR_PROP), #[OBJECT])
+		Kind.Trait, Type.NO_TYPE, <Property>newArrayList(ITERABLE_ITERATOR_PROP), ONE_NULL_OBJECT_PROP)
+
+	/** The content/toArray "property" of the collections */
+    public static val COLLECTION_CONTENT_PROP = BUILDER.newObjectProperty(
+    	Collection, "content", typeof(Object[]), false, false, false,
+    	[ if(it instanceof ContentOwner) content else toArray],
+    	[obj,value|obj.clear;obj.addAll(Arrays.asList(value));obj], false)
 
 	/** The empty virtual property of the collections */
     public static val COLLECTION_EMPTY_PROP = BUILDER.newBooleanProperty(
@@ -2446,24 +2461,19 @@ public interface JavaMeta {
     public static val COLLECTION_SIZE_PROP = BUILDER.newIntegerProperty(
     	Collection, "size", [size], null, true)
 
-	/** The content/toArray "property" of the collections */
-    public static val COLLECTION_CONTENT_PROP = BUILDER.newObjectProperty(
-    	Collection, "content", typeof(Object[]), false, false, false,
-    	[ if(it instanceof ContentOwner) content else toArray],
-    	[obj,value|obj.clear;obj.addAll(Arrays.asList(value));obj], false)
-
 	/** The Collection Type */
 	public static val COLLECTION = BUILDER.newType(Collection,
 		ListProvider.INSTANCE as Provider as Provider<Collection>, Kind.Trait, #[ITERABLE],
-		<Property>newArrayList(COLLECTION_EMPTY_PROP, COLLECTION_SIZE_PROP, COLLECTION_CONTENT_PROP), #[OBJECT])
+		<Property>newArrayList(COLLECTION_CONTENT_PROP, COLLECTION_EMPTY_PROP, COLLECTION_SIZE_PROP),
+		ONE_NULL_OBJECT_PROP)
 
 	/** The List Type */
 	public static val LIST = BUILDER.newType(List, ListProvider.INSTANCE, Kind.Trait,
-		#[COLLECTION], Property.NO_PROPERTIES, #[OBJECT])
+		#[COLLECTION], Property.NO_PROPERTIES, ONE_NULL_OBJECT_PROP)
 
 	/** The Set Type */
 	public static val SET = BUILDER.newType(Set, SetProvider.INSTANCE, Kind.Trait,
-		#[COLLECTION], Property.NO_PROPERTIES, #[OBJECT])
+		#[COLLECTION], Property.NO_PROPERTIES, ONE_NULL_OBJECT_PROP)
 
 	/** The empty virtual property of the Maps */
     public static val MAP_EMPTY_PROP = BUILDER.newBooleanProperty(
@@ -2479,19 +2489,19 @@ public interface JavaMeta {
 
 	/** The Map Type */
 	public static val MAP = BUILDER.newType(Map, MapProvider.INSTANCE, Kind.Trait,
-		Type.NO_TYPE, <Property>newArrayList(MAP_EMPTY_PROP, MAP_SIZE_PROP), #[OBJECT,OBJECT])
+		Type.NO_TYPE, <Property>newArrayList(MAP_EMPTY_PROP, MAP_SIZE_PROP), TWO_NULL_OBJECT_PROPS)
 
 	/** The java.lang package */
 	public static val JAVA_LANG_PACKAGE = BUILDER.newTypePackage(OBJECT, VOID,
 		COMPARABLE, NUMBER, BOOLEAN, BYTE, CHARACTER, SHORT, INTEGER, LONG,
-		FLOAT, DOUBLE, CHAR_SEQUENCE, STRING, ITERATOR, ITERABLE
+		FLOAT, DOUBLE, CHAR_SEQUENCE, STRING, ITERABLE
 	)
 
 	/** The java.io package */
 	public static val JAVA_IO_PACKAGE = BUILDER.newTypePackage(SERIALIZABLE)
 
 	/** The java.util package */
-	public static val JAVA_UTIL_PACKAGE = BUILDER.newTypePackage(COLLECTION, LIST, SET, MAP)
+	public static val JAVA_UTIL_PACKAGE = BUILDER.newTypePackage(ITERATOR, COLLECTION, LIST, SET, MAP)
 
 	/** The Hierarchy of Java's Runtime Types */
 	public static val HIERARCHY = BUILDER.newHierarchy(JAVA_LANG_PACKAGE, JAVA_IO_PACKAGE, JAVA_UTIL_PACKAGE)

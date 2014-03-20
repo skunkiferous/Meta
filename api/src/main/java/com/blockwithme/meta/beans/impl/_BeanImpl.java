@@ -445,6 +445,9 @@ public abstract class _BeanImpl implements _Bean {
     /** Sets all selected flags to true, including the children */
     @Override
     public final void setSelectionRecursive() {
+        if (immutable) {
+            throw new UnsupportedOperationException(this + " is immutable!");
+        }
         selected = -1L;
         final long[] array = selectedArray;
         final int length = array.length;

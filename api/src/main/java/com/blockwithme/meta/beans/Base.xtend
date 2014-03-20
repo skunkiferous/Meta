@@ -279,6 +279,8 @@ interface ObjectCollectionInterceptor<E> extends Interceptor {
 interface CollectionBean<E> extends List<E>, Set<E>, ContentOwner<E>, Bean {
     /** Returns the CollectionBeanConfig */
     def CollectionBeanConfig getConfig()
+    /** Returns the value Type (E) */
+    def Type<E> getValueType()
 }
 
 /** A Bean that represents a Collection (either List or Set) */
@@ -300,8 +302,21 @@ interface BeansMeta {
 	/** The Bean Type */
 	val BEAN = BUILDER.newType(Bean, null, Kind.Trait)
 
+	/** The change counter Bean property */
+    val CHANGE_COUNTER_BEAN_PROP = BUILDER.newIntegerProperty(
+    	_Bean, "changeCounter", [changeCounter], [obj,value|obj.changeCounter = value;obj], false)
+
+	/** The parent virtual Bean property */
+    val PARENT_BEAN_PROP = BUILDER.newObjectProperty(
+    	_Bean, "parent", _Bean, true, true, false, [parent], null, true)
+
+	/** The root virtual Bean property */
+    val ROOT_BEAN_PROP = BUILDER.newObjectProperty(
+    	_Bean, "root", _Bean, true, true, false, [root], null, true)
+
 	/** The _Bean Type */
-	val _BEAN = BUILDER.newType(_Bean, null, Kind.Trait, #[BEAN])
+	val _BEAN = BUILDER.newType(_Bean, null, Kind.Trait, #[BEAN],
+		CHANGE_COUNTER_BEAN_PROP, PARENT_BEAN_PROP, ROOT_BEAN_PROP)
 
 	/** The Entity Type */
 	val ENTITY = BUILDER.newType(Entity, null, Kind.Trait, #[BEAN])
@@ -313,13 +328,19 @@ interface BeansMeta {
     val COLLECTION_CONFIG_PROP = BUILDER.newObjectProperty(
     	CollectionBean, "config", CollectionBeanConfig, true, true, true, [config], null, false)
 
+	/** The value-type property of the collection beans */
+    val COLLECTION_VALUE_TYPE_PROP = BUILDER.newObjectProperty(
+    	CollectionBean, "valueType", Type, true, true, true, [valueType], null, false)
+
 	/** The CollectionBean Type */
 	val COLLECTION_BEAN = BUILDER.newType(CollectionBean, null, Kind.Trait,
-		#[BEAN, JavaMeta.LIST, JavaMeta.SET], <Property>newArrayList(COLLECTION_CONFIG_PROP), #[JavaMeta.OBJECT])
+		#[BEAN, JavaMeta.LIST, JavaMeta.SET], <Property>newArrayList(COLLECTION_CONFIG_PROP),
+		COLLECTION_VALUE_TYPE_PROP as ObjectProperty)
 
 	/** The _CollectionBean Type */
 	val _COLLECTION_BEAN = BUILDER.newType(_CollectionBean, null, Kind.Trait,
-		#[COLLECTION_BEAN, _BEAN], Property.NO_PROPERTIES, #[JavaMeta.OBJECT])
+		#[COLLECTION_BEAN, _BEAN], Property.NO_PROPERTIES,
+		COLLECTION_VALUE_TYPE_PROP as ObjectProperty)
 
 	/** The Beans package */
 	val COM_BLOCKWITHME_META_BEANS_PACKAGE = BUILDER.newTypePackage(

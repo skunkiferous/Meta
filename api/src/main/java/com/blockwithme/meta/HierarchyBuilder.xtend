@@ -62,6 +62,8 @@ class HierarchyBuilder {
 
     static val char DOT = "."
 
+    static val ObjectProperty[] NO_OBJECT_PROP = newArrayOfSize(0)
+
     /** The Hierarchy name */
     public val String name
 
@@ -153,6 +155,9 @@ class HierarchyBuilder {
 		allCounters.remove(theType)
 		LOG.info("Type "+theType.fullName+" registered in Hierarchy "+this.name)
 		for (p : theType.properties) {
+			doRegisterProperty(p)
+		}
+		for (p : theType.virtualProperties) {
 			doRegisterProperty(p)
 		}
 	}
@@ -780,20 +785,20 @@ class HierarchyBuilder {
 	def <JAVA_TYPE> Type<JAVA_TYPE> newType(Class<JAVA_TYPE> theType,
 		Provider<JAVA_TYPE> theConstructor, Kind theKind,
 		Property<JAVA_TYPE,?> ... theProperties) {
-		newType(theType, theConstructor, theKind, Type.NO_TYPE, theProperties, Type.NO_TYPE)
+		newType(theType, theConstructor, theKind, Type.NO_TYPE, theProperties, NO_OBJECT_PROP)
 	}
 
 	/** Creates a new Type with parents */
 	def <JAVA_TYPE> Type<JAVA_TYPE> newType(Class<JAVA_TYPE> theType,
 		Provider<JAVA_TYPE> theConstructor, Kind theKind, Type<?>[] theParents,
 		Property<JAVA_TYPE,?> ... theProperties) {
-		newType(theType, theConstructor, theKind, theParents, theProperties, Type.NO_TYPE)
+		newType(theType, theConstructor, theKind, theParents, theProperties, NO_OBJECT_PROP)
 	}
 
 	/** Creates a new Type with parents and component types */
 	def <JAVA_TYPE> Type<JAVA_TYPE> newType(Class<JAVA_TYPE> theType,
 		Provider<JAVA_TYPE> theConstructor, Kind theKind, Type<?>[] theParents,
-		Property<JAVA_TYPE,?>[] theProperties, Type<?> ... theComponents) {
+		Property<JAVA_TYPE,?>[] theProperties, ObjectProperty<JAVA_TYPE,Type<?>> ... theComponents) {
 		new Type(preRegisterType(theType), theType, theConstructor, theKind,
 			theParents, theProperties, theComponents)
 	}

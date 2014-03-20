@@ -64,7 +64,7 @@ class CollectionBeanConfig {
 	boolean list
 
 	/** Validate self */
-	def void validate(Type<?> metaType) {
+	def void validate(Type<?> valueType) {
 		if ((fixedSize != -1) && !nullAllowed) {
 			throw new IllegalStateException("(fixedSize != -1) && !nullAllowed")
 		}
@@ -92,7 +92,7 @@ class CollectionBeanConfig {
 		if (!(list || set)) {
 			throw new IllegalStateException("!(list || set)")
 		}
-		if (sortedSet && !Comparable.isAssignableFrom(metaType.type)) {
+		if (sortedSet && !Comparable.isAssignableFrom(valueType.type)) {
 			throw new IllegalStateException("sortedSet && !Comparable")
 		}
 	}

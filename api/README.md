@@ -42,7 +42,6 @@ v0.0.4
 DONE:
 =====
 
-
 Add an "empty array" instance to every type instance.
 
 We need to have a Collection Bean property that returns the "content". That is the only way to get equals/hashCode/toString, ... to work correctly. We should also have at least size as virtual property.
@@ -53,10 +52,31 @@ The Collection "toArray" property should be renamed to "content". The rational i
 
 The "sorting" for unordered sets could go like this: if the base type is comparable, then use that. If not, sort based on hashcode. On duplicate hashcode, call equals. If not equals, then compare the toString form.
 
-TODO:
-=====
+Generate a copyFrom method?
 
 Add source code generation using Active annotations.
+
+A Builder is basically just a Bean version of an Immutable, so we really always want both.
+
+We might need to record some meta-information, required for the compilation of dependent projects,
+into annotation on the generated/transformed source code.
+
+If we have "read-only", "computed" properties, we need to have new property lists, which contains only "real" properties.
+
+Check that the immutable flag is respected everywhere.
+
+We should allow the definition of virtual properties.
+
+The "create" method for collection properties should be called "get", with the normal get being called "getRaw".
+
+Once we have virtual properties, we need to add some to Bean and Entity.
+
+If we assume generic parameters are bound to instances, rather then to Types,
+and this is done by defining Properties that return the generic parameters,
+then the Type should have a list of those Properties.
+
+TODO:
+=====
 
 Make sure the tests are updated.
 
@@ -198,15 +218,9 @@ Type instances should offer an array of all Properties in alphabetical order.
 
 Add API to allow Processors to order themselves before or after some other Processor.
 
-Generating a separate Read-Only base interface allows us to reuse it for both immutable types and beans.
-
-Generate a copyInto method?
-
 Generate a compute-a-difference method?
 
 Reset method for Properties (requires use of default).
-
-A Builder is basically just a Bean version of an Immutable, so we really always want both.
 
 Log error if more then one file is used per project during annotation processing.
 
@@ -217,9 +231,6 @@ Cache generated new class names in the "register globals" phase, so the processi
 Design some functionality to "get all types" at runtime, based on the fact that all dependencies
 are "frozen and available" when compiling, and all types in the current project are within the
 currently processed file. We might want to generate a list-of-types if the "generate" phase.
-
-We might need to record some meta-information, required for the compilation of dependent projects,
-into annotation on the generated/transformed source code.
 
 We should have a "Role" hierarchy (extensible enum or marker interfaces) that "qualifies" the
 properties, and can be queried at runtime to drive part of the code generation.
@@ -234,7 +245,7 @@ managed by the root.
 
 How do we solve the "virtually infinite" JRE "hierarchy"?
 
-The Type of a Property can either come form another Hierarchy as Type, or form the same Hierarchy
+The Type of a Property can either come from another Hierarchy as Type, or from the same Hierarchy
 as Class. The actual Type instance can only be resolved at the Hierarchy construction time.
 
 Complete validation is possible only at Hierarchy construction time.
@@ -251,9 +262,9 @@ Methods, instead of using lambdas.
 
 We need a SELF-type. It would be replaced by the type using it. WHen used as parameter, no compile-time check is performed, so a runtime check is needed.
 
-Should the serialisation simulate "composition" instead of "inheritance"? The "wrapper object" could use the "component type" as a key/field-name.
+Should the serialization simulate "composition" instead of "inheritance"? The "wrapper object" could use the "component type" as a key/field-name.
 
-Factories could be implicitly defined by calling a field newXXX, OR we have a @Factory annotation, and all feilds become newXXX. One Factory per package would be simpler.
+Factories could be implicitly defined by calling a field newXXX, OR we have a @Factory annotation, and all fields become newXXX. One Factory per package would be simpler.
 
 If we limit the bean properties to primitives, Beans, and a small set of pre-defined types, we could generate a "tree size" for each Type. But restricting non-bean types to a fixed list is not good.
 
@@ -271,8 +282,6 @@ An alternative to bytecode manipulation to implement retrofitting is to use the 
 
 Beans could offer a "map view" of their properties. Any code that "knows" about the Properties does not need to use a map view, so we should use Strings as the map key.
 
-If we have "read-only", "computed" properties, we need to have new property lists, which contains only "real" properties.
-
 If the API type of a property is NOT a bean, then we should check that no bean can be set in this property.
 
 If we force the use of a "unique prefix" to prevent name clashes, this prefix should represent the "Maven group-ID", rather then then Maven artifact-ID or the hierarchy-ID. Group-IDs are orthogonal to hierarchies.
@@ -285,8 +294,6 @@ All "convertible" should be immutable.
 
 "Accepted types" are then primitives, immutable, array/collection, and beans.
 
-We should allow the definition of virtual properties just by annotating the interface field with an annotation that defines the getter and setter implementations as Strings.
-
 Bean properties should have their own property list in the Type.
 
 We need a method in the Bean that takes some kind of "filter", and returns all the "matching properties", and some annotation that allows generating a "getter" returning the "matching properties" based on some pre-defined filter.
@@ -296,8 +303,6 @@ Entities should be Blades.
 We also need an "invalid" flag. I'm not sure yet how the propagation should work, but the flag would indicate that the bean *cannot be serialized/saved*, and so any parent cannot be serialized either.
 
 I need a better name for my "Beans"; they aren't really beans (like EJB beans). Maybe I can use the term "trait", in which case I could rename the whole API to "Traitor".
-
-Check that the immutable flag is respected everywhere.
 
 Should setting the immutable flag to true cause a propagation to all children?
 
@@ -311,11 +316,7 @@ Instead of defining simply "properties" and "constants", we should switch to def
 
 "Exact type matching" (for collections and properties) should use the Type of a bean, instead of it's class (which is used for non-beans).
 
-The "create" method for collection properties should be called "get", with the normal get being called "getRaw".
-
 The part of the bean processor that generates the property code should be separated into it's own class, so that property generation become customizable.
-
-Once we have virtual properties, we need to add some to Bean and Entity.
 
 When using extension/retrofitting, there must be *no* overlap between the Bean and all it's extensions, and between the extensions themselves.
 
@@ -325,7 +326,14 @@ Can access rights have a direct effect on the Bean design? The access rights sho
 
 Since both JSON and serialization can be realized using the Properties accessors, they should not be part of the class, but rather be defined in the Type. This would allow JSON output and serialization of types whose implementation was not "generated" (third-party types).
 
-If we assume generic parameters are bound to instances, rather then to Types, and this is done by defining Properties that return the generic parameters, then the Type should have a list of those Properties.
-
 What if we needed to access historical data? Do we need some kind of "old" flag in Properties, so the "old values" can still be read (until the old Properties are dropped completely)? Or can we instead have the old property values read into a generic object, which can be discarded, after the values where "migrated" to the new schema?
 
+We should add a list of "Listeners" to (non-virtual) Properties, such that those listeners are executed, when a property change. They would be "static" listeners, but that already solves many problems. That probably needs to be updatable dynamically.
+
+Allow the definition of virtual properties "dependencies" and a "Refresh" handler that gets called on first creation/load of the object, and then every time a dependency changes. Note: Being able to depend on your *own* Properties only is very limiting.
+
+We need a Bean graph visitor. It would use the Properties and allow either either visiting all properties, or just the object properties.
+
+Is virtual properties the same as transient properties? I think the two are mostly orthogonal. Transient properties are normal properties that are not saved (but could be in toString). Virtual properties are not normally "allocated space", but we could have "cached" virtual properties, and those would basically be transient properties.
+
+We should allow the definition of virtual properties just by annotating the interface field with an annotation that defines the getter and setter implementations as Strings.
