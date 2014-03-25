@@ -54,6 +54,7 @@ import com.blockwithme.meta.HierarchyBuilderFactory
 import com.blockwithme.meta.beans.CollectionBean
 import com.blockwithme.meta.beans.impl.CollectionBeanImpl
 import com.blockwithme.meta.beans.impl.CollectionBeanConfig
+import com.blockwithme.meta.beans.BeansMeta
 
 /**
  * Annotates an interface declared in a C-style-struct syntax
@@ -96,6 +97,23 @@ annotation CollectionProperty {
 	int fixedSize = -1
 }
 
+/**
+ * Annotates a property field as a "virtual" property.
+ * Virtual properties are mostly used in manually created base-class,
+ * and in third-party classes. Here, this causes a "getter" to be defined,
+ * that contains the code specified in the getterJavaCode parameter
+ * (";" is added automatically), but no field is generated. If setterJavaCode
+ * is not empty, a setter is generated too (parameter is always called "newValue").
+ *
+ * @author monster
+ */
+@Target(ElementType.FIELD)
+@Retention(RetentionPolicy.CLASS)
+annotation VirtualProperty {
+	String getterJavaCode
+	String setterJavaCode = ""
+}
+
 @Data
 package class PropertyInfo {
   String name
@@ -103,6 +121,10 @@ package class PropertyInfo {
   String comment
   CollectionPropertyType colType
   int fixedSize
+  /** Virtual Property getter implementation */
+  String getterJavaCode
+  /** Optional Virtual Property setter implementation */
+  String setterJavaCode
 }
 
 @Data
@@ -172,7 +194,7 @@ package class BeanInfo {
 @Retention(RetentionPolicy.CLASS)
 annotation _BeanInfo {
     Class<?>[] parents = #[]
-    String[] properties = #[] //name0,type0,comment0,colType0,fixedSize0,...
+    String[] properties = #[] //name0,type0,comment0,colType0,fixedSize0,getterJavaCode0,setterJavaCode0...
     String[] validity = #[]
 	String[] sortKeyes = #[]
     boolean isBean
@@ -516,6 +538,15 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
           val ftypeName = f.type.name
           val doc = if (f.docComment === null) "" else f.docComment
       	  val collAnnot = f.findAnnotation(findTypeGlobally(CollectionProperty))
+      	  val virtualAnnot = f.findAnnotation(findTypeGlobally(VirtualProperty))
+      	  var getterJavaCode = ""
+      	  var setterJavaCode = ""
+      	  if (virtualAnnot !== null) {
+	      	  getterJavaCode = virtualAnnot.getStringValue("getterJavaCode")
+	          requireNonNull(getterJavaCode, qualifiedName+"."+f.simpleName+".getterJavaCode")
+	      	  setterJavaCode = virtualAnnot.getStringValue("setterJavaCode")
+	          requireNonNull(setterJavaCode, qualifiedName+"."+f.simpleName+".setterJavaCode")
+          }
           if (f.type.array) {
           	// A collection property!
           	val componentTypeName = f.type.arrayComponentType.name
@@ -529,7 +560,8 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
           	}
             properties.set(index, new PropertyInfo(
 	            requireNonNull(f.simpleName, "f.simpleName"),
-	            requireNonNull(typeName, "typeName"), doc, collType, fixedSize))
+	            requireNonNull(typeName, "typeName"), doc, collType, fixedSize,
+	            getterJavaCode, setterJavaCode))
           } else {
           	  if (collAnnot !== null) {
           		// NOT a collection property!
@@ -538,7 +570,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	          properties.set(index, new PropertyInfo(
 	            requireNonNull(f.simpleName, "f.simpleName"),
 	            requireNonNull(ftypeName, "ftypeName"),
-	            doc, null, -1))
+	            doc, null, -1, getterJavaCode, setterJavaCode))
           }
           index = index + 1
           if (!validPropertyType(processingContext, f.type, td)) {
@@ -811,6 +843,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
     val metaPkg = BooleanProperty.package.name
     val propName = propertyMethodName(propInfo)
     val name = getPropertyFieldNameInMeta(beanInfo.simpleName, propInfo)
+    val isVirtual = !propInfo.getterJavaCode.empty
     if (meta.findDeclaredField(name) === null) {
       val simpleName = beanInfo.simpleName
       val qualifiedName = beanInfo.pkgName+"."+simpleName
@@ -821,25 +854,26 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
         newTypeReference(metaPkg+".True"+propName, beanType)
       }
       warn(BeanProcessor, "transform", meta, "Adding "+name+" to "+meta.qualifiedName)
+      val init = if ("ObjectProperty" == propName) {
+      	// We drop the generic part
+      	var propTypeName = propInfo.type
+      	val index = propTypeName.indexOf("<")
+      	if (index > 0) {
+      		propTypeName = propTypeName.substring(0, index)
+      	}
+        // TODO Work out the real value for the boolean flags!
+        '''BUILDER.new«propName»(«simpleName».class, "«propInfo.name»", «propTypeName».class,
+        true, true, false, new «accessorName»(), «isVirtual»)'''
+      } else {
+        '''BUILDER.new«propName»(«simpleName».class, "«propInfo.name»", new «accessorName»(), «isVirtual»)'''
+      }
       meta.addField(name) [
         visibility = Visibility.PUBLIC
         final = true
         static = true
         type = retTypeRef
         initializer = [
-          if ("ObjectProperty" == propName) {
-          	// We drop the generic part
-          	var propTypeName = propInfo.type
-          	val index = propTypeName.indexOf("<")
-          	if (index > 0) {
-          		propTypeName = propTypeName.substring(0, index)
-          	}
-            // TODO Work out the real value for the boolean flags!
-            '''BUILDER.new«propName»(«simpleName».class, "«propInfo.name»", «propTypeName».class,
-            true, true, false, new «accessorName»())'''
-          } else {
-            '''BUILDER.new«propName»(«simpleName».class, "«propInfo.name»", new «accessorName»())'''
-          }
+          init
         ]
         // SETP 28
         // Comments should be generated for Meta too
@@ -1041,7 +1075,8 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
   /** Generates the field for the given property */
   private def void generatePropertyField(Map<String, Object> processingContext,
     MutableClassDeclaration impl, BeanInfo beanInfo, PropertyInfo propInfo) {
-    if (impl.findDeclaredField(propInfo.name) === null) {
+	val isVirtual = !propInfo.getterJavaCode.empty
+    if (!isVirtual && impl.findDeclaredField(propInfo.name) === null) {
       val doc = propInfo.comment
       impl.addField(propInfo.name) [
         visibility = Visibility.PRIVATE
@@ -1065,19 +1100,24 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		MutableClassDeclaration impl, BeanInfo beanInfo, PropertyInfo propInfo) {
 		val propertyMethodName = propertyMethodName(propInfo);
 		val propertyFieldName = beanInfo.pkgName+".Meta."+getPropertyFieldNameInMeta(beanInfo.simpleName, propInfo)
+		val getterJavaCode = propInfo.getterJavaCode
+		val setterJavaCode = propInfo.setterJavaCode
+    	val isVirtual = !getterJavaCode.empty
 		val doc = propInfo.comment
 		val propTypeRef = newTypeReferenceWithGenerics(propInfo.type)
 		val colType = propInfo.colType
 		val tfu = to_FirstUpper(propInfo.name)
 		val getter = if (colType !== null) "getRaw"+tfu else "get"+tfu
 		if (impl.findDeclaredMethod(getter) === null) {
+			val bodyText = if (isVirtual) getterJavaCode+";"
+				else '''return interceptor.get«propertyMethodName»(this, «propertyFieldName», «propInfo.name»);'''
 			impl.addMethod(getter) [
 				visibility = Visibility.PUBLIC
 				final = true
 				static = false
 				returnType = propTypeRef
 				body = [
-					'''return interceptor.get«propertyMethodName»(this, «propertyFieldName», «propInfo.name»);'''
+					bodyText
 				]
 				// STEP 31
 				// Comments on properties must be transfered to generated code
@@ -1091,7 +1131,10 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		}
 		val setter = "set"+tfu
 		val valueType = propTypeRef
-		if (impl.findDeclaredMethod(setter, valueType) === null) {
+		if ((!isVirtual || !setterJavaCode.empty) && impl.findDeclaredMethod(setter, valueType) === null) {
+			val bodyText = if (isVirtual) setterJavaCode+";"
+				else '''«propInfo.name» = interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», newValue);
+return this;'''
 			impl.addMethod(setter) [
 				visibility = Visibility.PUBLIC
 				final = true
@@ -1099,8 +1142,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 				returnType = newTypeReference(impl.qualifiedName)
 				addParameter("newValue", valueType)
 				body = [
-					'''«propInfo.name» = interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», newValue);
-return this;'''
+					bodyText
 				]
 				// STEP 31
 				// Comments on properties must be transfered to generated code
@@ -1112,7 +1154,7 @@ return this;'''
 			]
 			warn(BeanProcessor, "transform", impl, setter+" added to "+impl.qualifiedName)
 		}
-		if (colType !== null) {
+		if (!isVirtual && (colType !== null)) {
 			val creator = "get"+tfu
 			if (impl.findDeclaredMethod(creator) === null) {
 				// TODO Verify if we should match "exact type" for the values, and specify
@@ -1149,7 +1191,7 @@ return this;'''
 					static = false
 					returnType = propTypeRef
 					body = [
-						'''«setter»(new «CollectionBeanImpl.name»<«componentType»>(«componentTypeType2»,«config»));
+						'''«setter»(new «CollectionBeanImpl.name»<«componentType»>(«BeansMeta.name».COLLECTION_BEAN, «componentTypeType2»,«config»));
     return «getter»();'''
 					]
 					// STEP 31
@@ -1182,7 +1224,7 @@ return this;'''
 			}
 
 			if (!beanInfo.properties.empty) {
-				val props = <String>newArrayOfSize(beanInfo.properties.size*5)
+				val props = <String>newArrayOfSize(beanInfo.properties.size*7)
 				i = 0
 				for (p : beanInfo.properties) {
 					props.set(i, requireNonNull(p.name, p+": name"))
@@ -1194,6 +1236,10 @@ return this;'''
 					props.set(i, if (p.colType === null) "" else p.colType.name)
 					i = i + 1
 					props.set(i, String.valueOf(p.fixedSize))
+					i = i + 1
+					props.set(i, requireNonNull(p.getterJavaCode, p+": getterJavaCode"))
+					i = i + 1
+					props.set(i, requireNonNull(p.setterJavaCode, p+": setterJavaCode"))
 					i = i + 1
 				}
 				bi.set("properties", props)
@@ -1227,7 +1273,7 @@ return this;'''
 			parentList.add(beanInfo(processingContext, qname))
 		}
 
-		val properties = <PropertyInfo>newArrayOfSize(_props.size/5)
+		val properties = <PropertyInfo>newArrayOfSize(_props.size/7)
 		var i = 0
 		while (i < _props.size) {
 			val name = _props.get(i)
@@ -1236,8 +1282,11 @@ return this;'''
 			val colTypeName = _props.get(i+3)
 			val colType = if (colTypeName.empty) null else Enum.valueOf(CollectionPropertyType, colTypeName)
 			val fixedSize = Integer.parseInt(_props.get(i+4))
-			properties.set(i/5, new PropertyInfo(name, type, comment, colType, fixedSize))
-			i = i + 5
+			val getterJavaCode = _props.get(i+5)
+			val setterJavaCode = _props.get(i+6)
+			properties.set(i/7, new PropertyInfo(name, type, comment, colType,
+				fixedSize, getterJavaCode, setterJavaCode))
+			i = i + 7
 		}
 		new BeanInfo(qualifiedName,
 			parentList.toArray(newArrayOfSize(parentList.size)),

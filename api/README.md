@@ -337,3 +337,7 @@ We need a Bean graph visitor. It would use the Properties and allow either eithe
 Is virtual properties the same as transient properties? I think the two are mostly orthogonal. Transient properties are normal properties that are not saved (but could be in toString). Virtual properties are not normally "allocated space", but we could have "cached" virtual properties, and those would basically be transient properties.
 
 We should allow the definition of virtual properties just by annotating the interface field with an annotation that defines the getter and setter implementations as Strings.
+
+Traits/Beans can also be considered a schema definition (if we keep the code out).
+
+We do need to use our serialization API, because we will have to deal with *versioning*.
