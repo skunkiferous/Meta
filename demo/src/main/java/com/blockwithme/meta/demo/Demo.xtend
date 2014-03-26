@@ -62,7 +62,7 @@ interface DemoType extends Root {
   /** Object property */
   String objectProp
 
-  @CollectionProperty(type=CollectionPropertyType::list, fixedSize=10)
+  @CollectionProperty(type=/*CollectionPropertyType*/"list", fixedSize=10)
   String[] arrayProp
 }
 

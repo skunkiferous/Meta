@@ -72,16 +72,20 @@ annotation Bean {
 	String[] sortKeyes = #[]
 }
 
-/** The possible types of collection properties */
-enum CollectionPropertyType {
+/**
+ * The possible types of collection properties.
+ * This type *should be an enum*, but some bug in Xtend prevent me from using an enum.
+ * Since I cannot create a *simple* test-case that shows the bug, they just won't fix it.
+ */
+interface CollectionPropertyType {
 	/** Are we a sorted set? */
-	sortedSet,
+	val sortedSet = "sortedSet"
 	/** Are we an ordered set? */
-	orderedSet,
+	val orderedSet = "orderedSet"
 	/** Are we an unordered set? */
-	unorderedSet,
+	val unorderedSet = "unorderedSet"
 	/** Are we a list? */
-	list
+	val list = "list"
 }
 
 /**
@@ -93,7 +97,7 @@ enum CollectionPropertyType {
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.CLASS)
 annotation CollectionProperty {
-	CollectionPropertyType type
+	/*CollectionPropertyType*/String type
 	int fixedSize = -1
 }
 
@@ -119,7 +123,7 @@ package class PropertyInfo {
   String name
   String type
   String comment
-  CollectionPropertyType colType
+  /*CollectionPropertyType*/String colType
   int fixedSize
   /** Virtual Property getter implementation */
   String getterJavaCode
@@ -554,8 +558,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
           	var collType = CollectionPropertyType.unorderedSet
           	var fixedSize = -1
           	if (collAnnot !== null) {
-          		val enumValueName = collAnnot.getEnumValue("type").simpleName
-          		collType = Enum.valueOf(CollectionPropertyType, enumValueName)
+          		collType = collAnnot.getStringValue("type")
           		fixedSize = collAnnot.getIntValue("fixedSize")
           	}
             properties.set(index, new PropertyInfo(
@@ -783,6 +786,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
     // Add getter
     val instanceType = beanType
     if (accessor.findDeclaredMethod("apply", instanceType) === null) {
+      val bodyText = '''return instance.get«to_FirstUpper(propInfo.name)»();'''
       accessor.addMethod("apply") [
         visibility = Visibility.PUBLIC
         final = true
@@ -790,7 +794,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
         returnType = propTypeRef
         addParameter("instance", instanceType)
         body = [
-          '''return instance.get«to_FirstUpper(propInfo.name)»();'''
+          bodyText
         ]
         docComment = "Getter for the property "+qualifiedName+"."+propInfo.name
       ]
@@ -798,6 +802,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
     // Add setter
     val valueType = propTypeRef
     if (accessor.findDeclaredMethod("apply", instanceType, valueType) === null) {
+      val bodyText = '''return instance.set«to_FirstUpper(propInfo.name)»(newValue);'''
       accessor.addMethod("apply") [
         visibility = Visibility.PUBLIC
         final = true
@@ -806,7 +811,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
         addParameter("instance", instanceType)
         addParameter("newValue", valueType)
         body = [
-          '''return instance.set«to_FirstUpper(propInfo.name)»(newValue);'''
+          bodyText
         ]
         docComment = "Setter for the property "+qualifiedName+"."+propInfo.name
       ]
@@ -895,13 +900,14 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
     provider.visibility = Visibility.PUBLIC
     provider.final = true
     if (provider.findDeclaredMethod("get") === null) {
+      val bodyText = '''return new «implName(pkgName, simpleName)»();'''
       provider.addMethod("get") [
         visibility = Visibility.PUBLIC
         final = true
         static = false
         returnType = newTypeReference(beanInfo.qualifiedName)
         body = [
-          '''return new «implName(pkgName, simpleName)»();'''
+          bodyText
         ]
         // STEP 32
         // Comments should be generated for the providers.
@@ -1185,14 +1191,19 @@ return this;'''
       			} else {
       				componentTypeType
       			}
+      			val bodyText = '''«propTypeRef» result = «getter»();
+if (result == null) {
+	«setter»(new «CollectionBeanImpl.name»<«componentType»>(«BeansMeta.name».COLLECTION_BEAN, «componentTypeType2»,«config»));
+	result = «getter»();
+}
+return result;'''
 				impl.addMethod(creator) [
 					visibility = Visibility.PUBLIC
 					final = true
 					static = false
 					returnType = propTypeRef
 					body = [
-						'''«setter»(new «CollectionBeanImpl.name»<«componentType»>(«BeansMeta.name».COLLECTION_BEAN, «componentTypeType2»,«config»));
-    return «getter»();'''
+						bodyText
 					]
 					// STEP 31
 					// Comments on properties must be transfered to generated code
@@ -1233,7 +1244,7 @@ return this;'''
 					i = i + 1
 					props.set(i, requireNonNull(p.comment, p+": comment"))
 					i = i + 1
-					props.set(i, if (p.colType === null) "" else p.colType.name)
+					props.set(i, if (p.colType === null) "" else p.colType)
 					i = i + 1
 					props.set(i, String.valueOf(p.fixedSize))
 					i = i + 1
@@ -1280,7 +1291,7 @@ return this;'''
 			val type = _props.get(i+1)
 			val comment = _props.get(i+2)
 			val colTypeName = _props.get(i+3)
-			val colType = if (colTypeName.empty) null else Enum.valueOf(CollectionPropertyType, colTypeName)
+			val colType = if (colTypeName.empty) null else colTypeName
 			val fixedSize = Integer.parseInt(_props.get(i+4))
 			val getterJavaCode = _props.get(i+5)
 			val setterJavaCode = _props.get(i+6)
@@ -1335,13 +1346,14 @@ return this;'''
 		// STEP 38
 		// Generate the "copy methods" in the implementation
 		if (impl.findDeclaredMethod("copy") === null) {
+			val bodyText = '''return («mtd.qualifiedName») doCopy();'''
 			impl.addMethod("copy") [
 				visibility = Visibility.PUBLIC
 				final = false
 				static = false
 				returnType = newTypeReference(mtd)
 				body = [
-					'''return («mtd.qualifiedName») doCopy();'''
+					bodyText
 				]
 				docComment = "Returns a full mutable copy"
 			]
@@ -1349,13 +1361,14 @@ return this;'''
 		}
 
 		if (impl.findDeclaredMethod("snapshot") === null) {
+			val bodyText = '''return («mtd.qualifiedName») doSnapshot();'''
 			impl.addMethod("snapshot") [
 				visibility = Visibility.PUBLIC
 				final = false
 				static = false
 				returnType = newTypeReference(mtd)
 				body = [
-					'''return («mtd.qualifiedName») doSnapshot();'''
+					bodyText
 				]
 				docComment = "Returns an immutable copy"
 			]
@@ -1363,13 +1376,14 @@ return this;'''
 		}
 
 		if (impl.findDeclaredMethod("wrapper") === null) {
+			val bodyText = '''return («mtd.qualifiedName») doWrapper();'''
 			impl.addMethod("wrapper") [
 				visibility = Visibility.PUBLIC
 				final = false
 				static = false
 				returnType = newTypeReference(mtd)
 				body = [
-					'''return («mtd.qualifiedName») doWrapper();'''
+					bodyText
 				]
 				docComment = "Returns a lightweight mutable copy"
 			]
@@ -1400,14 +1414,7 @@ return this;'''
 			// STEP 40
 			// Generate optional compareTo() method in implementation
 			if (impl.findDeclaredMethod("compareTo", paramList) === null) {
-				impl.addMethod("compareTo") [
-					visibility = Visibility.PUBLIC
-					final = false
-					static = false
-					addParameter("other", param)
-					returnType = primitiveInt
-					body = [
-						'''
+				val bodyText = '''
 						if (other == null) {
 							return 1;
 						}
@@ -1418,6 +1425,14 @@ return this;'''
 						}
 						«ENDFOR»
 						return result;'''
+				impl.addMethod("compareTo") [
+					visibility = Visibility.PUBLIC
+					final = false
+					static = false
+					addParameter("other", param)
+					returnType = primitiveInt
+					body = [
+						bodyText
 					]
 					docComment = "Compares to other"
 				]
@@ -1550,16 +1565,17 @@ return this;'''
 					addParameter("metaType", typeTypeRef)
 					visibility = Visibility.PROTECTED
 					body = [
-						'''super(metaType);'''
+						'super(metaType);'
 					]
 					docComment = "Creates a new "+qualifiedName+" taking it's metaType as parameter"
 				]
 			}
 			if ((impl.findDeclaredConstructor() === null) && beanInfo.isInstance) {
+				val bodyText = '''this(«pkgName».Meta.«metaTypeFieldName(simpleName)»);'''
 				impl.addConstructor[
 					visibility = Visibility.PUBLIC
 					body = [
-						'''this(«pkgName».Meta.«metaTypeFieldName(simpleName)»);'''
+						bodyText
 					]
 					docComment = "Creates a new "+qualifiedName+" with it's default metaType"
 				]
