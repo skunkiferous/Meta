@@ -16,9 +16,14 @@
 package com.blockwithme.meta.demo
 
 import com.blockwithme.meta.annotations.Bean
+import com.blockwithme.meta.annotations.ListProperty
+import com.blockwithme.meta.annotations.OrderedSetProperty
+import com.blockwithme.meta.annotations.SortedSetProperty
 import com.blockwithme.meta.annotations.Trace
-import com.blockwithme.meta.annotations.CollectionProperty
-import com.blockwithme.meta.annotations.CollectionPropertyType
+import com.blockwithme.meta.annotations.UnorderedSetProperty
+
+import static extension com.blockwithme.meta.demo.Aged.*
+import static extension com.blockwithme.meta.demo.Named.*
 
 /**
  * Hierarchy "root".
@@ -61,9 +66,6 @@ interface DemoType extends Root {
 
   /** Object property */
   String objectProp
-
-  @CollectionProperty(type=/*CollectionPropertyType*/"list", fixedSize=10)
-  String[] arrayProp
 }
 
 /** Example of a child type */
@@ -186,6 +188,24 @@ interface SixtyFiveProps extends Root {
 	boolean prop62
 	boolean prop63
 	boolean prop64
+}
+
+@Bean
+interface CollectionOwner extends Root {
+  @UnorderedSetProperty
+  String[] unorderedSet
+
+  @OrderedSetProperty
+  String[] orderedSet
+
+  @SortedSetProperty
+  String[] sortedSet
+
+  @ListProperty
+  String[] list
+
+  @ListProperty(fixedSize=10)
+  String[] fixedSizeList
 }
 
 /** Example of the Trace annotation */

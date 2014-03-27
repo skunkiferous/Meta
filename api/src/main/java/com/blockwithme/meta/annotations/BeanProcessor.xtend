@@ -53,8 +53,7 @@ import static java.util.Objects.*
 import com.blockwithme.meta.HierarchyBuilderFactory
 import com.blockwithme.meta.beans.CollectionBean
 import com.blockwithme.meta.beans.impl.CollectionBeanImpl
-import com.blockwithme.meta.beans.impl.CollectionBeanConfig
-import com.blockwithme.meta.beans.BeansMeta
+import com.blockwithme.meta.beans.CollectionBeanConfig
 
 /**
  * Annotates an interface declared in a C-style-struct syntax
@@ -78,26 +77,58 @@ annotation Bean {
  * Since I cannot create a *simple* test-case that shows the bug, they just won't fix it.
  */
 interface CollectionPropertyType {
-	/** Are we a sorted set? */
-	val sortedSet = "sortedSet"
-	/** Are we an ordered set? */
-	val orderedSet = "orderedSet"
 	/** Are we an unordered set? */
 	val unorderedSet = "unorderedSet"
+	/** Are we an ordered set? */
+	val orderedSet = "orderedSet"
+	/** Are we a sorted set? */
+	val sortedSet = "sortedSet"
 	/** Are we a list? */
 	val list = "list"
 }
 
 /**
- * Annotates a property field as a specific collection type.
+ * Annotates a property field as an unordered set collection type.
  * Can only be applied to arrays.
  *
  * @author monster
  */
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.CLASS)
-annotation CollectionProperty {
-	/*CollectionPropertyType*/String type
+annotation UnorderedSetProperty {
+}
+
+/**
+ * Annotates a property field as an ordered set collection type.
+ * Can only be applied to arrays.
+ *
+ * @author monster
+ */
+@Target(ElementType.FIELD)
+@Retention(RetentionPolicy.CLASS)
+annotation OrderedSetProperty {
+}
+
+/**
+ * Annotates a property field as a sorted set collection type.
+ * Can only be applied to arrays.
+ *
+ * @author monster
+ */
+@Target(ElementType.FIELD)
+@Retention(RetentionPolicy.CLASS)
+annotation SortedSetProperty {
+}
+
+/**
+ * Annotates a property field as a list collection type.
+ * Can only be applied to arrays.
+ *
+ * @author monster
+ */
+@Target(ElementType.FIELD)
+@Retention(RetentionPolicy.CLASS)
+annotation ListProperty {
 	int fixedSize = -1
 }
 
@@ -541,7 +572,12 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
         for (f : fields) {
           val ftypeName = f.type.name
           val doc = if (f.docComment === null) "" else f.docComment
-      	  val collAnnot = f.findAnnotation(findTypeGlobally(CollectionProperty))
+      	  val unorderedSetAnnot = f.findAnnotation(findTypeGlobally(UnorderedSetProperty))
+      	  val orderedSetAnnot = f.findAnnotation(findTypeGlobally(OrderedSetProperty))
+      	  val sortedSetAnnot = f.findAnnotation(findTypeGlobally(SortedSetProperty))
+      	  val listAnnot = f.findAnnotation(findTypeGlobally(ListProperty))
+      	  val isCollProp = (unorderedSetAnnot !== null) || (orderedSetAnnot !== null)
+      	  	|| (sortedSetAnnot !== null) || (listAnnot !== null)
       	  val virtualAnnot = f.findAnnotation(findTypeGlobally(VirtualProperty))
       	  var getterJavaCode = ""
       	  var setterJavaCode = ""
@@ -555,18 +591,41 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
           	// A collection property!
           	val componentTypeName = f.type.arrayComponentType.name
           	val typeName = CollectionBean.name+"<"+componentTypeName+">"
-          	var collType = CollectionPropertyType.unorderedSet
+          	var String collType = null
           	var fixedSize = -1
-          	if (collAnnot !== null) {
-          		collType = collAnnot.getStringValue("type")
-          		fixedSize = collAnnot.getIntValue("fixedSize")
+          	if (isCollProp) {
+          		if (unorderedSetAnnot !== null) {
+          			collType = CollectionPropertyType.unorderedSet
+          		}
+          		if (orderedSetAnnot !== null) {
+          			if (collType !== null) {
+          				throw new IllegalStateException(
+          					"Multiple collection types used on "+qualifiedName+"."+f.simpleName)
+          			}
+          			collType = CollectionPropertyType.orderedSet
+          		}
+          		if (sortedSetAnnot !== null) {
+          			if (collType !== null) {
+          				throw new IllegalStateException(
+          					"Multiple collection types used on "+qualifiedName+"."+f.simpleName)
+          			}
+          			collType = CollectionPropertyType.sortedSet
+          		}
+          		if (listAnnot !== null) {
+          			if (collType !== null) {
+          				throw new IllegalStateException(
+          					"Multiple collection types used on "+qualifiedName+"."+f.simpleName)
+          			}
+          			collType = CollectionPropertyType.list
+          			fixedSize = listAnnot.getIntValue("fixedSize")
+      			}
           	}
             properties.set(index, new PropertyInfo(
 	            requireNonNull(f.simpleName, "f.simpleName"),
 	            requireNonNull(typeName, "typeName"), doc, collType, fixedSize,
 	            getterJavaCode, setterJavaCode))
           } else {
-          	  if (collAnnot !== null) {
+          	  if (isCollProp) {
           		// NOT a collection property!
                 result.validity.add("Property "+f.simpleName+" is not a collection type (must be array)")
           	  }
@@ -1193,7 +1252,7 @@ return this;'''
       			}
       			val bodyText = '''«propTypeRef» result = «getter»();
 if (result == null) {
-	«setter»(new «CollectionBeanImpl.name»<«componentType»>(«BeansMeta.name».COLLECTION_BEAN, «componentTypeType2»,«config»));
+	«setter»(new «CollectionBeanImpl.name»<«componentType»>(«com.blockwithme.meta.beans.Meta.name».COLLECTION_BEAN, «componentTypeType2»,«config»));
 	result = «getter»();
 }
 return result;'''

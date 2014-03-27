@@ -87,7 +87,7 @@ import java.util.Objects
  *
  * @author monster
  */
-public class Hierarchy {
+public class Hierarchy implements Comparable<Hierarchy> {
     private static val LOG = LoggerFactory.getLogger(Hierarchy)
 
     /** All the Hierarchies */
@@ -120,6 +120,9 @@ public class Hierarchy {
 	/** Quick access to Type instances by name */
 	var Map<String,Type<?>> allTypesByName
 
+	/** The depth of the Hierarchy. */
+	public val int depth
+
     /** All the *currently initialized* Hierarchies */
     static def getHierarchies() {
 		synchR(Hierarchy) [
@@ -137,7 +140,7 @@ public class Hierarchy {
 	        for (h : all) {
 	        	postCreateHierarchy(h, listener)
 	        }
-	        val metas = MetaMeta.BUILDER.allProperties()
+	        val metas = Meta.BUILDER.allProperties()
 	    	for (m : metas) {
 	    		postCreateMetaProperty(m as MetaProperty<?,?>, listener)
 	    	}
@@ -210,7 +213,7 @@ public class Hierarchy {
      */
     static def <M extends MetaProperty<?,?>> postCreateMetaProperty(M metaProperty) {
     	synch(Hierarchy) [
-    		MetaMeta.BUILDER.doRegisterProperty(metaProperty)
+    		Meta.BUILDER.doRegisterProperty(metaProperty)
 	        for (listener : listeners) {
 	        	postCreateMetaProperty(metaProperty, listener)
 	        }
@@ -252,6 +255,18 @@ public class Hierarchy {
 			all = tmp
 			all.length
     	]
+    	depth = if (!dependencies.empty) {
+    		var d = 0
+	    	for (dep : dependencies) {
+	    		val dd = dep.depth
+	    		if (dd > d) {
+	    			d = dd
+	    		}
+	    	}
+	    	d + 1
+    	} else {
+    		0
+    	}
     	synch(Hierarchy) [
 			// OK, there is some chances, that the class of this Hierarchy
 			// actually extends this class, and that we are not fully
@@ -325,6 +340,26 @@ public class Hierarchy {
 	final def <E> Type<E> findType(Class<E> clazz) {
 		findType(requireNonNull(clazz, "clazz").name, new HashSet<Hierarchy>()) as Type<E>
 	}
+
+	/**
+	 * Searches for a Type by Class.
+	 * Does not delegate to dependencies.
+	 */
+	final def <E> Type<E> findTypeDirect(Class<E> clazz) {
+		getAllTypesByName().get(requireNonNull(clazz, "clazz").name) as Type<E>
+	}
+
+	override int compareTo(Hierarchy o) {
+		if (o === null) {
+			return 1
+		}
+		if (o.depth === depth) {
+			name.compareTo(o.name)
+		} else {
+			depth - o.depth
+		}
+	}
+
 }
 
 /** Hierarchy event listener interface */
@@ -885,19 +920,21 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 		for (prop : inheritedProperties) {
 			// Property name clash is not allowed between parent either
 			val other = _simpleNameToProperty.put(prop.simpleName, prop)
-			if (other != null) {
-				throw new IllegalStateException(theType
+			if ((other !== null) && (other !== prop)) {
+				val msg = theType
 					+" inherits multiple properties with simpleName "+prop.simpleName
-					+" (at least "+prop.fullName+" and "+other.fullName+")")
+					+" (at least "+prop.fullName+" and "+other.fullName+")"
+				throw new IllegalStateException(msg)
 			}
 		}
 		for (prop : inheritedVirtualProperties) {
 			// Property name clash is not allowed between parent either
 			val other = _simpleNameToProperty.put(prop.simpleName, prop)
-			if (other != null) {
-				throw new IllegalStateException(theType
+			if ((other !== null) && (other !== prop)) {
+				val msg = theType
 					+" inherits multiple properties with simpleName "+prop.simpleName
-					+" (at least "+prop.fullName+" and "+other.fullName+")")
+					+" (at least "+prop.fullName+" and "+other.fullName+")"
+				throw new IllegalStateException(msg)
 			}
 		}
 	    propertyCount = properties.length
@@ -2193,8 +2230,8 @@ public class MetaHierarchyBuilder extends HierarchyBuilder {
 
 	/** Makes sure all the constants are initialized. Can always be called safely. */
 	static def init() {
-		if (MetaMeta.HIERARCHY.allTypes.length !== 4) {
-			throw new IllegalStateException("META: "+MetaMeta.HIERARCHY.allTypes.toList)
+		if (Meta.HIERARCHY.allTypes.length !== 4) {
+			throw new IllegalStateException("META: "+Meta.HIERARCHY.allTypes.toList)
 		}
 	}
 
@@ -2220,7 +2257,7 @@ public class MetaHierarchyBuilder extends HierarchyBuilder {
 		val result = super.doPreRegisterProperty(theOwner, theSimpleName, theConverter,
 			thePropType, theBits, theMeta, dataType, theVirtual)
 		// Meta properties are never actually registered as part of the (meta) type creation
-		val Type metaType = MetaMeta.HIERARCHY.findType(theOwner as Class)
+		val Type metaType = Meta.HIERARCHY.findType(theOwner as Class)
 		// metaType must be found, since theMeta is true
 		result.ownerType.set(0, metaType)
 		LOG.info("Registering meta-property "+theOwner.name+"."+theSimpleName
@@ -2515,7 +2552,7 @@ public interface JavaMeta {
  * Hierarchy to be initialized before the Meta Hierarchy.
  */
  @SuppressWarnings("rawtypes")
-public interface MetaMeta {
+public interface Meta {
 	/** The Hierarchy of Meta Types */
 	public static val BUILDER = HierarchyBuilderFactory.registerHierarchyBuilder(new MetaHierarchyBuilder())
 

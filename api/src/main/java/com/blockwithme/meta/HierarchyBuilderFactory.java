@@ -15,7 +15,10 @@
  */
 package com.blockwithme.meta;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -66,6 +69,43 @@ public class HierarchyBuilderFactory {
                         + " already registered!");
             }
             return theHierarchyBuilder;
+        }
+    }
+
+    /** Search for the given type. */
+    public static <E> Type<E> findType(final Class<E> clazz) {
+        if (clazz == null) {
+            return null;
+        }
+        synchronized (CACHE) {
+            final List<Hierarchy> done = new ArrayList<>();
+            final List<HierarchyBuilder> unfinished = new ArrayList<>();
+            for (final HierarchyBuilder hb : CACHE.values()) {
+                final Hierarchy h = hb.hierarchy();
+                if (h != null) {
+                    if (!done.contains(h)) {
+                        done.add(h);
+                    }
+                } else {
+                    unfinished.add(hb);
+                }
+            }
+            Collections.sort(done);
+            Collections.reverse(done);
+            for (final Hierarchy hierarchy : done) {
+                final Type<E> type = hierarchy.findTypeDirect(clazz);
+                if (type != null) {
+                    return type;
+                }
+            }
+            // Random search order :(
+            for (final HierarchyBuilder hierarchyBuilder : unfinished) {
+                final Type<E> type = hierarchyBuilder.findTypeDirect(clazz);
+                if (type != null) {
+                    return type;
+                }
+            }
+            return null;
         }
     }
 }

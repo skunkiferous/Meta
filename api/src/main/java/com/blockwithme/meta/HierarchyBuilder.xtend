@@ -94,6 +94,9 @@ class HierarchyBuilder {
 	/** Are we done? */
 	var closed = false
 
+	/** The Hierarchy; the HierarchyBuilder is closed after creating it. */
+	var Hierarchy hierarchy = null
+
 	/** Increments a counter, and returns the value before the increment. */
 	protected def incCounter(Map<String,Integer> counters, String name) {
 		var result = counters.get(name)
@@ -825,6 +828,13 @@ class HierarchyBuilder {
 					if (dot > 0) {
 						val pkgName = typeName.substring(0, dot)
 						if (!pkgAsList.contains(pkgName)) {
+							// Force initialization of Meta...
+							try {
+								Class.forName(pkgName+".Meta").declaredFields
+							} catch (Throwable ex) {
+								// NOP
+								ex.printStackTrace
+							}
 							try {
 								// Not part of our packages, so a dependency
 								val h = prop.contentType.hierarchy()
@@ -832,9 +842,20 @@ class HierarchyBuilder {
 									result.add(h)
 								}
 							} catch (RuntimeException ex) {
-								throw new RuntimeException("For contentType "+typeName
-									+" packages: "+pkgAsList, ex
-								)
+								val type = HierarchyBuilderFactory.findType(prop.contentTypeClass)
+								if (type !== null) {
+									val h = type.hierarchy()
+									if (h === null) {
+										throw new RuntimeException("For contentType "+typeName
+											+" property: "+prop+" packages: "+pkgAsList, ex)
+									}
+									if ((h !== null) && !result.contains(h)) {
+										result.add(h)
+									}
+								} else {
+									throw new RuntimeException("For contentType "+typeName
+										+" property: "+prop+" packages: "+pkgAsList, ex)
+								}
 							}
 						}
 					}
@@ -848,8 +869,28 @@ class HierarchyBuilder {
 	def Hierarchy newHierarchy(TypePackage... packages) {
 		val registered = registerPackage(packages)
 		val dependencies = if ((Object.name == name) || (class == MetaHierarchyBuilder)) newArrayOfSize(0) else findDependencies(registered)
-		val result = new Hierarchy(this, registered, dependencies)
+		hierarchy = new Hierarchy(this, registered, dependencies)
 		close()
-		result
+		hierarchy
+	}
+
+	/** The Hierarchy; the HierarchyBuilder is closed after creating it. */
+	def hierarchy() {
+		hierarchy
+	}
+
+	/**
+	 * Searches for a Type by Class.
+	 * Does not delegate to dependencies.
+	 */
+	final def <E> Type<E> findTypeDirect(Class<E> clazz) {
+		for (pkg : allPackages) {
+			for (type : pkg.types) {
+				if (type.type == clazz) {
+					return type as Type<E>
+				}
+			}
+		}
+		null
 	}
 }

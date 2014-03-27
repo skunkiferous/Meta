@@ -27,6 +27,7 @@ import java.util.Objects;
 
 import com.blockwithme.meta.Type;
 import com.blockwithme.meta.beans.CollectionBean;
+import com.blockwithme.meta.beans.CollectionBeanConfig;
 import com.blockwithme.meta.beans.ObjectCollectionInterceptor;
 import com.blockwithme.meta.beans._Bean;
 

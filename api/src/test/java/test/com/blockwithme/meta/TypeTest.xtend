@@ -37,8 +37,8 @@ import com.blockwithme.util.Footprint
 import java.util.Map
 import org.junit.BeforeClass
 import com.blockwithme.meta.JavaMeta
-import com.blockwithme.meta.MetaMeta
 import com.blockwithme.meta.MetaHierarchyBuilder
+import com.blockwithme.meta.beans.Meta
 
 class MyHierarchyListener implements HierarchyListener {
 	public val List<Hierarchy> hierarchies = newArrayList()
@@ -282,7 +282,7 @@ class TypeTest {
      	assertEquals(TestMeta.TEST, TestMeta.MY_TYPE.pkg.hierarchy)
      	assertEquals(TestMeta.TEST, TestMeta.MY_TYPE.hierarchy)
      	assertEquals(TestMeta.TEST, TestMeta.BOOL_PROP.hierarchy)
-     	assertEquals(MetaMeta.HIERARCHY, TestMeta.META_PROP.hierarchy)
+     	assertEquals(com.blockwithme.meta.Meta.HIERARCHY, TestMeta.META_PROP.hierarchy)
     }
 
     @Test
@@ -455,7 +455,7 @@ class TypeTest {
     	assertEquals(TestMeta.MY_TYPE, TestMeta.LONG_PROP.owner)
     	assertEquals(TestMeta.MY_TYPE, TestMeta.FLOAT_PROP.owner)
     	assertEquals(TestMeta.MY_TYPE, TestMeta.DOUBLE_PROP.owner)
-    	assertEquals(MetaMeta.TYPE, TestMeta.META_PROP.owner)
+    	assertEquals(com.blockwithme.meta.Meta.TYPE, TestMeta.META_PROP.owner)
     	assertEquals(TestMeta.MY_TYPE, TestMeta.ENUM_PROP.owner)
     	assertEquals(TestMeta.MY_TYPE, TestMeta.VIRTUAL_BOOL_PROP.owner)
     }
@@ -621,7 +621,7 @@ class TypeTest {
     public def void testTypePackage() {
      	assertEquals(0, TestMeta.MY_TYPE.pkg.packageId)
      	assertEquals(TestMeta.package, TestMeta.MY_TYPE.pkg.pkg)
-     	assertEquals(#[TestMeta.MY_TYPE,TestMeta.ENUM_TYPE,TestMeta.MY_SUB_TYPE].toList,
+     	assertEquals(#[TestMeta.MY_TYPE,TestMeta.ENUM_TYPE,TestMeta.MY_SUB_TYPE,TestMeta.MY_COLLECTION_TYPE].toList,
      		TestMeta.MY_TYPE.pkg.types.toList
      	)
     }
@@ -637,8 +637,8 @@ class TypeTest {
     @Test
     public def void testHierarchy() {
 //     	assertEquals(MyType, TestMeta.TEST.base)
-     	assertEquals(newArrayList(JavaMeta.HIERARCHY), TestMeta.TEST.dependencies.toList)
-     	assertEquals(newArrayList(JavaMeta.HIERARCHY,MetaMeta.HIERARCHY,TestMeta.TEST), Hierarchy.hierarchies.toList)
+     	assertEquals(newArrayList(JavaMeta.HIERARCHY,Meta.HIERARCHY), TestMeta.TEST.dependencies.toList)
+     	assertEquals(newArrayList(JavaMeta.HIERARCHY,com.blockwithme.meta.Meta.HIERARCHY,Meta.HIERARCHY,TestMeta.TEST), Hierarchy.hierarchies.toList)
     }
 
     @Test

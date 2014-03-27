@@ -18,9 +18,13 @@ package com.blockwithme.meta.beans
 import com.blockwithme.meta.BooleanProperty
 import com.blockwithme.meta.ByteProperty
 import com.blockwithme.meta.CharacterProperty
+import com.blockwithme.meta.ContentOwner
 import com.blockwithme.meta.DoubleProperty
 import com.blockwithme.meta.FloatProperty
+import com.blockwithme.meta.HierarchyBuilderFactory
 import com.blockwithme.meta.IntegerProperty
+import com.blockwithme.meta.JavaMeta
+import com.blockwithme.meta.Kind
 import com.blockwithme.meta.LongProperty
 import com.blockwithme.meta.ObjectProperty
 import com.blockwithme.meta.Property
@@ -29,13 +33,6 @@ import com.blockwithme.meta.Type
 import java.util.Collection
 import java.util.List
 import java.util.Set
-import com.blockwithme.meta.HierarchyBuilderFactory
-import com.blockwithme.meta.Kind
-import com.blockwithme.meta.JavaMeta
-import javax.inject.Provider
-import com.blockwithme.meta.beans.impl.CollectionBeanImpl
-import com.blockwithme.meta.ContentOwner
-import com.blockwithme.meta.beans.impl.CollectionBeanConfig
 
 /** Base for all data/bean objects */
 interface Bean {
@@ -295,7 +292,7 @@ interface _CollectionBean<E> extends CollectionBean<E>, _Bean {
  * Hierarchy to be initialized before the Meta Hierarchy.
  */
  @SuppressWarnings("rawtypes")
-interface BeansMeta {
+interface Meta {
 	/** The Hierarchy of Meta Types */
 	val BUILDER = HierarchyBuilderFactory.getHierarchyBuilder(Bean.name)
 
@@ -324,6 +321,9 @@ interface BeansMeta {
 	/** The _Entity Type */
 	val _ENTITY = BUILDER.newType(_Entity, null, Kind.Trait, #[ENTITY, _BEAN])
 
+	/** The CollectionBeanConfig Type; we pretend it has no property. */
+	val COLLECTION_BEAN_CONFIG = BUILDER.newType(CollectionBeanConfig, null, Kind.Data)
+
 	/** The configuration property of the collection beans */
     val COLLECTION_CONFIG_PROP = BUILDER.newObjectProperty(
     	CollectionBean, "config", CollectionBeanConfig, true, true, true, [config], null, false)
@@ -344,7 +344,7 @@ interface BeansMeta {
 
 	/** The Beans package */
 	val COM_BLOCKWITHME_META_BEANS_PACKAGE = BUILDER.newTypePackage(
-		BEAN, _BEAN, ENTITY, _ENTITY, COLLECTION_BEAN, _COLLECTION_BEAN)
+		BEAN, _BEAN, ENTITY, _ENTITY, COLLECTION_BEAN_CONFIG, COLLECTION_BEAN, _COLLECTION_BEAN)
 
 	/** The Hierarchy of Meta Types */
 	val HIERARCHY = BUILDER.newHierarchy(COM_BLOCKWITHME_META_BEANS_PACKAGE)

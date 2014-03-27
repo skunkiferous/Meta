@@ -16,7 +16,6 @@
 package test.com.blockwithme.meta
 
 import com.blockwithme.meta.Hierarchy
-import com.blockwithme.meta.MetaMeta
 
 /**
  * @author monster
@@ -24,6 +23,6 @@ import com.blockwithme.meta.MetaMeta
  */
 class MyLazyLoadListenerTST {
         public static val TST = Hierarchy.postCreateMetaProperty(
-        	MetaMeta.BUILDER.newMetaProperty(MetaMeta.TYPE, "tst", Boolean, false)
+        	com.blockwithme.meta.Meta.BUILDER.newMetaProperty(com.blockwithme.meta.Meta.TYPE, "tst", Boolean, false)
         )
 }

@@ -1,15 +1,17 @@
 package test.com.blockwithme.meta
 
 import com.blockwithme.meta.Hierarchy
-import com.blockwithme.meta.HierarchyBuilder
+import com.blockwithme.meta.HierarchyBuilderFactory
 import com.blockwithme.meta.JavaMeta
 import com.blockwithme.meta.Kind
-import com.blockwithme.meta.MetaMeta
 import com.blockwithme.meta.Type
+import com.blockwithme.meta.beans.CollectionBean
+import com.blockwithme.meta.beans.Meta
+import com.blockwithme.meta.beans.impl.CollectionBeanImpl
 import com.blockwithme.meta.converter.IntConverter
 
 import static java.util.Objects.*
-import com.blockwithme.meta.HierarchyBuilderFactory
+import com.blockwithme.meta.beans.CollectionBeanConfig
 
 enum MyEnum {
   A,
@@ -92,6 +94,28 @@ class MySubType extends MyType {
     package var intProp2 = 0
 }
 
+class MyCollectionType {
+  /** unorderedSet CollectionBean Property*/
+  package var unorderedSet = new CollectionBeanImpl<String>(
+  	Meta.COLLECTION_BEAN, JavaMeta.STRING, CollectionBeanConfig.UNORDERED_SET)
+
+  /** orderedSet CollectionBean Property*/
+  package var orderedSet = new CollectionBeanImpl<String>(
+  	Meta.COLLECTION_BEAN, JavaMeta.STRING, CollectionBeanConfig.ORDERED_SET)
+
+  /** sortedSet CollectionBean Property*/
+  package var sortedSet = new CollectionBeanImpl<String>(
+  	Meta.COLLECTION_BEAN, JavaMeta.STRING, CollectionBeanConfig.SORTED_SET)
+
+  /** list CollectionBean Property*/
+  package var list = new CollectionBeanImpl<String>(
+  	Meta.COLLECTION_BEAN, JavaMeta.STRING, CollectionBeanConfig.LIST)
+
+  /** fixedSize list CollectionBean Property*/
+  package var fixedSizeList = new CollectionBeanImpl<String>(
+  	Meta.COLLECTION_BEAN, JavaMeta.STRING, CollectionBeanConfig.newFixedSizeList(10,true))
+}
+
 class TestMeta {
   /** Test Hierarchy Builder */
   public static val BUILDER = HierarchyBuilderFactory.getHierarchyBuilder(MyType.name)
@@ -164,8 +188,8 @@ class TestMeta {
   )
 
     public static val META_PROP = Hierarchy.postCreateMetaProperty(
-      MetaMeta.BUILDER.newMetaProperty(
-        MetaMeta.TYPE, "persistent", Boolean, Boolean.FALSE, false))
+      com.blockwithme.meta.Meta.BUILDER.newMetaProperty(
+        com.blockwithme.meta.Meta.TYPE, "persistent", Boolean, Boolean.FALSE, false))
 
   public static val Type<MyType> MY_TYPE = BUILDER.newType(MyType,
     null/*[new MyType]*/, Kind.Implementation, BOOL_PROP, BYTE_PROP,
@@ -176,9 +200,39 @@ class TestMeta {
     = BUILDER.newType(MySubType, null /*[new MySubType]*/,
       Kind.Implementation, #[MY_TYPE], INT_PROP2)
 
+  public static val UNORDERED_SET_PROP = BUILDER.newObjectProperty(
+    MyCollectionType, "unorderedSet",
+    CollectionBean, true, true, true,
+    [unorderedSet], [obj,value|obj.unorderedSet = value;obj], false)
+
+  public static val ORDERED_SET_PROP = BUILDER.newObjectProperty(
+    MyCollectionType, "orderedSet",
+    CollectionBean, true, true, true,
+    [orderedSet], [obj,value|obj.orderedSet = value;obj], false)
+
+  public static val SORTED_SET_PROP = BUILDER.newObjectProperty(
+    MyCollectionType, "sortedSet",
+    CollectionBean, true, true, true,
+    [sortedSet], [obj,value|obj.sortedSet = value;obj], false)
+
+  public static val LIST_PROP = BUILDER.newObjectProperty(
+    MyCollectionType, "list",
+    CollectionBean, true, true, true,
+    [list], [obj,value|obj.list = value;obj], false)
+
+  public static val FIXED_SIZE_LIST_PROP = BUILDER.newObjectProperty(
+    MyCollectionType, "fixedSizeList",
+    CollectionBean, true, true, true,
+    [fixedSizeList], [obj,value|obj.fixedSizeList = value;obj], false)
+
+  public static val Type<MyCollectionType> MY_COLLECTION_TYPE
+    = BUILDER.newType(MyCollectionType, null /*[new MyCollectionType]*/,
+      Kind.Implementation, UNORDERED_SET_PROP, ORDERED_SET_PROP,
+      	SORTED_SET_PROP, LIST_PROP, FIXED_SIZE_LIST_PROP)
+
   /** The test.com.blockwithme.meta package */
   public static val MY_PACKAGE = BUILDER.newTypePackage(
-    MY_TYPE, ENUM_TYPE, MY_SUB_TYPE)
+    MY_TYPE, ENUM_TYPE, MY_SUB_TYPE, MY_COLLECTION_TYPE)
 
   public static val Type<Object> OBJECT2 = BUILDER.newType(Object, null, Kind.Data)
 
