@@ -138,7 +138,7 @@ class DefaultInterceptor implements Interceptor {
 	}
 
 	override <E> setObjectProperty(_Bean instance, ObjectProperty<?, E> prop, E oldValue, E newValue) {
-		objectPropertyChanged(instance, prop.fullName, instance.indexOf(prop), oldValue, newValue)
+		objectPropertyChanged(instance, prop.fullName, instance.indexOfProperty(prop), oldValue, newValue)
 	}
 
 	protected def <E> objectPropertyChanged(_Bean instance, Object propId,

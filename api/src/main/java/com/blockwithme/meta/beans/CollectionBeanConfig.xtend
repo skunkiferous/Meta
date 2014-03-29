@@ -106,7 +106,10 @@ class CollectionBeanConfig {
 		var result = FIXED_SIZE_CACHE.get(key)
 		if (result === null) {
 			result = new CollectionBeanConfig(fixedSize, true, onlyExactType, false, false, false, false, true)
-			result = FIXED_SIZE_CACHE.putIfAbsent(key, result)
+			val cached = FIXED_SIZE_CACHE.putIfAbsent(key, result)
+			if (cached !== null) {
+				result = cached
+			}
 		}
 		result
 	}

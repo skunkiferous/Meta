@@ -163,7 +163,9 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
 
             try {
                 CollectionBeanImpl.this.remove(lastRet);
-                cursor = lastRet;
+                if (config.getFixedSize() == -1) {
+                    cursor = lastRet;
+                }
                 lastRet = -1;
             } catch (final IndexOutOfBoundsException ex) {
                 throw new ConcurrentModificationException();
@@ -295,6 +297,7 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
     public CollectionBeanImpl(final Type<?> metaType, final Type<E> valueType,
             final CollectionBeanConfig config) {
         super(metaType);
+        interceptor = DefaultCollectionInterceptor.INSTANCE;
         this.valueType = Objects.requireNonNull(valueType, "valueType");
         Objects.requireNonNull(config, "config").validate(valueType);
         this.config = config;
@@ -568,7 +571,7 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
             }
         } else if (config.isOnlyExactType()) {
             final Class<?> elementType = element.getClass();
-            final Class<?> expectedType = getMetaType().type;
+            final Class<?> expectedType = getValueType().type;
             if (elementType != expectedType) {
                 throw new IllegalArgumentException("Expected type: "
                         + expectedType + " Actual type: " + elementType);
@@ -576,7 +579,7 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
         } else {
             // Just to be safe ...
             final Class<?> elementType = element.getClass();
-            final Class<?> expectedType = getMetaType().type;
+            final Class<?> expectedType = getValueType().type;
             if (!expectedType.isAssignableFrom(elementType)) {
                 throw new IllegalArgumentException("Expected type: "
                         + expectedType + " Actual type: " + elementType);
@@ -684,7 +687,7 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
                     } else {
                         final Comparable cmp = (Comparable) element;
                         boolean added = false;
-                        for (int i = 0; !added && (i < array.length); i++) {
+                        for (int i = 0; !added && (i < size); i++) {
                             if (cmp.compareTo(array[i]) < 0) {
                                 System.arraycopy(array, i, array, i + 1, size
                                         - i);

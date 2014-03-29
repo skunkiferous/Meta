@@ -135,7 +135,7 @@ interface _Bean extends Bean {
     def boolean hasSameRoot(_Bean other)
 
     /** Returns the index to use for this property. */
-    def int indexOf(Property<?, ?> prop)
+    def int indexOfProperty(Property<?, ?> prop)
 }
 
 

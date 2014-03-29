@@ -271,7 +271,7 @@ public abstract class _BeanImpl implements _Bean {
         if (propertyCount % 64 != 0) {
             arraySizePlusOne++;
         }
-        selectedArray = (arraySizePlusOne == 1) ? NO_LONG
+        selectedArray = (arraySizePlusOne <= 1) ? NO_LONG
                 : new long[arraySizePlusOne - 1];
     }
 
@@ -325,7 +325,7 @@ public abstract class _BeanImpl implements _Bean {
     /** Returns true if the specified property was selected */
     @Override
     public final boolean isSelected(final Property<?, ?> prop) {
-        return isSelected(indexOf(prop));
+        return isSelected(indexOfProperty(prop));
     }
 
     /** Returns true if the specified property at the given index was selected */
@@ -340,7 +340,7 @@ public abstract class _BeanImpl implements _Bean {
 
     /** Returns the index to use for this property. */
     @Override
-    public final int indexOf(final Property<?, ?> prop) {
+    public final int indexOfProperty(final Property<?, ?> prop) {
         final int result = prop.inheritedPropertyId(metaType);
         if (result < 0) {
             throw new IllegalArgumentException("Property " + prop.fullName
@@ -352,7 +352,7 @@ public abstract class _BeanImpl implements _Bean {
     /** Marks the specified property as selected */
     @Override
     public final void setSelected(final Property<?, ?> prop) {
-        setSelected(indexOf(prop));
+        setSelected(indexOfProperty(prop));
     }
 
     /** Marks the specified property as selected */
