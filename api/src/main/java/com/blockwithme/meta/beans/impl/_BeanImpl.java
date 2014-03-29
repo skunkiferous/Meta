@@ -60,7 +60,7 @@ public abstract class _BeanImpl implements _Bean {
                 if (p.bean) {
                     next = (_Bean) p.getObject(_BeanImpl.this);
                     if (next != null) {
-                        break;
+                        return;
                     }
                 }
                 nextIndex++;
@@ -104,6 +104,7 @@ public abstract class _BeanImpl implements _Bean {
         public final _Bean next() {
             if (hasNext()) {
                 final _Bean result = next;
+                nextIndex++;
                 findNext();
                 return result;
             }

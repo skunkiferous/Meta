@@ -1,5 +1,5 @@
 Manifest-Version: 1.0
-Bnd-LastModified: 1394397030868
+Bnd-LastModified: 1396120429508
 Build-Jdk: 1.7.0_45
 Built-By: monster
 Bundle-Description: A demo/test for the new Xtend Meta API. It *must be 

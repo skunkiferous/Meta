@@ -39,6 +39,7 @@ import org.junit.BeforeClass
 import com.blockwithme.meta.JavaMeta
 import com.blockwithme.meta.MetaHierarchyBuilder
 import com.blockwithme.meta.beans.Meta
+import java.util.HashSet
 
 class MyHierarchyListener implements HierarchyListener {
 	public val List<Hierarchy> hierarchies = newArrayList()
@@ -638,7 +639,9 @@ class TypeTest {
     public def void testHierarchy() {
 //     	assertEquals(MyType, TestMeta.TEST.base)
      	assertEquals(newArrayList(JavaMeta.HIERARCHY,Meta.HIERARCHY), TestMeta.TEST.dependencies.toList)
-     	assertEquals(newArrayList(JavaMeta.HIERARCHY,com.blockwithme.meta.Meta.HIERARCHY,Meta.HIERARCHY,TestMeta.TEST), Hierarchy.hierarchies.toList)
+     	assertEquals(new HashSet(#[JavaMeta.HIERARCHY,com.blockwithme.meta.Meta.HIERARCHY,Meta.HIERARCHY,TestMeta.TEST]),
+     			new HashSet(Hierarchy.hierarchies.toList)
+     	)
     }
 
     @Test
