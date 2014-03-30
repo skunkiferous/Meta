@@ -535,7 +535,7 @@ public abstract class _BeanImpl implements _Bean {
 
     /** Returns the delegate */
     @Override
-    public final _Bean getDelegate() {
+    public _Bean getDelegate() {
         return delegate;
     }
 
@@ -672,33 +672,30 @@ public abstract class _BeanImpl implements _Bean {
             throw new IllegalArgumentException("other cannot be self");
         }
         for (final Property p : metaType.inheritedProperties) {
-            if ((p instanceof ObjectProperty) && ((ObjectProperty) p).bean) {
-                final _BeanImpl value = (_BeanImpl) p.getObject(other);
-                if (value != null) {
-                    if (immutably) {
-                        p.setObject(this, value.doSnapshot());
-                    } else {
-                        p.setObject(this, value.doCopy());
+            if (!p.isImmutable()) {
+                if ((p instanceof ObjectProperty) && ((ObjectProperty) p).bean) {
+                    final _BeanImpl value = (_BeanImpl) p.getObject(other);
+                    if (value != null) {
+                        if (immutably) {
+                            p.setObject(this, value.doSnapshot());
+                        } else {
+                            p.setObject(this, value.doCopy());
+                        }
                     }
+                    // else nothing to do
+                } else {
+                    p.copyValue(other, this);
                 }
-                // else nothing to do
-            } else {
-                p.copyValue(other, this);
-            }
+            } // else we assume it was somehow already set in the constructor...
         }
     }
 
     /** Make a new instance of the same type as self. */
-    private _BeanImpl newInstance() {
+    protected _BeanImpl newInstance() {
         final _BeanImpl result = (_BeanImpl) metaType.constructor.get();
-        copyOtherData(result);
-        return result;
-    }
-
-    /** Copy the "non-property" data. */
-    protected void copyOtherData(final _BeanImpl result) {
         result.toStringHashCode64 = toStringHashCode64;
         result.toString = toString;
+        return result;
     }
 
     /** Returns a full mutable copy */

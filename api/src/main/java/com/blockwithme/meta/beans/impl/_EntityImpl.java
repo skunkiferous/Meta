@@ -71,13 +71,13 @@ public abstract class _EntityImpl extends _BeanImpl implements _Entity {
         this.lastModificationTime = lastModificationTime;
     }
 
-    /** Copy the "non-property" data. */
+    /** Make a new instance of the same type as self. */
     @Override
-    protected void copyOtherData(final _BeanImpl result) {
-        super.copyOtherData(result);
-        final _EntityImpl entity = (_EntityImpl) result;
-        entity.entityContext = entityContext;
-        entity.creationTime = creationTime;
-        entity.lastModificationTime = lastModificationTime;
+    protected _BeanImpl newInstance() {
+        final _EntityImpl result = (_EntityImpl) super.newInstance();
+        result.entityContext = entityContext;
+        result.creationTime = creationTime;
+        result.lastModificationTime = lastModificationTime;
+        return result;
     }
 }

@@ -255,20 +255,20 @@ interface Interceptor {
 /** Interceptor for collections of objects */
 interface ObjectCollectionInterceptor<E> extends Interceptor {
 	/** Intercept the read access to a Object element in a collection */
-    def E getObjectAtIndex(_Bean instance, int index, E value)
+    def E getObjectAtIndex(_CollectionBean<E> instance, int index, E value)
 
 	/** Intercept the write access to a Object element in a collection */
-    def E setObjectAtIndex(_Bean instance, int index, E oldValue,
+    def E setObjectAtIndex(_CollectionBean<E> instance, int index, E oldValue,
             E newValue)
 
 	/** Intercept the insert access to a Object element in a collection */
-    def E addObjectAtIndex(_Bean instance, int index, E newValue, boolean followingElementsChanged)
+    def E addObjectAtIndex(_CollectionBean<E> instance, int index, E newValue, boolean followingElementsChanged)
 
 	/** Intercept the remove access to a Object element in a collection */
-    def void removeObjectAtIndex(_Bean instance, int index, E value, boolean followingElementsChanged)
+    def void removeObjectAtIndex(_CollectionBean<E> instance, int index, E value, boolean followingElementsChanged)
 
 	/** Intercept the clear to a collection */
-    def void clear(_Bean instance)
+    def void clear(_CollectionBean<E> instance)
 
 }
 
@@ -282,7 +282,8 @@ interface CollectionBean<E> extends List<E>, Set<E>, ContentOwner<E>, Bean {
 
 /** A Bean that represents a Collection (either List or Set) */
 interface _CollectionBean<E> extends CollectionBean<E>, _Bean {
-	// NOP
+	/** Returns the delegate, if any */
+    override _CollectionBean<E> getDelegate()
 }
 
 /**

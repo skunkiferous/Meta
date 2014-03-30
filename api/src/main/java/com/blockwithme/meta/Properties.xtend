@@ -1216,6 +1216,9 @@ extends MetaBase<Type<OWNER_TYPE>> {
 
 	/** Copy the value of the Property from the source to the target */
 	def void copyValue(OWNER_TYPE source, OWNER_TYPE target)
+
+	/** Returns true, if the property is immutable. */
+	def boolean isImmutable()
 }
 
 /** Temporary Helper Object, used for Object Property creation. */
@@ -1317,6 +1320,11 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
 	/** Copy the value of the Property from the source to the target */
 	override final void copyValue(OWNER_TYPE source, OWNER_TYPE target) {
 		setObject(target, getObject(source))
+	}
+
+	/** Returns true, if the property is immutable. */
+	override final boolean isImmutable() {
+		setter === null
 	}
 }
 
@@ -1588,6 +1596,11 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	override final void copyValue(OWNER_TYPE source, OWNER_TYPE target) {
 		setBoolean(target, getBoolean(source))
 	}
+
+	/** Returns true, if the property is immutable. */
+	override final boolean isImmutable() {
+		setter === null
+	}
 }
 
 
@@ -1675,6 +1688,11 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	override final void copyValue(OWNER_TYPE source, OWNER_TYPE target) {
 		setByte(target, getByte(source))
 	}
+
+	/** Returns true, if the property is immutable. */
+	override final boolean isImmutable() {
+		setter === null
+	}
 }
 
 
@@ -1761,6 +1779,11 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** Copy the value of the Property from the source to the target */
 	override final void copyValue(OWNER_TYPE source, OWNER_TYPE target) {
 		setChar(target, getChar(source))
+	}
+
+	/** Returns true, if the property is immutable. */
+	override final boolean isImmutable() {
+		setter === null
 	}
 }
 
@@ -1850,6 +1873,11 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	override final void copyValue(OWNER_TYPE source, OWNER_TYPE target) {
 		setShort(target, getShort(source))
 	}
+
+	/** Returns true, if the property is immutable. */
+	override final boolean isImmutable() {
+		setter === null
+	}
 }
 
 
@@ -1936,6 +1964,11 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** Copy the value of the Property from the source to the target */
 	override final void copyValue(OWNER_TYPE source, OWNER_TYPE target) {
 		setInt(target, getInt(source))
+	}
+
+	/** Returns true, if the property is immutable. */
+	override final boolean isImmutable() {
+		setter === null
 	}
 }
 
@@ -2024,6 +2057,11 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	override final void copyValue(OWNER_TYPE source, OWNER_TYPE target) {
 		setFloat(target, getFloat(source))
 	}
+
+	/** Returns true, if the property is immutable. */
+	override final boolean isImmutable() {
+		setter === null
+	}
 }
 
 
@@ -2110,6 +2148,11 @@ extends SixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** Copy the value of the Property from the source to the target */
 	override final void copyValue(OWNER_TYPE source, OWNER_TYPE target) {
 		setLong(target, getLong(source))
+	}
+
+	/** Returns true, if the property is immutable. */
+	override final boolean isImmutable() {
+		setter === null
 	}
 }
 
@@ -2198,6 +2241,11 @@ extends SixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** Copy the value of the Property from the source to the target */
 	override final void copyValue(OWNER_TYPE source, OWNER_TYPE target) {
 		setDouble(target, getDouble(source))
+	}
+
+	/** Returns true, if the property is immutable. */
+	override final boolean isImmutable() {
+		setter === null
 	}
 }
 

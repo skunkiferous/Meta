@@ -659,4 +659,75 @@ class CollectionBeanTest {
      	iter.add(two)
     	assertTrue("list.toArray", Arrays.equals(#[one,two], cb.list.toArray))
 	}
+
+    @Test
+    public def void testCopySnapshotWrapper() {
+    	val cb = new MyCollectionType
+     	val one = "one"
+    	val two = "two"
+    	val three = "three"
+    	cb.list.addAll(#[one,two,three])
+
+    	var copy = cb.list.copy
+     	assertTrue("list.content == list.copy.content", Arrays.equals(cb.list.content, copy.content))
+     	assertEquals("list == list.copy", cb.list, copy)
+     	assertFalse("list.copy.immutable", copy.immutable)
+
+     	var snap = cb.list.snapshot
+     	assertTrue("list.content == list.snapshot.content", Arrays.equals(cb.list.content, snap.content))
+     	assertTrue("list.snapshot.immutable", snap.immutable)
+
+     	var wrap = cb.list.wrapper
+     	assertTrue("list.content == list.wrapper.content", Arrays.equals(cb.list.content, wrap.content))
+     	assertFalse("list.wrap.immutable", wrap.immutable)
+
+		assertEquals("copy.remove(1)", two, copy.remove(1))
+     	assertTrue("list.content == [one,two,three]", Arrays.equals(cb.list.content, #[one,two,three]))
+     	assertTrue("list.copy.content == [one,three]", Arrays.equals(copy.content, #[one,three]))
+     	assertEquals("list.size", 3, cb.list.size)
+     	assertEquals("list.copy.size", 2, copy.size)
+
+    	var failed = false
+    	try {
+	    	snap.remove(1)
+    	} catch(Throwable t) {
+    		failed = true
+    	}
+    	assertTrue("failed: snap.remove(1)", failed)
+     	assertEquals("list.size", 3, cb.list.size)
+     	assertEquals("list.snap.size", 3, snap.size)
+
+		assertEquals("wrap.remove(1)", two, wrap.remove(1))
+     	assertTrue("list.content == [one,two,three]", Arrays.equals(cb.list.content, #[one,two,three]))
+     	assertTrue("list.wrap.content == [one,three]", Arrays.equals(wrap.content, #[one,three]))
+     	assertEquals("list.size", 3, cb.list.size)
+     	assertEquals("list.wrap.size", 2, wrap.size)
+
+     	cb.list.remove(1)
+     	copy = cb.list.copy
+     	snap = cb.list.snapshot
+     	wrap = cb.list.wrapper
+
+		copy.add(1,two)
+     	assertTrue("list.content == [one,three]", Arrays.equals(cb.list.content, #[one,three]))
+     	assertTrue("list.copy.content == [one,two,three]", Arrays.equals(copy.content, #[one,two,three]))
+     	assertEquals("list.size", 2, cb.list.size)
+     	assertEquals("list.copy.size", 3, copy.size)
+
+    	failed = false
+    	try {
+	    	snap.add(1,two)
+    	} catch(Throwable t) {
+    		failed = true
+    	}
+    	assertTrue("failed: snap.add(1,two)", failed)
+     	assertEquals("list.size", 2, cb.list.size)
+     	assertEquals("list.snap.size", 2, snap.size)
+
+		wrap.add(1,two)
+     	assertTrue("list.content == [one,three]", Arrays.equals(cb.list.content, #[one,three]))
+     	assertTrue("list.wrap.content == [one,two,three]", Arrays.equals(wrap.content, #[one,two,three]))
+     	assertEquals("list.size", 2, cb.list.size)
+     	assertEquals("list.wrap.size", 3, wrap.size)
+	}
 }

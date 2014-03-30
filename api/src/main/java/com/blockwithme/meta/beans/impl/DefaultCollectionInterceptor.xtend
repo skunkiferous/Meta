@@ -16,7 +16,7 @@
 package com.blockwithme.meta.beans.impl
 
 import com.blockwithme.meta.beans.ObjectCollectionInterceptor;
-import com.blockwithme.meta.beans._Bean;
+import com.blockwithme.meta.beans._CollectionBean
 
 /**
  * Singleton, used for all collections of objects "beans".
@@ -30,11 +30,11 @@ implements ObjectCollectionInterceptor<E> {
     /** Default instance */
     public static val INSTANCE = new DefaultCollectionInterceptor()
 
-	override getObjectAtIndex(_Bean instance, int index, E value) {
+	override getObjectAtIndex(_CollectionBean<E> instance, int index, E value) {
 		value
 	}
 
-	override setObjectAtIndex(_Bean instance, int index, E oldValue, E newValue) {
+	override setObjectAtIndex(_CollectionBean<E> instance, int index, E oldValue, E newValue) {
         if (oldValue != newValue) {
         	// We generate an Integer Object here; no easy way around it.
 			objectPropertyChanged(instance, index, index, oldValue, newValue)
@@ -42,7 +42,7 @@ implements ObjectCollectionInterceptor<E> {
         newValue
 	}
 
-	override addObjectAtIndex(_Bean instance, int index, E newValue, boolean followingElementsChanged) {
+	override addObjectAtIndex(_CollectionBean<E> instance, int index, E newValue, boolean followingElementsChanged) {
     	// We generate an Integer Object here; no easy way around it.
 		objectPropertyChanged(instance, index, index, null, newValue)
 		if (followingElementsChanged) {
@@ -51,7 +51,7 @@ implements ObjectCollectionInterceptor<E> {
 		newValue
 	}
 
-	override removeObjectAtIndex(_Bean instance, int index, E oldValue, boolean followingElementsChanged) {
+	override removeObjectAtIndex(_CollectionBean<E> instance, int index, E oldValue, boolean followingElementsChanged) {
     	// We generate an Integer Object here; no easy way around it.
 		objectPropertyChanged(instance, index, index, oldValue, null)
 		if (followingElementsChanged) {
@@ -59,7 +59,7 @@ implements ObjectCollectionInterceptor<E> {
 		}
 	}
 
-	override clear(_Bean instance) {
+	override clear(_CollectionBean<E> instance) {
 		instance.setSelectedFrom(0)
 	}
 

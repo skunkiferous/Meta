@@ -171,8 +171,82 @@ class JacksonSerializer extends AbstractPropertyVisitor {
 				// What is that?
 				writeUnknownObject(value)
 			}
+		} else if (value.class.array) {
+			writeArrayObject(value)
 		} else {
 			writeUnknownObject(value)
+		}
+	}
+
+	protected def void writeArrayObject(Object value) {
+		if (appendObjectStart(value)) {
+			generator.writeFieldName(CONTENT)
+			val compomentType = value.class.componentType
+			val buf = new StringBuilder
+			var sep = ""
+			buf.append("[")
+			if (compomentType.primitive) {
+				if (compomentType == Boolean.TYPE) {
+					for (v : value as boolean[]) {
+						buf.append(sep)
+						sep = ","
+						buf.append(v)
+					}
+				} else if (compomentType == Byte.TYPE) {
+					for (v : value as byte[]) {
+						buf.append(sep)
+						sep = ","
+						buf.append(v as int)
+					}
+				} else if (compomentType == Character.TYPE) {
+					for (v : value as char[]) {
+						buf.append(sep)
+						sep = ","
+						buf.append(v)
+					}
+				} else if (compomentType == Short.TYPE) {
+					for (v : value as short[]) {
+						buf.append(sep)
+						sep = ","
+						buf.append(v as int)
+					}
+				} else if (compomentType == Integer.TYPE) {
+					for (v : value as int[]) {
+						buf.append(sep)
+						sep = ","
+						buf.append(v)
+					}
+				} else if (compomentType == Long.TYPE) {
+					for (v : value as long[]) {
+						buf.append(sep)
+						sep = ","
+						buf.append(v)
+					}
+				} else if (compomentType == Float.TYPE) {
+					for (v : value as float[]) {
+						buf.append(sep)
+						sep = ","
+						buf.append(v)
+					}
+				} else if (compomentType == Double.TYPE) {
+					for (v : value as double[]) {
+						buf.append(sep)
+						sep = ","
+						buf.append(v)
+					}
+				} else {
+					throw new IllegalStateException("Unknown primitive type: "+compomentType)
+				}
+			} else {
+				for (v : value as Object[]) {
+					buf.append(sep)
+					sep = ","
+					buf.append(v)
+				}
+			}
+			buf.append("]")
+			generator.writeString(buf.toString())
+			appendObjectEnd()
 		}
 	}
 
