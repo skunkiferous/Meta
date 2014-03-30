@@ -708,9 +708,12 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
                         final Comparable cmp = (Comparable) element;
                         boolean added = false;
                         for (int i = 0; !added && (i < size); i++) {
-                            if (cmp.compareTo(array[i]) < 0) {
-                                System.arraycopy(array, i, array, i + 1, size
-                                        - i);
+                            if (cmp.compareTo(oci.getObjectAtIndex(this, i,
+                                    array[i])) < 0) {
+                                for (int j = size; j > i; j--) {
+                                    array[j] = oci.getObjectAtIndex(this,
+                                            j - 1, array[j - 1]);
+                                }
                                 size++;
                                 array[i] = oci.addObjectAtIndex(this, i,
                                         element, true);

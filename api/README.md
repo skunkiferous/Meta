@@ -341,3 +341,5 @@ We should allow the definition of virtual properties just by annotating the inte
 Traits/Beans can also be considered a schema definition (if we keep the code out).
 
 We do need to use our serialization API, because we will have to deal with *versioning*.
+
+We could define "path" within the object "tree" as an array/list of Property instances (all but the last one need to be Object-Properties). But what about collections? If we don't try to add the ability to target a specific position/key, then we can just return *all* values of a collection. So the result to a "path query" will be an iterator, which can return 0 (one of the path values is null), one, or more (one of the path values is a collection) results.
