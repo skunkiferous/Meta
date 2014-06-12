@@ -1,5 +1,5 @@
 Manifest-Version: 1.0
-Bnd-LastModified: 1402519310021
+Bnd-LastModified: 1402552728521
 Build-Jdk: 1.7.0_55
 Built-By: monster
 Bundle-Description: The second generation, XTend-based, Meta API for Typ
@@ -9,17 +9,17 @@ Bundle-ManifestVersion: 2
 Bundle-Name: Meta
 Bundle-SymbolicName: com.blockwithme.Meta
 Bundle-Vendor: Sebastien Diot
-Bundle-Version: 0.0.5
+Bundle-Version: 0.1.0
 Created-By: Apache Maven Bundle Plugin
 Export-Package: com.blockwithme.meta.annotations;uses:="org.eclipse.xten
  d.core.macro.declaration,org.eclipse.xtend.core.xtend,org.eclipse.xtend
  .lib.macro,org.eclipse.xtend.lib.macro.declaration,org.eclipse.xtend.li
- b.macro.services,org.eclipse.xtext.xbase.lib";version="0.0.5",com.block
+ b.macro.services,org.eclipse.xtext.xbase.lib";version="0.1.0",com.block
  withme.meta.beans;uses:="com.blockwithme.meta,org.eclipse.xtend.lib";ve
- rsion="0.0.5",com.blockwithme.meta;uses:="com.blockwithme.fn1,com.block
- withme.fn2,com.blockwithme.meta.converter,javax.inject";version="0.0.5"
- ,com.blockwithme.meta.converter;version="0.0.5",com.blockwithme.traits.
- util;uses:="org.eclipse.xtext.xbase.lib";version="0.0.5"
+ rsion="0.1.0",com.blockwithme.meta;uses:="com.blockwithme.fn1,com.block
+ withme.fn2,com.blockwithme.meta.converter,javax.inject";version="0.1.0"
+ ,com.blockwithme.meta.converter;version="0.1.0",com.blockwithme.traits.
+ util;uses:="org.eclipse.xtext.xbase.lib";version="0.1.0"
 FuncGenerated012-dependency-version: 1.2.0
 Import-Package: com.blockwithme.fn.util;version="[1.2,2)",com.blockwithm
  e.fn1;version="[1.2,2)",com.blockwithme.fn2;version="[1.2,2)",com.block
