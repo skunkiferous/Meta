@@ -82,9 +82,6 @@ class BeanTest {
 		Assert.assertNotSame(person1, person2)
 		Assert.assertEquals(person1, person2)
 		Assert.assertEquals("hashCode", person1.hashCode, person2.hashCode)
-		val as_Bean1 = person1 as _Bean
-		val as_Bean2 = person2 as _Bean
-		Assert.assertEquals("toStringHashCode64", as_Bean1.toStringHashCode64, as_Bean2.toStringHashCode64)
 	}
 
 	@Test

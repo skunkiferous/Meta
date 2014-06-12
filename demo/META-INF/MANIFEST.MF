@@ -1,6 +1,6 @@
 Manifest-Version: 1.0
-Bnd-LastModified: 1396181771969
-Build-Jdk: 1.7.0_45
+Bnd-LastModified: 1402598511172
+Build-Jdk: 1.7.0_55
 Built-By: monster
 Bundle-Description: A demo/test for the new Xtend Meta API. It *must be 
  in a different project* as the API itself, due to the use of Active Ann
@@ -8,12 +8,14 @@ Bundle-Description: A demo/test for the new Xtend Meta API. It *must be
 Bundle-License: http://www.apache.org/licenses/LICENSE-2.0.txt
 Bundle-ManifestVersion: 2
 Bundle-Name: Demo for Meta
-Bundle-SymbolicName: MetaDemo
-Bundle-Version: 0.0.2
+Bundle-SymbolicName: com.blockwithme.MetaDemo
+Bundle-Vendor: Sebastien Diot
+Bundle-Version: 0.1.0
 Created-By: Apache Maven Bundle Plugin
 Export-Package: com.blockwithme.meta.demo;uses:="com.blockwithme.meta,co
- m.blockwithme.meta.beans";version="0.0.2"
-Import-Package: com.blockwithme.meta;version="[0.0,1)",com.blockwithme.m
- eta.beans;version="[0.0,1)",com.blockwithme.meta.beans.impl,javax.injec
- t
+ m.blockwithme.meta.beans";version="0.1.0"
+FuncGenerated012-dependency-version: 1.2.0
+Import-Package: com.blockwithme.meta;version="[0.1,1)",com.blockwithme.m
+ eta.beans;version="[0.1,1)",com.blockwithme.meta.beans.impl,javax.injec
+ t;version="[0.4,1)"
 Tool: Bnd-2.1.0.20130426-122213
