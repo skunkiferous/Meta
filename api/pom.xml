@@ -44,6 +44,12 @@
 		</license>
 	</licenses>
 
+	<parent>
+		<groupId>com.blockwithme</groupId>
+		<artifactId>oss-parent</artifactId>
+		<version>0.4.0</version>
+	</parent>
+
 	<build>
 		<sourceDirectory>src/main/java</sourceDirectory>
 		<testSourceDirectory>src/test/java</testSourceDirectory>
@@ -51,16 +57,9 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>${maven-compiler-plugin-version}</version>
-				<configuration>
-					<compilerId>eclipse</compilerId>
-					<source>${java-version}</source>
-					<target>${java-version}</target>
-				</configuration>
 			</plugin>
 			<plugin>
 				<artifactId>maven-clean-plugin</artifactId>
-				<version>${maven-clean-plugin-version}</version>
 				<configuration>
 					<filesets>
 						<fileset>
@@ -84,7 +83,7 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-source-plugin</artifactId>
-				<version>${maven-source-plugin-version}</version>
+<!--
 				<executions>
 					<execution>
 						<id>attach-sources</id>
@@ -94,10 +93,11 @@
 						</goals>
 					</execution>
 				</executions>
+ -->
 			</plugin>
 			<plugin>
 				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>${maven-javadoc-plugin-version}</version>
+<!--
 				<executions>
 					<execution>
 						<id>attach-docs</id>
@@ -107,10 +107,12 @@
 						</goals>
 					</execution>
 				</executions>
+ -->
 			</plugin>
 			<plugin>
 				<groupId>org.apache.felix</groupId>
 				<artifactId>maven-bundle-plugin</artifactId>
+<!--
 				<executions>
 					<execution>
 						<id>bundle-manifest</id>
@@ -120,7 +122,6 @@
 						</goals>
 					</execution>
 				</executions>
-				<version>${maven-bundle-plugin-version}</version>
 				<extensions>true</extensions>
 				<configuration>
 					<manifestLocation>${project.basedir}/META-INF</manifestLocation>
@@ -129,20 +130,21 @@
 						<Export-Package>{local-packages}</Export-Package>
 					</instructions>
 				</configuration>
+ -->
 			</plugin>
 			<plugin>
 				<artifactId>maven-jar-plugin</artifactId>
-				<version>${maven-jar-plugin-version}</version>
+<!--
 				<configuration>
 					<archive>
 						<manifestFile>${project.basedir}/META-INF/MANIFEST.MF</manifestFile>
 					</archive>
 				</configuration>
+ -->
 			</plugin>
 			<plugin>
 				<groupId>org.eclipse.xtend</groupId>
 				<artifactId>xtend-maven-plugin</artifactId>
-				<version>${xtend-maven-plugin-version}</version>
 				<executions>
 					<execution>
 						<goals>
@@ -170,101 +172,61 @@
 				</includes>
 			</resource>
 		</resources>
-		<pluginManagement>
-			<plugins>
-				<plugin>
-					<artifactId>maven-compiler-plugin</artifactId>
-					<configuration>
-						<compilerId>eclipse</compilerId>
-						<source>${java-version}</source>
-						<target>${java-version}</target>
-					</configuration>
-					<dependencies>
-						<dependency>
-							<groupId>org.codehaus.plexus</groupId>
-							<artifactId>plexus-compiler-eclipse</artifactId>
-							<version>${plexus-compiler-eclipse-plugin-version}</version>
-						</dependency>
-					</dependencies>
-				</plugin>
-			</plugins>
-		</pluginManagement>
 	</build>
 	<dependencies>
 		<dependency>
 			<groupId>org.junit</groupId>
 			<artifactId>com.springsource.org.junit</artifactId>
-			<version>[4.10,5)</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
-			<version>[1.6,2)</version>
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-simple</artifactId>
-			<version>[1.6,2)</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>com.blockwithme</groupId>
-			<artifactId>Common</artifactId>
-			<version>0.0.14</version>
+			<artifactId>UtilBase</artifactId>
+			<version>0.4.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.blockwithme</groupId>
+			<artifactId>UtilShared</artifactId>
+			<version>0.4.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.blockwithme</groupId>
 			<artifactId>PrimitiveFuncUtil</artifactId>
 			<version>1.2.0</version>
 		</dependency>
-				<dependency>
+		<dependency>
 			<groupId>com.blockwithme</groupId>
 			<artifactId>FuncGenerated012</artifactId>
-			<version>1.2.0</version>
 		</dependency>
-		<dependency>
+ 		<dependency>
 			<groupId>org.eclipse.xtend</groupId>
 			<artifactId>org.eclipse.xtend.lib</artifactId>
-			<version>2.5.2</version>
 		</dependency>
 		<dependency>
 			<groupId>org.eclipse.xtend</groupId>
 			<artifactId>org.eclipse.xtend.core</artifactId>
-			<version>2.5.2</version>
-		</dependency>
-		<dependency>
-			<groupId>org.codehaus.plexus</groupId>
-			<artifactId>plexus-compiler-eclipse</artifactId>
-			<version>2.3</version>
-		</dependency>
-		<dependency>
-			<groupId>com.github.oehme.xtend</groupId>
-			<artifactId>xtend-contrib</artifactId>
-			<version>0.4.1</version>
 		</dependency>
 		<dependency>
 			<groupId>com.google.inject</groupId>
 			<artifactId>guice</artifactId>
-			<version>3.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.google.inject.extensions</groupId>
 			<artifactId>guice-multibindings</artifactId>
-			<version>3.0</version>
-		</dependency>
+			</dependency>
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-core</artifactId>
-			<version>2.3.0</version>
-		</dependency>
-<!--
-		<dependency>
-			<groupId>com.blockwithme</groupId>
-			<artifactId>xtend-contrib-base</artifactId>
-			<version>[0.0,1)</version>
-		</dependency>
- -->
+			</dependency>
 	</dependencies>
 	<repositories>
 		<repository>
@@ -293,18 +255,5 @@
 			<url>http://build.eclipse.org/common/xtend/maven/</url>
 		</pluginRepository>
 	</pluginRepositories>
-	<properties>
-		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<java-version>1.7</java-version>
-		<plexus-compiler-eclipse-plugin-version>2.3</plexus-compiler-eclipse-plugin-version>
-		<maven-compiler-plugin-version>3.0</maven-compiler-plugin-version>
-		<maven-clean-plugin-version>2.5</maven-clean-plugin-version>
-		<exec-maven-plugin-version>1.2.1</exec-maven-plugin-version>
-		<maven-bundle-plugin-version>2.4.0</maven-bundle-plugin-version>
-		<maven-jar-plugin-version>2.3.2</maven-jar-plugin-version>
-		<maven-source-plugin-version>2.2.1</maven-source-plugin-version>
-		<maven-javadoc-plugin-version>2.8</maven-javadoc-plugin-version>
-		<xtend-maven-plugin-version>2.5.2</xtend-maven-plugin-version>
-	</properties>
 </project>
 

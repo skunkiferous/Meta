@@ -33,7 +33,7 @@ import com.blockwithme.meta.converter.LongConverter
 import com.blockwithme.meta.converter.FloatConverter
 import com.blockwithme.meta.converter.DoubleConverter
 import com.blockwithme.meta.Kind
-import com.blockwithme.util.Footprint
+import com.blockwithme.util.shared.Footprint
 import java.util.Map
 import org.junit.BeforeClass
 import com.blockwithme.meta.JavaMeta
@@ -656,15 +656,15 @@ class TypeTest {
      		TestMeta.OBJECT_PROP, TestMeta.ENUM_PROP
      	).toSet, TestMeta.MY_TYPE.properties.toSet)
      	assertEquals(newArrayList(TestMeta.OBJECT_PROP), TestMeta.MY_TYPE.objectProperties.toList)
-     	assertEquals(<Object>TestMeta.MY_TYPE.objectProperties.toList,
-     		<Object>TestMeta.MY_TYPE.inheritedObjectProperties.toList)
+     	assertEquals(TestMeta.MY_TYPE.objectProperties.toList,
+     		TestMeta.MY_TYPE.inheritedObjectProperties.toList)
      	assertEquals(<Object>newArrayList(TestMeta.BOOL_PROP, TestMeta.BYTE_PROP,
      		TestMeta.CHAR_PROP, TestMeta.SHORT_PROP, TestMeta.INT_PROP,
      		TestMeta.LONG_PROP, TestMeta.FLOAT_PROP, TestMeta.DOUBLE_PROP,
      		TestMeta.ENUM_PROP
-     	).toSet, <Object>TestMeta.MY_TYPE.primitiveProperties.toSet)
-     	assertEquals(<Object>TestMeta.MY_TYPE.primitiveProperties.toList,
-     		<Object>TestMeta.MY_TYPE.inheritedPrimitiveProperties.toList)
+     	).toSet, TestMeta.MY_TYPE.primitiveProperties.toSet)
+     	assertEquals(TestMeta.MY_TYPE.primitiveProperties.toList,
+     		TestMeta.MY_TYPE.inheritedPrimitiveProperties.toList)
      	assertEquals(10, TestMeta.MY_TYPE.inheritedProperties.length)
      	assertEquals(newArrayList(TestMeta.VIRTUAL_BOOL_PROP
      	).toSet, TestMeta.MY_TYPE.virtualProperties.toSet)

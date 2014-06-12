@@ -24,14 +24,14 @@ import com.blockwithme.meta.converter.FloatConverter
 import com.blockwithme.meta.converter.IntConverter
 import com.blockwithme.meta.converter.LongConverter
 import com.blockwithme.meta.converter.ShortConverter
-import com.blockwithme.util.Footprint
+import com.blockwithme.util.shared.Footprint
 import java.io.Serializable
 import java.util.Collections
 import java.util.Map
 import java.util.TreeSet
 import org.slf4j.LoggerFactory
 
-import static com.blockwithme.util.Preconditions.*
+import static com.blockwithme.util.shared.Preconditions.*
 import static com.blockwithme.traits.util.SyncUtil.*
 import static java.util.Objects.*
 import com.blockwithme.fn1.ObjectFuncObject
@@ -52,7 +52,6 @@ import com.blockwithme.fn1.LongFuncObject
 import com.blockwithme.fn2.ObjectFuncObjectLong
 import com.blockwithme.fn1.DoubleFuncObject
 import com.blockwithme.fn2.ObjectFuncObjectDouble
-import de.oehme.xtend.contrib.Volatile
 import java.util.HashMap
 import java.util.HashSet
 import java.util.Set
@@ -395,14 +394,11 @@ abstract class MetaBase<PARENT> implements Comparable<MetaBase<?>> {
 	private var String toString
 
     /** Meta-properties values. */
-    @Volatile
-    package var Object[] metaProperties = newArrayOfSize(0)
+    package volatile var Object[] metaProperties = newArrayOfSize(0)
     /** Parent object. */
-    @Volatile
-    package var PARENT parent
+    package volatile var PARENT parent
     /** Hierarchy */
-    @Volatile
-    package var Hierarchy hierarchy
+    package volatile var Hierarchy hierarchy
 
 	/** Checks no null is in array */
 	protected static def <E> E[] checkArray(E[] array, String name) {
@@ -770,7 +766,8 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 		kind = requireNonNull(theKind, "theKind")
 		// componentTypes *can* contain null. This just mean the type is "unknown"
 		this.componentTypes = requireNonNull(componentTypes, "componentTypes")
-		val TreeSet<Type<?>> pset = new TreeSet(checkArray(theParents, "theParents"))
+		val TreeSet<Type<?>> pset = new TreeSet()
+		pset.addAll(checkArray(theParents, "theParents"))
 		val TreeSet<Type<?>> pallset = new TreeSet(pset)
 		for (p : pset) {
 			pallset.addAll(Arrays.asList(p.inheritedParents))
@@ -1177,7 +1174,7 @@ extends MetaBase<Type<OWNER_TYPE>> {
 		val typeID = requireNonNull(type, "type").typeId
 		val oldArray = inheritedIndex.get
 		var array = oldArray
-		if (array === null) {
+		if (array == null) {
 			array = newByteArrayOfSize(0)
 		}
 		if (array.length <= typeID) {

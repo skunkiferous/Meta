@@ -517,7 +517,7 @@ class TraitProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecl
 		if (clazz.findMethod('toString', newArrayOfSize(0)) == null) {
 			clazz.addMethod('toString') [
 				returnType = 'java.lang.String'.newTypeReference
-				addAnnotation(getOverride())
+				addAnnotation(newAnnotationReference(getOverride()))
 				docComment = '{@inheritDoc}'
 				body = [
 					'''
@@ -550,7 +550,7 @@ class TraitProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecl
 		if (clazz.findMethod('equals', getObject()) == null) {
 			clazz.addMethod('equals') [
 				returnType = primitiveBoolean
-				addAnnotation(getOverride())
+				addAnnotation(newAnnotationReference(getOverride()))
 				addParameter('obj', getObject())
 				docComment = '{@inheritDoc}'
 				body = [
@@ -593,7 +593,7 @@ class TraitProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecl
 		if (clazz.findMethod('hashCode', newArrayOfSize(0)) == null) {
 			clazz.addMethod('hashCode') [
 				returnType = primitiveInt
-				addAnnotation(getOverride())
+				addAnnotation(newAnnotationReference(getOverride()))
 				docComment = '{@inheritDoc}'
 				val initValue = if (superClass == null) {
 						'1'

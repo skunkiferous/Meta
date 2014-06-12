@@ -1281,47 +1281,47 @@ return result;'''
 	private def void recordBeanInfo(MutableInterfaceDeclaration target, BeanInfo beanInfo) {
 		val _biTD = findTypeGlobally(_BeanInfo)
 		if (target.findAnnotation(_biTD) === null) {
-			val bi = target.addAnnotation(_biTD)
-
-			var i = 0
-			if (!beanInfo.parents.empty) {
-				val parents = <TypeReference>newArrayOfSize(beanInfo.parents.size)
-				for (p : beanInfo.parents) {
-					parents.set(i, newTypeReference(p.qualifiedName))
-					i = i + 1
+			target.addAnnotation(newAnnotationReference(_biTD, [
+				var i = 0
+				if (!beanInfo.parents.empty) {
+					val parents = <TypeReference>newArrayOfSize(beanInfo.parents.size)
+					for (p : beanInfo.parents) {
+						parents.set(i, newTypeReference(p.qualifiedName))
+						i = i + 1
+					}
+					set("parents", parents)
 				}
-				bi.set("parents", parents)
-			}
 
-			if (!beanInfo.properties.empty) {
-				val props = <String>newArrayOfSize(beanInfo.properties.size*7)
-				i = 0
-				for (p : beanInfo.properties) {
-					props.set(i, requireNonNull(p.name, p+": name"))
-					i = i + 1
-					props.set(i, requireNonNull(p.type, p+": type"))
-					i = i + 1
-					props.set(i, requireNonNull(p.comment, p+": comment"))
-					i = i + 1
-					props.set(i, if (p.colType === null) "" else p.colType)
-					i = i + 1
-					props.set(i, String.valueOf(p.fixedSize))
-					i = i + 1
-					props.set(i, requireNonNull(p.getterJavaCode, p+": getterJavaCode"))
-					i = i + 1
-					props.set(i, requireNonNull(p.setterJavaCode, p+": setterJavaCode"))
-					i = i + 1
+				if (!beanInfo.properties.empty) {
+					val props = <String>newArrayOfSize(beanInfo.properties.size*7)
+					i = 0
+					for (p : beanInfo.properties) {
+						props.set(i, requireNonNull(p.name, p+": name"))
+						i = i + 1
+						props.set(i, requireNonNull(p.type, p+": type"))
+						i = i + 1
+						props.set(i, requireNonNull(p.comment, p+": comment"))
+						i = i + 1
+						props.set(i, if (p.colType === null) "" else p.colType)
+						i = i + 1
+						props.set(i, String.valueOf(p.fixedSize))
+						i = i + 1
+						props.set(i, requireNonNull(p.getterJavaCode, p+": getterJavaCode"))
+						i = i + 1
+						props.set(i, requireNonNull(p.setterJavaCode, p+": setterJavaCode"))
+						i = i + 1
+					}
+					set("properties", props)
 				}
-				bi.set("properties", props)
-			}
 
-			if (!beanInfo.validity.empty) {
-				val String[] validity = <String>newArrayOfSize(beanInfo.validity.size)
-				bi.set("validity", beanInfo.validity.toArray(validity))
-			}
+				if (!beanInfo.validity.empty) {
+					val String[] validity = <String>newArrayOfSize(beanInfo.validity.size)
+					set("validity", beanInfo.validity.toArray(validity))
+				}
 
-			bi.setBooleanValue("isBean", beanInfo.isBean)
-			bi.setBooleanValue("isInstance", beanInfo.isInstance)
+				setBooleanValue("isBean", beanInfo.isBean)
+				setBooleanValue("isInstance", beanInfo.isInstance)
+			]))
 		}
 	}
 

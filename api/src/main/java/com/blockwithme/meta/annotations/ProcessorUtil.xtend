@@ -16,7 +16,6 @@
 package com.blockwithme.meta.annotations
 
 import com.blockwithme.fn.util.Functor
-import de.oehme.xtend.contrib.macro.CommonQueries
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.lang.annotation.Annotation
@@ -73,13 +72,16 @@ import org.eclipse.xtext.xbase.XBlockExpression
 import org.eclipse.xtext.xbase.lib.Functions.Function1
 import org.eclipse.xtext.xbase.lib.util.ReflectExtensions
 import org.eclipse.xtend.core.macro.declaration.JvmTypeDeclarationImpl
+import org.eclipse.xtend.lib.macro.services.AnnotationReferenceProvider
+import org.eclipse.xtext.xbase.lib.Procedures.Procedure1
+import org.eclipse.xtend.lib.macro.services.AnnotationReferenceBuildContext
 
 /**
  * Helper methods for active annotation processing.
  *
  * @author monster
  */
-class ProcessorUtil implements TypeReferenceProvider {
+class ProcessorUtil implements TypeReferenceProvider, AnnotationReferenceProvider {
 	static val TIME_FORMAT = new SimpleDateFormat("HH:mm:ss.SSS ")
 
 	/** Debug output? */
@@ -617,8 +619,7 @@ class ProcessorUtil implements TypeReferenceProvider {
 
 	/** Returns the signature of a method/constructor as a string */
 	final def String signature(ExecutableDeclaration it) {
-//		'''«simpleName»(«parameters.map[p|p.type].join(",")[name]»)'''
-		CommonQueries.signature(it).toString
+		'''«simpleName»(«parameters.map[p|p.type].join(",")[name]»)'''
 	}
 
 	/** Tries to find and return the qualifiedName of the given element. */
@@ -1167,6 +1168,38 @@ class ProcessorUtil implements TypeReferenceProvider {
 			return newTypeReference(typeName.substring(0,index), list)
 		}
 		newTypeReference(typeName)
+	}
+
+	override newAnnotationReference(String annotationTypeName) {
+		Objects.requireNonNull(compilationUnit.annotationReferenceProvider.newAnnotationReference(annotationTypeName))
+	}
+
+	override newAnnotationReference(Type annotationTypeDelcaration) {
+		Objects.requireNonNull(compilationUnit.annotationReferenceProvider.newAnnotationReference(annotationTypeDelcaration))
+	}
+
+	override newAnnotationReference(Class<?> annotationClass) {
+		Objects.requireNonNull(compilationUnit.annotationReferenceProvider.newAnnotationReference(annotationClass))
+	}
+
+	override newAnnotationReference(AnnotationReference annotationReference) {
+		Objects.requireNonNull(compilationUnit.annotationReferenceProvider.newAnnotationReference(annotationReference))
+	}
+
+	override newAnnotationReference(String annotationTypeName, Procedure1<AnnotationReferenceBuildContext> initializer) {
+		Objects.requireNonNull(compilationUnit.annotationReferenceProvider.newAnnotationReference(annotationTypeName, initializer))
+	}
+
+	override newAnnotationReference(Type annotationTypeDelcaration, Procedure1<AnnotationReferenceBuildContext> initializer) {
+		Objects.requireNonNull(compilationUnit.annotationReferenceProvider.newAnnotationReference(annotationTypeDelcaration, initializer))
+	}
+
+	override newAnnotationReference(Class<?> annotationClass, Procedure1<AnnotationReferenceBuildContext> initializer) {
+		Objects.requireNonNull(compilationUnit.annotationReferenceProvider.newAnnotationReference(annotationClass, initializer))
+	}
+
+	override newAnnotationReference(AnnotationReference annotationReference, Procedure1<AnnotationReferenceBuildContext> initializer) {
+		Objects.requireNonNull(compilationUnit.annotationReferenceProvider.newAnnotationReference(annotationReference, initializer))
 	}
 
 }

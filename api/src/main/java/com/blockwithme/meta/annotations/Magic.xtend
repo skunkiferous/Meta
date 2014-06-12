@@ -1,7 +1,6 @@
 package com.blockwithme.meta.annotations
 
 import com.blockwithme.traits.util.AntiClassLoaderCache
-import de.oehme.xtend.contrib.Synchronized
 import java.lang.annotation.ElementType
 import java.lang.annotation.Retention
 import java.lang.annotation.RetentionPolicy
@@ -198,16 +197,16 @@ CodeGenerationParticipant<NamedElement>, TransformationParticipant<MutableNamedE
 	}
 
 	/** Returns the list of processors. */
-	@Synchronized
-	private static def Processor<?,?>[] getProcessors(
+
+	private static synchronized def Processor<?,?>[] getProcessors(
 		List<? extends NamedElement> annotatedSourceElements) {
 		val cache = AntiClassLoaderCache.getCache()
-		if (PROCESSORS === null) {
+		if (PROCESSORS == null) {
 			val list = <Processor>newArrayList()
 			val compilationUnit = ProcessorUtil.getCompilationUnit(annotatedSourceElements)
 			val element = annotatedSourceElements.get(0)
 			var String[] names = cache.get(PROCESSORS_NAMES) as String[]
-			if (names === null) {
+			if (names == null) {
 				names = findProcessorNames(compilationUnit, element)
 				cache.put(PROCESSORS_NAMES, names)
 			}

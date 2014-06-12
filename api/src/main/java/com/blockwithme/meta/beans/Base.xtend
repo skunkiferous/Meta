@@ -58,9 +58,6 @@ interface _Bean extends Bean {
 	/** Returns the Type of the instance */
     def Type<?> getMetaType()
 
-	/** Returns the 64-bit hashcode of toString (=> toJSON()) */
-    def long getToStringHashCode64()
-
 	/** Returns the current value of the change counter */
 	def int getChangeCounter()
 

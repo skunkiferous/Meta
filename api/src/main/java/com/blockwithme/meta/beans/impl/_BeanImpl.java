@@ -28,7 +28,6 @@ import com.blockwithme.meta.Type;
 import com.blockwithme.meta.beans.Entity;
 import com.blockwithme.meta.beans.Interceptor;
 import com.blockwithme.meta.beans._Bean;
-import com.blockwithme.murmur.MurmurHash;
 
 /**
  * Bean impl for all data/bean objects.
@@ -163,14 +162,14 @@ public abstract class _BeanImpl implements _Bean {
     private String toString;
 
     /**
-     * Lazily cached hashCode64 result (0 == not computed yet)
+     * Lazily cached hashCode result (0 == not computed yet)
      * Cleared automatically when the "state" of the Bean changes.
      */
-    private long toStringHashCode64;
+    private int toStringHashCode;
 
     /** Resets the cached state (when something changes) */
     private void resetCachedState() {
-        toStringHashCode64 = 0;
+        toStringHashCode = 0;
         toString = null;
     }
 
@@ -469,23 +468,16 @@ public abstract class _BeanImpl implements _Bean {
         }
     }
 
-    /** Returns the 64 bit hashcode of toString */
-    @Override
-    public final long getToStringHashCode64() {
-        if (toStringHashCode64 == 0) {
-            toStringHashCode64 = MurmurHash.hash64(toString());
-            if (toStringHashCode64 == 0) {
-                toStringHashCode64 = 1;
-            }
-        }
-        return toStringHashCode64;
-    }
-
     /** Returns the 32 bit hashcode */
     @Override
     public final int hashCode() {
-        final long value = getToStringHashCode64();
-        return (int) (value ^ (value >>> 32));
+        if (toStringHashCode == 0) {
+            toStringHashCode = toString().hashCode();
+            if (toStringHashCode == 0) {
+                toStringHashCode = 1;
+            }
+        }
+        return toStringHashCode;
     }
 
     /** Computes the JSON representation */
@@ -524,11 +516,11 @@ public abstract class _BeanImpl implements _Bean {
             return true;
         }
         final _BeanImpl other = (_BeanImpl) obj;
-        if (getToStringHashCode64() != other.getToStringHashCode64()) {
+        if (hashCode() != other.hashCode()) {
             return false;
         }
-        // Inequality here is very unlikely.
-        // Since we, currently, build the hashCode64 on the toString text
+        // Inequality here is unlikely.
+        // Since we, currently, build the hashCode on the toString text
         // We know it was already computed, and so is a cheap way to compare.
         return toString().equals(other.toString());
     }
@@ -693,7 +685,7 @@ public abstract class _BeanImpl implements _Bean {
     /** Make a new instance of the same type as self. */
     protected _BeanImpl newInstance() {
         final _BeanImpl result = (_BeanImpl) metaType.constructor.get();
-        result.toStringHashCode64 = toStringHashCode64;
+        result.toStringHashCode = toStringHashCode;
         result.toString = toString;
         return result;
     }
