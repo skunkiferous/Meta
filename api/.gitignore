@@ -1,3 +1,5 @@
 target/
 xtend-gen/
 /target
+main/
+test/

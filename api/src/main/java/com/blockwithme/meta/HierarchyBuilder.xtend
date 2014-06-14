@@ -21,7 +21,7 @@ import static com.blockwithme.traits.util.SyncUtil.*
 import java.util.Map
 import org.slf4j.LoggerFactory
 import java.util.List
-import com.blockwithme.meta.converter.Converter
+import com.blockwithme.util.shared.converters.Converter
 import com.blockwithme.fn1.BooleanFuncObject
 import com.blockwithme.fn2.ObjectFuncObjectBoolean
 import com.blockwithme.fn1.ByteFuncObject
@@ -40,14 +40,14 @@ import com.blockwithme.fn1.LongFuncObject
 import com.blockwithme.fn2.ObjectFuncObjectLong
 import com.blockwithme.fn1.ObjectFuncObject
 import com.blockwithme.fn2.ObjectFuncObjectObject
-import com.blockwithme.meta.converter.IntConverter
-import com.blockwithme.meta.converter.BooleanConverter
-import com.blockwithme.meta.converter.ByteConverter
-import com.blockwithme.meta.converter.CharConverter
-import com.blockwithme.meta.converter.ShortConverter
-import com.blockwithme.meta.converter.FloatConverter
-import com.blockwithme.meta.converter.DoubleConverter
-import com.blockwithme.meta.converter.LongConverter
+import com.blockwithme.util.shared.converters.IntConverter
+import com.blockwithme.util.shared.converters.BooleanConverter
+import com.blockwithme.util.shared.converters.ByteConverter
+import com.blockwithme.util.shared.converters.CharConverter
+import com.blockwithme.util.shared.converters.ShortConverter
+import com.blockwithme.util.shared.converters.FloatConverter
+import com.blockwithme.util.shared.converters.DoubleConverter
+import com.blockwithme.util.shared.converters.LongConverter
 import javax.inject.Provider
 
 /**
