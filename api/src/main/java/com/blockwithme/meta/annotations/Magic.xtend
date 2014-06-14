@@ -5,6 +5,7 @@ import java.lang.annotation.ElementType
 import java.lang.annotation.Retention
 import java.lang.annotation.RetentionPolicy
 import java.lang.annotation.Target
+import java.util.ArrayList
 import java.util.HashMap
 import java.util.List
 import java.util.Map
@@ -22,10 +23,6 @@ import org.eclipse.xtend.lib.macro.declaration.MutableTypeDeclaration
 import org.eclipse.xtend.lib.macro.declaration.NamedElement
 import org.eclipse.xtend.lib.macro.declaration.TypeDeclaration
 import org.eclipse.xtext.xbase.lib.Procedures.Procedure3
-import org.eclipse.xtext.xbase.lib.Procedures.Procedure2
-import java.util.ArrayList
-import java.util.HashSet
-import com.blockwithme.traits.util.SyncUtil
 
 /**
  * Marks that *all types in this file* should be processed.

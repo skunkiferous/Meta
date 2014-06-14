@@ -32,7 +32,6 @@ import java.util.TreeSet
 import org.slf4j.LoggerFactory
 
 import static com.blockwithme.util.shared.Preconditions.*
-import static com.blockwithme.traits.util.SyncUtil.*
 import static java.util.Objects.*
 import com.blockwithme.fn1.ObjectFuncObject
 import com.blockwithme.fn2.ObjectFuncObjectObject
@@ -64,7 +63,6 @@ import java.util.Collection
 import java.util.List
 import java.util.ArrayList
 import java.util.Iterator
-import java.util.Objects
 
 /**
  * Hierarchy represents a Type hierarchy. It is not limited to types in the
@@ -124,14 +122,14 @@ public class Hierarchy implements Comparable<Hierarchy> {
 
     /** All the *currently initialized* Hierarchies */
     static def getHierarchies() {
-		synchR(Hierarchy) [
-			all
-		]
+		synchronized (Hierarchy) {
+			return all
+		}
     }
 
     /** Adds a HierarchyListener */
-    static def void addListener(HierarchyListener listener) {
-		synch(Hierarchy) [
+    static def addListener(HierarchyListener listener) {
+		synchronized (Hierarchy) {
 	        if (listeners.contains(requireNonNull(listener, "listener"))) {
 	            throw new IllegalArgumentException("Cannot add a listener more then once!");
 	        }
@@ -143,14 +141,14 @@ public class Hierarchy implements Comparable<Hierarchy> {
 	    	for (m : metas) {
 	    		postCreateMetaProperty(m as MetaProperty<?,?>, listener)
 	    	}
-    	]
+    	}
     }
 
     /** Removes a HierarchyListener */
-    static def void removeListener(HierarchyListener listener) {
-		synch(Hierarchy) [
+    static def removeListener(HierarchyListener listener) {
+		synchronized (Hierarchy) {
 	        listeners.remove(requireNonNull(listener, "listener"))
-    	]
+    	}
     }
 
     /**
@@ -211,18 +209,18 @@ public class Hierarchy implements Comparable<Hierarchy> {
      * (Initialization of the subclasses happens *after* registration).
      */
     static def <M extends MetaProperty<?,?>> postCreateMetaProperty(M metaProperty) {
-    	synch(Hierarchy) [
+    	synchronized (Hierarchy) {
     		Meta.BUILDER.doRegisterProperty(metaProperty)
 	        for (listener : listeners) {
 	        	postCreateMetaProperty(metaProperty, listener)
 	        }
-        ]
-        metaProperty
+	        metaProperty
+        }
     }
 
     /** Sets the value of this property, as an Object */
     static def setObject(MetaBase<?> object, int index, Object value) {
-		synch(Hierarchy) [
+		synchronized (Hierarchy) {
             var array = object.metaProperties;
             if (index >= array.length) {
                 val tmp = newArrayOfSize(index + 1)
@@ -230,7 +228,7 @@ public class Hierarchy implements Comparable<Hierarchy> {
                 array = object.metaProperties = tmp;
             }
             array.set(index, value)
-    	]
+    	}
     }
 
 
@@ -248,12 +246,7 @@ public class Hierarchy implements Comparable<Hierarchy> {
 		if ((thePackages.length == 0) && (theDependencies.length == 0)) {
 			throw new IllegalArgumentException("Empty Hierarchy not supported")
 		}
-		hierarchyId = synchR(Hierarchy) [
-			val tmp = newArrayList(all)
-			tmp.add(this)
-			all = tmp
-			all.length
-    	]
+		hierarchyId = addThisToAll()
     	depth = if (!dependencies.empty) {
     		var d = 0
 	    	for (dep : dependencies) {
@@ -266,12 +259,27 @@ public class Hierarchy implements Comparable<Hierarchy> {
     	} else {
     		0
     	}
-    	synch(Hierarchy) [
+    	syncPostCreateHierarchy()
+	}
+
+	/** Adds this to "all". */
+	private def addThisToAll() {
+		synchronized (Hierarchy) {
+			val tmp = newArrayList(all)
+			tmp.add(this)
+			all = tmp
+			all.length
+    	}
+	}
+
+	/** Calls postCreateHierarchy(this) within a synchronized block. */
+	private def syncPostCreateHierarchy() {
+    	synchronized (Hierarchy) {
 			// OK, there is some chances, that the class of this Hierarchy
 			// actually extends this class, and that we are not fully
 			// initialized!
 			postCreateHierarchy(this)
-    	]
+    	}
 	}
 
 	protected new (HierarchyBuilder builder, TypePackage[] packages, Hierarchy ... theDependencies) {

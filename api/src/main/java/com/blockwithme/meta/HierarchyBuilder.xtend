@@ -17,7 +17,6 @@ package com.blockwithme.meta
 
 import static java.util.Objects.*
 import static com.blockwithme.util.shared.Preconditions.*
-import static com.blockwithme.traits.util.SyncUtil.*
 import java.util.Map
 import org.slf4j.LoggerFactory
 import java.util.List
@@ -357,24 +356,20 @@ class HierarchyBuilder {
 
 
 	/** Returns the pre-type-registration info */
-	def preRegisterType(Class<?> theType) {
-		synchR(this) [
-			it.checkNotClosed()
-			it.doPreRegisterType(theType)
-		]
+	synchronized def preRegisterType(Class<?> theType) {
+		checkNotClosed()
+		doPreRegisterType(theType)
 	}
 
 	/** Creates and returns the property creation parameters */
-	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<PROPERTY_TYPE>>
+	synchronized def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<PROPERTY_TYPE>>
 	PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> preRegisterProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, PropertyType thePropType,
 		int theBits, boolean theMeta, Class<PROPERTY_TYPE> dataType, boolean theVirtual) {
-		synchR(this) [
-			it.checkNotClosed()
-			it.doPreRegisterProperty(theOwner, theSimpleName, theConverter,
-				thePropType, theBits, theMeta, dataType, theVirtual)
-		]
+		checkNotClosed()
+		doPreRegisterProperty(theOwner, theSimpleName, theConverter,
+			thePropType, theBits, theMeta, dataType, theVirtual)
 	}
 
 	/** Creates and returns the property creation parameters (and computes meta flag) */
@@ -389,58 +384,44 @@ class HierarchyBuilder {
 	}
 
 	/** Registers a property */
-	def registerMetaProperty(MetaProperty<?,?> prop) {
-		synch(this) [
-			it.checkNotClosed()
-			it.doRegisterProperty(prop)
-		]
+	synchronized def registerMetaProperty(MetaProperty<?,?> prop) {
+		checkNotClosed()
+		doRegisterProperty(prop)
 	}
 
 	/** Returns the pre-package-registration info */
-	def preRegisterPackage(Type<?>[] theTypes) {
-		synchR(this) [
-			it.checkNotClosed()
-			it.doPreRegisterTypePackage(theTypes)
-		]
+	synchronized def preRegisterPackage(Type<?>[] theTypes) {
+		checkNotClosed()
+		doPreRegisterTypePackage(theTypes)
 	}
 
 	/** Registers a Package */
-	def registerPackage(TypePackage ... theTypePackages) {
-		synch(this) [
-			it.checkNotClosed()
-			for (p : theTypePackages) {
-				it.doRegisterTypePackage(p)
-			}
-		]
+	synchronized def registerPackage(TypePackage ... theTypePackages) {
+		checkNotClosed()
+		for (p : theTypePackages) {
+			doRegisterTypePackage(p)
+		}
 		theTypePackages
 	}
 
 	/** All types of this hierarchy */
-	def allTypes() {
-		synchR(this) [
-			requireContainsNoNull(allTypes, "allTypes")
-		]
+	synchronized def allTypes() {
+		requireContainsNoNull(allTypes, "allTypes")
 	}
 
 	/** All properties of this hierarchy */
-	def allProperties() {
-		synchR(this) [
-			requireContainsNoNull(allProperties, "allProperties")
-		]
+	synchronized def allProperties() {
+		requireContainsNoNull(allProperties, "allProperties")
 	}
 
 	/** All packages of this hierarchy */
-	def allPackages() {
-		synchR(this) [
-			requireContainsNoNull(allPackages, "allPackages")
-		]
+	synchronized def allPackages() {
+		requireContainsNoNull(allPackages, "allPackages")
 	}
 
 	/** We're done! */
-	def close() {
-		synch(this) [
-			closed = true
-		]
+	synchronized def close() {
+		closed = true
 	}
 
 	/* Helper method, to completely hide the implementation of interfaces */
