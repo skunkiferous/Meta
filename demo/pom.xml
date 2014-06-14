@@ -109,12 +109,12 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
 		<dependency>
 			<groupId>com.blockwithme</groupId>
 			<artifactId>UtilBase</artifactId>
-			<version>0.4.0</version>
+			<version>0.5.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.blockwithme</groupId>
 			<artifactId>UtilShared</artifactId>
-			<version>0.4.0</version>
+			<version>0.5.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.blockwithme</groupId>
