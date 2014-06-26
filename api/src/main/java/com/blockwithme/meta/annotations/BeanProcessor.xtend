@@ -17,13 +17,17 @@ package com.blockwithme.meta.annotations
 
 import com.blockwithme.meta.BooleanProperty
 import com.blockwithme.meta.BooleanPropertyAccessor
-import com.blockwithme.meta.Hierarchy
 import com.blockwithme.meta.HierarchyBuilder
+import com.blockwithme.meta.HierarchyBuilderFactory
 import com.blockwithme.meta.JavaMeta
 import com.blockwithme.meta.Kind
 import com.blockwithme.meta.Type
 import com.blockwithme.meta.TypePackage
+import com.blockwithme.meta.beans.CollectionBean
+import com.blockwithme.meta.beans.CollectionBeanConfig
 import com.blockwithme.meta.beans.Entity
+import com.blockwithme.meta.beans.Meta
+import com.blockwithme.meta.beans.impl.CollectionBeanImpl
 import com.blockwithme.meta.beans.impl._BeanImpl
 import com.blockwithme.meta.beans.impl._EntityImpl
 import java.lang.annotation.ElementType
@@ -50,10 +54,9 @@ import org.eclipse.xtend.lib.macro.declaration.TypeReference
 import org.eclipse.xtend.lib.macro.declaration.Visibility
 
 import static java.util.Objects.*
-import com.blockwithme.meta.HierarchyBuilderFactory
-import com.blockwithme.meta.beans.CollectionBean
-import com.blockwithme.meta.beans.impl.CollectionBeanImpl
-import com.blockwithme.meta.beans.CollectionBeanConfig
+import com.blockwithme.util.xtend.annotations.MagicAnnotationProcessor
+import com.blockwithme.util.xtend.annotations.Processor
+import com.blockwithme.util.xtend.annotations.ProcessorUtil
 
 /**
  * Annotates an interface declared in a C-style-struct syntax
@@ -1252,7 +1255,7 @@ return this;'''
       			}
       			val bodyText = '''«propTypeRef» result = «getter»();
 if (result == null) {
-	«setter»(new «CollectionBeanImpl.name»<«componentType»>(«com.blockwithme.meta.beans.Meta.name».COLLECTION_BEAN, «componentTypeType2»,«config»));
+	«setter»(new «CollectionBeanImpl.name»<«componentType»>(«Meta.name».COLLECTION_BEAN, «componentTypeType2»,«config»));
 	result = «getter»();
 }
 return result;'''

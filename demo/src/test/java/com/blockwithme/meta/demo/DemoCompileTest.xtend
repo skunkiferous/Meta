@@ -17,13 +17,14 @@ package com.blockwithme.meta.demo
 
 import org.eclipse.xtend.core.compiler.batch.XtendCompilerTester
 import org.junit.Test
+import com.blockwithme.util.xtend.annotations.Magic
 
 /**
  * @author monster
  *
  */
 class DemoCompileTest {
-	 extension XtendCompilerTester compilerTester = XtendCompilerTester.newXtendCompilerTester(com.blockwithme.meta.annotations.Magic)
+	 extension XtendCompilerTester compilerTester = XtendCompilerTester.newXtendCompilerTester(Magic)
 
 	@Test
 	def void testCompile() {

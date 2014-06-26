@@ -19,11 +19,11 @@ import com.blockwithme.meta.annotations.Bean
 import com.blockwithme.meta.annotations.ListProperty
 import com.blockwithme.meta.annotations.OrderedSetProperty
 import com.blockwithme.meta.annotations.SortedSetProperty
-import com.blockwithme.meta.annotations.Trace
 import com.blockwithme.meta.annotations.UnorderedSetProperty
 
 import static extension com.blockwithme.meta.demo.Aged.*
 import static extension com.blockwithme.meta.demo.Named.*
+import com.blockwithme.util.xtend.annotations.Trace
 
 /**
  * Hierarchy "root".

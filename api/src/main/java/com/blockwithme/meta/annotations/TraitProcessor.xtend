@@ -25,7 +25,6 @@ package com.blockwithme.meta.annotations
 
 import com.blockwithme.fn.util.Functor
 import com.blockwithme.fn1.ProcObject
-import com.blockwithme.traits.util.IndentationAwareStringBuilder
 import com.google.inject.Provider
 import java.io.Serializable
 import java.lang.annotation.ElementType
@@ -52,6 +51,9 @@ import static com.blockwithme.fn.util.Util.*
 
 import static extension java.lang.Character.*
 import static extension java.lang.Class.*
+import com.blockwithme.util.xtend.annotations.MagicAnnotationProcessor
+import com.blockwithme.util.xtend.annotations.Processor
+import com.blockwithme.util.xtend.IndentationAwareStringBuilder
 
 /**
  * Annotation for "traits"
@@ -118,6 +120,9 @@ class TraitProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecl
 	/** The following type references are resolved at the setup time */
 	var Type traitAnnotation
 	var TypeReference builderType
+	/** The Functor TypeReference */
+	var TypeReference functor
+
 
 	/** The trait can extend from any of the following interfaces,
 	 * when found in the type hierarchy, these interfaces are ignored. */
@@ -141,17 +146,13 @@ class TraitProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecl
 	override void init() {
 		traitAnnotation = findTypeGlobally(Trait)
 		builderType = newTypeReference(IndentationAwareStringBuilder)
+		functor = newTypeReference(Functor)
 	}
 
 	/** Called after processing a file. */
 	override void deinit() {
 		traitAnnotation = null
 		builderType = null
-	}
-
-	/** Utility method checks if a type is a Functor type. */
-	def private isFunctor(TypeReference fieldType) {
-		(getFunctor()).isAssignableFrom(fieldType)
 	}
 
 	/** Utility method checks if a type is a String type. */
@@ -363,6 +364,11 @@ class TraitProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecl
 			}
 		}
 		result
+	}
+
+	/** Utility method checks if a type is a Functor type. */
+	final def isFunctor(TypeReference fieldType) {
+		functor.isAssignableFrom(fieldType)
 	}
 
 	/** Adds hashCode, toString and equals methods to a particular class. */
@@ -751,7 +757,7 @@ class TraitProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecl
 		 * Method implementation is a delegation to the Interface method.*/
 		interf.declaredFields.forEach [ f |
 			val type = f.type
-			if (getFunctor().isAssignableFrom(type)) {
+			if (functor.isAssignableFrom(type)) {
 				var classname = type.name.removeGeneric
 				val signature = getSignature(classname.forName as Class<? extends Functor>)
 
