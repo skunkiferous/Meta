@@ -167,6 +167,12 @@ public abstract class _BeanImpl implements _Bean {
      */
     private int toStringHashCode;
 
+    /** Speeds up, looking up Property indexes. */
+    private transient Property<?, ?> lastIndexedProp;
+
+    /** Speeds up, looking up Property indexes. */
+    private transient int lastIndexedPropIndex = -1;
+
     /** Resets the cached state (when something changes) */
     private void resetCachedState() {
         toStringHashCode = 0;
@@ -341,7 +347,14 @@ public abstract class _BeanImpl implements _Bean {
     /** Returns the index to use for this property. */
     @Override
     public final int indexOfProperty(final Property<?, ?> prop) {
-        final int result = prop.inheritedPropertyId(metaType);
+        final int result;
+        if (prop == lastIndexedProp) {
+            result = lastIndexedPropIndex;
+        } else {
+            result = prop.inheritedPropertyId(metaType);
+            lastIndexedProp = prop;
+            lastIndexedPropIndex = result;
+        }
         if (result < 0) {
             throw new IllegalArgumentException("Property " + prop.fullName
                     + " unknown in " + metaType.fullName);

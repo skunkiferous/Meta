@@ -68,7 +68,7 @@ import com.blockwithme.util.xtend.annotations.ProcessorUtil
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.CLASS)
 @Inherited
-@Active(MagicAnnotationProcessor)
+@Active(MyActiveProc)
 annotation Bean {
 	boolean instance = false
 	String[] sortKeyes = #[]

@@ -13,30 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.blockwithme.meta.demo
+package com.blockwithme.meta.annotations
 
-//import org.eclipse.xtend.core.compiler.batch.XtendCompilerTester
-import org.junit.Test
-//import com.blockwithme.util.xtend.annotations.Magic
+import com.blockwithme.util.xtend.annotations.MagicAnnotationProcessor
 
 /**
  * @author monster
  *
  */
-class DemoCompileTest {
-//	 extension XtendCompilerTester compilerTester = XtendCompilerTester.newXtendCompilerTester(Magic)
-
-	@Test
-	def void testCompile() {
-		// TODO
-//		'''
-//		import com.blockwithme.meta.annotations.Bean
-//		import com.blockwithme.meta.annotations.Magic
-//		@Bean
-//		interface DemoType {}
-//		interface DemoTypeChild extends DemoType {}
-//		@Magic
-//		interface Dummy {}
-//		'''.compile []
-	}
+class MyActiveProc extends MagicAnnotationProcessor {
+	// Just so MagicAnnotationProcessor is "local"
 }

@@ -24,7 +24,11 @@ import com.blockwithme.meta.annotations.UnorderedSetProperty
 import static extension com.blockwithme.meta.demo.Aged.*
 import static extension com.blockwithme.meta.demo.Named.*
 import com.blockwithme.util.xtend.annotations.Trace
+import com.blockwithme.meta.annotations.BeanProcessor
 
+interface HackForEclipseCompilerIssue {
+	val class1 = BeanProcessor
+}
 /**
  * Hierarchy "root".
  *
@@ -207,11 +211,11 @@ interface CollectionOwner extends Root {
   @ListProperty(fixedSize=10)
   String[] fixedSizeList
 }
-
-/** Example of the Trace annotation */
-@Trace
-class SomeClass {
-	/** The age */
-	int age
-	def hello() { "hello, I'm "+age }
-}
+//
+///** Example of the Trace annotation */
+//@Trace
+//class SomeClass {
+//	/** The age */
+//	int age
+//	def hello() { "hello, I'm "+age }
+//}

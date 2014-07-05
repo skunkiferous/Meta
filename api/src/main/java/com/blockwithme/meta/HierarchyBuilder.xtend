@@ -17,8 +17,9 @@ package com.blockwithme.meta
 
 import static java.util.Objects.*
 import static com.blockwithme.util.shared.Preconditions.*
+import static extension com.blockwithme.util.xtend.StdExt.*
 import java.util.Map
-import org.slf4j.LoggerFactory
+import java.util.logging.Logger
 import java.util.List
 import com.blockwithme.util.shared.converters.Converter
 import com.blockwithme.fn1.BooleanFuncObject
@@ -57,7 +58,7 @@ import javax.inject.Provider
  */
 class HierarchyBuilder {
 
-    static val LOG = LoggerFactory.getLogger(HierarchyBuilder);
+    static val LOG = Logger.getLogger(HierarchyBuilder.name);
 
     static val char DOT = "."
 

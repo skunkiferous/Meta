@@ -29,9 +29,10 @@ import java.io.Serializable
 import java.util.Collections
 import java.util.Map
 import java.util.TreeSet
-import org.slf4j.LoggerFactory
+import java.util.logging.Logger
 
 import static com.blockwithme.util.shared.Preconditions.*
+import static extension com.blockwithme.util.xtend.StdExt.*
 import static java.util.Objects.*
 import com.blockwithme.fn1.ObjectFuncObject
 import com.blockwithme.fn2.ObjectFuncObjectObject
@@ -85,7 +86,7 @@ import java.util.Iterator
  * @author monster
  */
 public class Hierarchy implements Comparable<Hierarchy> {
-    private static val LOG = LoggerFactory.getLogger(Hierarchy)
+    private static val LOG = Logger.getLogger(Hierarchy.name)
 
     /** All the Hierarchies */
     static var all = <Hierarchy>newArrayOfSize(0)
@@ -391,7 +392,7 @@ interface HierarchyListener {
  * @author monster
  */
 abstract class MetaBase<PARENT> implements Comparable<MetaBase<?>> {
-    private static val LOG = LoggerFactory.getLogger(MetaBase)
+    private static val LOG = Logger.getLogger(MetaBase.name)
 	/** The full name */
 	public val String fullName
 	/** The simple name (the part after the last '.' in the full name) */
@@ -1100,7 +1101,7 @@ extends MetaBase<Type<OWNER_TYPE>> {
 	/** The content/data Type of this property */
 	var Type<PROPERTY_TYPE> contentType
 	/** Maps a type ID to an "inherited Property ID" */
-	val inheritedIndex = new AtomicReference<byte[]>()
+	val inheritedIndex = new AtomicReference<byte[]>(newByteArrayOfSize(8))
 	/** The zero-based global property ID */
 	public val int globalPropertyId
 	/** The zero-based property ID, within the owner type */
@@ -1182,9 +1183,6 @@ extends MetaBase<Type<OWNER_TYPE>> {
 		val typeID = requireNonNull(type, "type").typeId
 		val oldArray = inheritedIndex.get
 		var array = oldArray
-		if (array == null) {
-			array = newByteArrayOfSize(0)
-		}
 		if (array.length <= typeID) {
 			val newArray = newByteArrayOfSize(typeID*2)
 			System.arraycopy(array, 0, newArray, 0, array.length)
@@ -2279,7 +2277,7 @@ extends DoubleProperty<OWNER_TYPE, Double, DoubleConverter<OWNER_TYPE, Double>> 
  * @author monster
  */
 public class MetaHierarchyBuilder extends HierarchyBuilder {
-    private static val LOG = LoggerFactory.getLogger(MetaHierarchyBuilder)
+    private static val LOG = Logger.getLogger(MetaHierarchyBuilder.name)
 
 	/** Makes sure all the constants are initialized. Can always be called safely. */
 	static def init() {

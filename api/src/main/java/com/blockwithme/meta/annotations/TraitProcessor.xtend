@@ -63,7 +63,7 @@ import com.blockwithme.util.xtend.IndentationAwareStringBuilder
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.CLASS)
 @Inherited
-@Active(MagicAnnotationProcessor)
+@Active(MyActiveProc)
 annotation Trait {
 	/** If the immutable it true all fields are final,
 	 * and setter methods will return a new instance*/

@@ -147,7 +147,10 @@ interface EntityContext {
 	 */
 	def String getIDAsString(Entity entity)
 
-	/** Finds/loads/creates/.. and entity, based on it's ID. */
+	/**
+	 * Finds/loads/creates/.. and entity, based on it's ID.
+	 * TODO This must be *async*
+	 */
 	def Entity getEntityFromID(String idAsString)
 }
 
