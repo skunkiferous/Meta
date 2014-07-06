@@ -112,8 +112,8 @@ public abstract class _BeanImpl implements _Bean {
 
     }
 
-    /** Empty long[], used in selectedArray */
-    private static final long[] NO_LONG = new long[0];
+    /** Empty int[], used in selectedArray */
+    private static final int[] NO_INT = new int[0];
 
     /** Reasonable maximum size. */
     private static final int MAX_SIZE = 65536;
@@ -146,11 +146,11 @@ public abstract class _BeanImpl implements _Bean {
      */
     private _Bean parent;
 
-    /** 64 "selected" flags */
-    private long selected;
+    /** 32 "selected" flags */
+    private int selected;
 
-    /** More "selected" flags, if 64 is not enough, or if the number varies */
-    private long[] selectedArray;
+    /** More "selected" flags, if 32 is not enough, or if the number varies */
+    private int[] selectedArray;
 
     /** The change counter */
     private int changeCounter;
@@ -159,13 +159,13 @@ public abstract class _BeanImpl implements _Bean {
      * Lazily cached toString result (null == not computed yet)
      * Cleared automatically when the "state" of the Bean changes.
      */
-    private String toString;
+    private transient String toString;
 
     /**
      * Lazily cached hashCode result (0 == not computed yet)
      * Cleared automatically when the "state" of the Bean changes.
      */
-    private int toStringHashCode;
+    private transient int toStringHashCode;
 
     /** Speeds up, looking up Property indexes. */
     private transient Property<?, ?> lastIndexedProp;
@@ -236,22 +236,22 @@ public abstract class _BeanImpl implements _Bean {
             throw new IllegalArgumentException("bitsMinCapacity ("
                     + bitsMinCapacity + ") > MAX_SIZE=" + MAX_SIZE);
         }
-        final long[] array = selectedArray;
+        final int[] array = selectedArray;
         final int oldArrayCapacity = array.length;
-        int minCapacity = bitsMinCapacity / 64;
-        if (bitsMinCapacity % 64 != 0) {
+        int minCapacity = bitsMinCapacity / 32;
+        if (bitsMinCapacity % 32 != 0) {
             minCapacity++;
         }
-        // +1 because of the "selected" long field
+        // +1 because of the "selected" int field
         if (minCapacity > oldArrayCapacity + 1) {
-            selectedArray = new long[minCapacity - 1];
+            selectedArray = new int[minCapacity - 1];
             System.arraycopy(array, 0, selectedArray, 0, oldArrayCapacity);
         }
     }
 
     /** For special beans with variable size, we can clear the selection array. */
     protected final void clearSelectionArray() {
-        selectedArray = NO_LONG;
+        selectedArray = NO_INT;
     }
 
     /** The constructor; metaType is required. */
@@ -271,14 +271,14 @@ public abstract class _BeanImpl implements _Bean {
         }
         this.metaType = metaType;
         // Setup the selectedArray. The idea is that small objects do not
-        // require an additional long[] instance, making small more lightweight.
+        // require an additional int[] instance, making small more lightweight.
         final int propertyCount = getSelectionCount();
-        int arraySizePlusOne = propertyCount / 64;
-        if (propertyCount % 64 != 0) {
+        int arraySizePlusOne = propertyCount / 32;
+        if (propertyCount % 32 != 0) {
             arraySizePlusOne++;
         }
-        selectedArray = (arraySizePlusOne <= 1) ? NO_LONG
-                : new long[arraySizePlusOne - 1];
+        selectedArray = (arraySizePlusOne <= 1) ? NO_INT
+                : new int[arraySizePlusOne - 1];
     }
 
     /** Returns our metaType. Cannot be null. */
@@ -305,8 +305,8 @@ public abstract class _BeanImpl implements _Bean {
         if (selected != 0) {
             return true;
         }
-        final long[] array = selectedArray;
-        for (final long l : array) {
+        final int[] array = selectedArray;
+        for (final int l : array) {
             if (l != 0) {
                 return true;
             }
@@ -337,11 +337,11 @@ public abstract class _BeanImpl implements _Bean {
     /** Returns true if the specified property at the given index was selected */
     @Override
     public final boolean isSelected(final int index) {
-        if (index < 64) {
-            return (selected & (1L << index)) != 0;
+        if (index < 32) {
+            return (selected & (1 << index)) != 0;
         }
-        final long sel = selectedArray[index / 64 - 1];
-        return (sel & (1L << (index % 64))) != 0;
+        final int sel = selectedArray[index / 32 - 1];
+        return (sel & (1 << (index % 32))) != 0;
     }
 
     /** Returns the index to use for this property. */
@@ -375,10 +375,10 @@ public abstract class _BeanImpl implements _Bean {
             throw new UnsupportedOperationException(this + " is immutable!");
         }
         changeCounter++;
-        if (index < 64) {
-            selected |= (1L << index);
+        if (index < 32) {
+            selected |= (1 << index);
         } else {
-            selectedArray[index / 64 - 1] |= (1L << (index % 64));
+            selectedArray[index / 32 - 1] |= (1 << (index % 32));
         }
         // Setting the selected flag also means the content will probably change
         // so we reset the cached state.
@@ -397,10 +397,10 @@ public abstract class _BeanImpl implements _Bean {
         changeCounter++;
         final int end = getSelectionCount();
         for (int i = index; i < end; i++) {
-            if (i < 64) {
-                selected |= (1L << i);
+            if (i < 32) {
+                selected |= (1 << i);
             } else {
-                selectedArray[i / 64 - 1] |= (1L << (i % 64));
+                selectedArray[i / 32 - 1] |= (1 << (i % 32));
             }
         }
         // Setting the selected flag also means the content will probably change
@@ -418,7 +418,7 @@ public abstract class _BeanImpl implements _Bean {
         if (isSelected()) {
             selected = 0;
             // It's always safe to set all bits to 0, even the ones we don't use.
-            final long[] array = selectedArray;
+            final int[] array = selectedArray;
             final int length = array.length;
             for (int i = 0; i < length; i++) {
                 array[i] = 0;
@@ -461,19 +461,19 @@ public abstract class _BeanImpl implements _Bean {
         if (immutable) {
             throw new UnsupportedOperationException(this + " is immutable!");
         }
-        selected = -1L;
-        final long[] array = selectedArray;
+        selected = -1;
+        final int[] array = selectedArray;
         final int length = array.length;
         for (int i = 0; i < length; i++) {
-            array[i] = -1L;
+            array[i] = -1;
         }
-        final int rest = getSelectionCount() % 64;
+        final int rest = getSelectionCount() % 32;
         if (rest != 0) {
             // If we were to set too many bits to 1, then isSelected() would return the wrong value
             if (length == 0) {
-                selected = (1L << rest) - 1L;
+                selected = (1 << rest) - 1;
             } else {
-                array[length - 1] = (1L << rest) - 1L;
+                array[length - 1] = (1 << rest) - 1;
             }
         }
         for (final _Bean value : getBeanIterator()) {
