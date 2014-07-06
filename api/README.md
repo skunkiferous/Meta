@@ -214,6 +214,8 @@ Make sure the tests are updated.
 UNPROCESSED:
 ============
 
+Create an @DefaultValue annotation
+
 Type instances should offer an array of all Properties in alphabetical order.
 
 Add API to allow Processors to order themselves before or after some other Processor.

@@ -30,6 +30,8 @@ import com.blockwithme.meta.beans.Meta
 import com.blockwithme.meta.beans.impl.CollectionBeanImpl
 import com.blockwithme.meta.beans.impl._BeanImpl
 import com.blockwithme.meta.beans.impl._EntityImpl
+import com.blockwithme.util.xtend.annotations.Processor
+import com.blockwithme.util.xtend.annotations.ProcessorUtil
 import java.lang.annotation.ElementType
 import java.lang.annotation.Inherited
 import java.lang.annotation.Retention
@@ -54,9 +56,6 @@ import org.eclipse.xtend.lib.macro.declaration.TypeReference
 import org.eclipse.xtend.lib.macro.declaration.Visibility
 
 import static java.util.Objects.*
-import com.blockwithme.util.xtend.annotations.MagicAnnotationProcessor
-import com.blockwithme.util.xtend.annotations.Processor
-import com.blockwithme.util.xtend.annotations.ProcessorUtil
 
 /**
  * Annotates an interface declared in a C-style-struct syntax
@@ -464,7 +463,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
   private def putInCache(Map<String,Object> processingContext, String key, String noSameSimpleNameKey, BeanInfo beanInfo) {
     requireNonNull(beanInfo, "beanInfo")
     processingContext.put(key, beanInfo)
-    var list = processingContext.get(noSameSimpleNameKey) as List
+    var list = processingContext.get(noSameSimpleNameKey) as List<BeanInfo>
     if (list === null) {
       list = newArrayList()
       processingContext.put(noSameSimpleNameKey, list)
@@ -761,7 +760,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	if (roots.size > 1) {
 	  error(BeanProcessor, "transform", mtd,
 			"Multiple parents of " + mtd.qualifiedName + " have the Bean annotation: " +
-				ProcessorUtil.qualifiedNames(roots as Iterable))
+				ProcessorUtil.qualifiedNames(roots as Iterable<?>))
 	}
 	roots.get(0).qualifiedName
   }
