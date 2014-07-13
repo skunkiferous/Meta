@@ -80,26 +80,39 @@ TODO:
 
 Make sure the tests are updated.
 
-v0.0.5
+v0.1.0
 ======
 
 DONE:
 =====
 
+We need some kind of visitor pattern over the Meta-classes
+
+Add PrimitiveProperty.toDouble
+
+Add Interfaces for the properties
+
+Add Property.getAny
+
+We probably want immutable flags for Properties
+
+Define a EnumProperty interface, extending the to-be-defined Property interfaces
+
+An Enum property to be based on byte.
+
 TODO:
 =====
 
-Add Interfaces for all the meta-types
+String properties
+
+String convertible properties (uses Object-Object converter)
+
+An Enum property to be based on String.
+
+Array / Collection / Map properties
 
 We need to detect if a property/method/type/package was "forgotten"
 at the creation of it's parent.
-
-Add PrimitiveProperty.getAsDouble
-
-Define a EnumProperty interface, extending the to-be-defined Property interfaces
-to allow a Enum property to be based on either byte, char, or String.
-
-We need some kind of visitor pattern over the Meta-classes
 
 Type creation should support parameters as well. Or should we
 instead define Constructor objects, like the Properties? Constructors
@@ -108,32 +121,13 @@ are then a special case of Methods.
 What about generic Builders for immutable types?
 Do we need them if we have Constructor objects? Or the other way around?
 
-Add IsTrue.isTrue(*)
-
 Add Generics (double[]+Object[] == everything)
 
 ---Add Minimal (Double+Object) Functors---
 
-Add Prop.getGeneric
-
 32-bit slot property index (where long and double take two slots)
 
 Add immutable flag to Type
-
-We probably want readOnly/writeOnly flags for Properties
-
-Allow the creation of converters from Functors.
-
-Make sure the tests are updated.
-
-v0.0.6
-======
-
-DONE:
-=====
-
-TODO:
-=====
 
 Reduce Potential for circular dependency, by having the data-type of
 Properties being initialized once the Hierarchy is "ready".
@@ -150,21 +144,17 @@ as "related data" that cannot simply be accessed through navigating properties?
 
 Add support for Object-Object converter, with reversibility
 
-String properties
-
 Long-As-Object properties
-
-String convertible properties (uses Object-Object converter)
 
 Add Scala-style Symbols (must NOT be user-creatable)
 Symbols probably need their own Hierarchy.
 
-Array / Collection / Map properties
-
 Add meta-property auto-initializers
 (must somehow make sure all things registered both before and after
 the auto-initializers themselves are registered all get a value)
-Use "HierarchyListener" for that
+Use "HierarchyListener" for that.
+
+A "Path" could be created from an array of Properties, and an AnyArray, in case the properties are Collections or Maps (index/map-key).
 
 Make sure the tests are updated.
 
@@ -347,3 +337,5 @@ We do need to use our serialization API, because we will have to deal with *vers
 We could define "path" within the object "tree" as an array/list of Property instances (all but the last one need to be Object-Properties). But what about collections? If we don't try to add the ability to target a specific position/key, then we can just return *all* values of a collection. So the result to a "path query" will be an iterator, which can return 0 (one of the path values is null), one, or more (one of the path values is a collection) results.
 
 The Beans API of Meta should allow copying to/from *non-Meta* implementations of the Bean interfaces, in case we are forced to generate implementations with other technologies, like GWT auto-beans.
+
+Add Interfaces for all the meta-types

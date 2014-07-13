@@ -64,6 +64,15 @@ import java.util.Collection
 import java.util.List
 import java.util.ArrayList
 import java.util.Iterator
+import com.blockwithme.util.shared.converters.ConverterBase
+import com.blockwithme.util.shared.Any
+import com.blockwithme.util.shared.AnyArray
+import com.blockwithme.util.shared.converters.EnumByteConverter
+import com.blockwithme.util.shared.converters.StringConverter
+import java.util.Objects
+import com.blockwithme.util.shared.converters.ObjectConverterBase
+import com.blockwithme.util.shared.converters.ObjectConverter
+import com.blockwithme.util.shared.converters.NOPObjectConverter
 
 /**
  * Hierarchy represents a Type hierarchy. It is not limited to types in the
@@ -368,6 +377,13 @@ public class Hierarchy implements Comparable<Hierarchy> {
 		}
 	}
 
+	/** Accepts the visitor */
+	def final void accept(MetaVisitor visitor) {
+		visitor.visit(this)
+		for (p : allPackages) {
+			p.accept(visitor)
+		}
+	}
 }
 
 /** Hierarchy event listener interface */
@@ -489,7 +505,7 @@ enum PropertyType {
  * Converters are used to convert primitive properties to/from objects
  */
 @Data
-package class PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<PROPERTY_TYPE>> {
+package class PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<?,PROPERTY_TYPE>> {
 	/** The hierarchy */
 	HierarchyBuilder builder
 	/**
@@ -628,7 +644,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	 * The direct Object Properties
 	 * Do not modify!
 	 */
-	public val ObjectProperty<JAVA_TYPE,?>[] objectProperties
+	public val ObjectProperty<JAVA_TYPE,?,?,?>[] objectProperties
 
 	/**
 	 * The direct Primitive Properties
@@ -652,7 +668,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	 * The Object properties of this type, and all it's parents
 	 * Do not modify!
 	 */
-	public val ObjectProperty<JAVA_TYPE,?>[] inheritedObjectProperties
+	public val ObjectProperty<JAVA_TYPE,?,?,?>[] inheritedObjectProperties
 
 	/**
 	 * The Primitive properties of this type, and all it's parents
@@ -677,7 +693,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	 *
 	 * Do not modify!
 	 */
-	public val ObjectProperty<JAVA_TYPE,Type<?>>[] componentTypes
+	public val ObjectProperty<JAVA_TYPE,Type<?>,?,?>[] componentTypes
 
 	/** The zero-based type ID */
 	public val int typeId
@@ -761,7 +777,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	protected new(TypeRegistration registration, Class<JAVA_TYPE> theType,
 		Provider<JAVA_TYPE> theConstructor, Kind theKind,
 		Type<?>[] theParents, Property<JAVA_TYPE,?>[] theProperties,
-		ObjectProperty<JAVA_TYPE,Type<?>>[] componentTypes) {
+		ObjectProperty<JAVA_TYPE,Type<?>,?,?>[] componentTypes) {
 		super(requireNonNull(theType, "theType").name,
 			theType.simpleName, requireNonNull(registration, "registration").globalId)
 		if (theType.primitive) {
@@ -1035,6 +1051,14 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 	def final JAVA_TYPE create() {
 		constructor.get()
 	}
+
+	/** Accepts the visitor */
+	def final void accept(MetaVisitor visitor) {
+		visitor.visit(this)
+		for (p : properties) {
+			p.accept(visitor)
+		}
+	}
 }
 
 
@@ -1067,7 +1091,115 @@ interface PropertyVisitor {
 	def void visit(DoubleProperty<?,?,?> prop)
 
 	/** Visits a Object Property */
-	def void visit(ObjectProperty<?,?> prop)
+	def void visit(ObjectProperty<?,?,?,?> prop)
+}
+
+
+/**
+ * The Meta visitor
+ */
+interface MetaVisitor extends PropertyVisitor {
+	/** Visits a Type */
+	def void visit(Type<?> type)
+
+	/** Visits a TypePackage */
+	def void visit(TypePackage typePackage)
+
+	/** Visits a Hierarchy */
+	def void visit(Hierarchy hierarchy)
+}
+
+/**
+ * Represents a Property of a Type.
+ *
+ * Beyond defining the type, name and different IDs of a Property, it's main
+ * use is to give a *fast generic access* to the value of the property,
+ * allowing frameworks to manipulate the data of instances of Types, without
+ * actually knowing the Java Class of the Type at compile time, and, most
+ * importantly, *without using Reflection*. This means this API should allow
+ * generic type and property manipulation even in GWT.
+ *
+ * This, of course, doesn't come for free. To allow fast generic access to the
+ * value of the Property, the Property instance must be a sub-class of Property,
+ * and therefore one additional Class object is produced for every Property of
+ * a domain object. Each such Class instance requires a few hundred bytes, but
+ * the cost is once-per-property, and so independent of the number of
+ * *instances*.
+ *
+ * @author monster
+ */
+interface IProperty<OWNER_TYPE, PROPERTY_TYPE> {
+	/** The content/data Type of this property */
+	def Class<PROPERTY_TYPE> getContentTypeClass()
+	/** The zero-based global property ID */
+	def int getGlobalPropertyId()
+	/** The zero-based property ID, within the owner type */
+	def int getPropertyId()
+	/** Does this represent a primitive property */
+	def boolean getPrimitive()
+	/** The basic type of a Property. */
+	def PropertyType getType()
+	/** Does this represent a "meta" property? */
+	def boolean getMeta()
+	/**
+	 * The zero-based Long-or-Object property ID, within the owner type.
+	 *
+	 * It's purpose is that Long cannot be represented as a double,
+	 * and therefore Java Long are *objects* anyway in GWT. So we want
+	 * to split between any primitive value that can be represented
+	 * as a double, and the rest, which are Long and Objects.
+	 */
+	def int getLongOrObjectPropertyId()
+	/** Does this represent a "virtual" property? */
+	def boolean getVirtual()
+	/** The virtual property ID */
+	def int getVirtualPropertyId()
+
+	/**
+	 * Returns true if both Property instances represent the same property
+	 * in the same Java class. This is possible if they belong to different
+	 * type hierarchies.
+	 */
+	def boolean sameProperty(Property<?,?> other)
+
+	/** The owner type */
+	def Type<OWNER_TYPE> owner()
+
+	/** The content/data Type of this property */
+	def Type<PROPERTY_TYPE> contentType()
+
+	/**
+	 * The zero-based property ID, within the inheritedProperties array of the
+	 * given type. -1 when not found.
+	 */
+	def int inheritedPropertyId(Type<?> type)
+
+	/** Returns the value of this property, as an Object */
+	def PROPERTY_TYPE getObject(OWNER_TYPE object)
+
+	/** Sets the value of this property, as an Object */
+	def OWNER_TYPE setObject(OWNER_TYPE object, PROPERTY_TYPE value)
+
+	/** Returns the value of this property, by setting it in an Any */
+	def OWNER_TYPE getAny(OWNER_TYPE object, Any any)
+
+	/** Sets the value of this property, by reading it from an Any */
+	def OWNER_TYPE setAny(OWNER_TYPE object, Any any)
+
+	/** Returns the value of this property, by setting it in an AnyArray */
+	def OWNER_TYPE getAnyArray(OWNER_TYPE object, AnyArray anyArray, int index)
+
+	/** Sets the value of this property, by reading it from an AnyArray */
+	def OWNER_TYPE setAnyArray(OWNER_TYPE object, AnyArray anyArray, int index)
+
+	/** Accepts the visitor */
+	def void accept(PropertyVisitor visitor)
+
+	/** Copy the value of the Property from the source to the target */
+	def void copyValue(OWNER_TYPE source, OWNER_TYPE target)
+
+	/** Returns true, if the property is immutable. */
+	def boolean isImmutable()
 }
 
 /**
@@ -1090,18 +1222,18 @@ interface PropertyVisitor {
  * @author monster
  */
 abstract class Property<OWNER_TYPE, PROPERTY_TYPE>
-extends MetaBase<Type<OWNER_TYPE>> {
+extends MetaBase<Type<OWNER_TYPE>> implements IProperty<OWNER_TYPE, PROPERTY_TYPE> {
 	/** When a Type has no properties */
 	public static val Property[] NO_PROPERTIES = <Property>newArrayOfSize(0)
 
 	/** Only for internal validation ... */
 	package val Class<OWNER_TYPE> ownerClass
 	/** The content/data Type of this property */
-	public val Class<PROPERTY_TYPE> contentTypeClass
-	/** The content/data Type of this property */
 	var Type<PROPERTY_TYPE> contentType
 	/** Maps a type ID to an "inherited Property ID" */
 	val inheritedIndex = new AtomicReference<byte[]>(newByteArrayOfSize(8))
+	/** The content/data Type of this property */
+	public val Class<PROPERTY_TYPE> contentTypeClass
 	/** The zero-based global property ID */
 	public val int globalPropertyId
 	/** The zero-based property ID, within the owner type */
@@ -1127,7 +1259,7 @@ extends MetaBase<Type<OWNER_TYPE>> {
 	public val int virtualPropertyId
 
 	/** Constructor */
-	package new(PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, ? extends Converter<PROPERTY_TYPE>> theData) {
+	package new(PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, ? extends Converter<?,PROPERTY_TYPE>> theData) {
 		super(requireNonNull(requireNonNull(theData, "theData").owner, "theData.owner").name+'.'
 			+requireNonNull(theData.simpleName, "theData.simpleName"),
 			theData.simpleName, theData.globalId)
@@ -1148,17 +1280,69 @@ extends MetaBase<Type<OWNER_TYPE>> {
 		virtualPropertyId = theData.virtualPropertyId
 	}
 
+	/** The content/data Type of this property */
+	override final Class<PROPERTY_TYPE> getContentTypeClass() {
+		contentTypeClass
+	}
+
+	/** The zero-based global property ID */
+	override final int getGlobalPropertyId() {
+		globalPropertyId
+	}
+
+	/** The zero-based property ID, within the owner type */
+	override final int getPropertyId() {
+		propertyId
+	}
+
+	/** Does this represent a primitive property */
+	override final boolean getPrimitive() {
+		primitive
+	}
+
+	/** The basic type of a Property. */
+	override final PropertyType getType() {
+		type
+	}
+
+	/** Does this represent a "meta" property? */
+	override final boolean getMeta() {
+		meta
+	}
+
+	/**
+	 * The zero-based Long-or-Object property ID, within the owner type.
+	 *
+	 * It's purpose is that Long cannot be represented as a double,
+	 * and therefore Java Long are *objects* anyway in GWT. So we want
+	 * to split between any primitive value that can be represented
+	 * as a double, and the rest, which are Long and Objects.
+	 */
+	override final int getLongOrObjectPropertyId() {
+		longOrObjectPropertyId
+	}
+
+	/** Does this represent a "virtual" property? */
+	override final boolean getVirtual() {
+		virtual
+	}
+
+	/** The virtual property ID */
+	override final int getVirtualPropertyId() {
+		virtualPropertyId
+	}
+
 	/**
 	 * Returns true if both Property instances represent the same property
 	 * in the same Java class. This is possible if they belong to different
 	 * type hierarchies.
 	 */
-	def final boolean sameProperty(Property<?,?> other) {
+	override final boolean sameProperty(Property<?,?> other) {
 		(other != null) && (other.fullName.equals(fullName))
 	}
 
 	/** The owner type */
-	def final Type<OWNER_TYPE> owner() {
+	override final Type<OWNER_TYPE> owner() {
 		if (parent == null) {
 			throw new IllegalStateException("owner of "+this+" is null")
 		}
@@ -1166,7 +1350,7 @@ extends MetaBase<Type<OWNER_TYPE>> {
 	}
 
 	/** The content/data Type of this property */
-	def final Type<PROPERTY_TYPE> contentType() {
+	override final Type<PROPERTY_TYPE> contentType() {
 		if (contentType === null) {
 			contentType = hierarchy().findType(contentTypeClass)
 			requireNonNull(contentType, contentTypeClass.name)
@@ -1178,7 +1362,7 @@ extends MetaBase<Type<OWNER_TYPE>> {
 	 * The zero-based property ID, within the inheritedProperties array of the
 	 * given type. -1 when not found.
 	 */
-	def final int inheritedPropertyId(Type<?> type) {
+	override final int inheritedPropertyId(Type<?> type) {
 		// TODO This can probably be improved ...
 		val typeID = requireNonNull(type, "type").typeId
 		val oldArray = inheritedIndex.get
@@ -1207,49 +1391,6 @@ extends MetaBase<Type<OWNER_TYPE>> {
 		}
 		result
 	}
-
-	/** Returns the value of this property, as an Object */
-	def PROPERTY_TYPE getObject(OWNER_TYPE object)
-
-	/** Sets the value of this property, as an Object */
-	def OWNER_TYPE setObject(OWNER_TYPE object, PROPERTY_TYPE value)
-
-	/** Accepts the visitor */
-	def void accept(PropertyVisitor visitor)
-
-	/** Copy the value of the Property from the source to the target */
-	def void copyValue(OWNER_TYPE source, OWNER_TYPE target)
-
-	/** Returns true, if the property is immutable. */
-	def boolean isImmutable()
-}
-
-/** Temporary Helper Object, used for Object Property creation. */
-package final class DummyConverter<E> implements Converter<E> {
-
-	val Class<E> type
-
-	package new(Class<E> theType) {
-		type = theType
-	}
-
-    /**
-     * The type of Object being converted.
-     *
-     * @return the class (type) of the Object that is converted by this Converter interface.
-     */
-    override Class<E> type() {
-    	type
-    }
-
-    /**
-     * Returns the number of bits required to store the object data.
-     *
-     * Use the primitive type size, if unsure/variable.
-     * Use 0 or -1 if not a primitive type converter.
-     */
-    override int bits() { 0 }
-
 }
 
 /**
@@ -1258,7 +1399,8 @@ package final class DummyConverter<E> implements Converter<E> {
  *
  * @author monster
  */
-class ObjectProperty<OWNER_TYPE, PROPERTY_TYPE>
+class ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE,
+CONVERTER extends ObjectConverter<OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE>>
 extends Property<OWNER_TYPE, PROPERTY_TYPE> {
 	/** The zero-based Object (non-primitive) property ID, within the owner type */
 	public val int objectPropertyId
@@ -1281,8 +1423,11 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
 	/** Is this object a "Bean"? */
 	public val boolean bean
 
+	/** The converter. Used to convert PROPERTY_TYPE values to/from INTERNAL_TYPE. */
+	public val CONVERTER converter
+
 	/** Constructor */
-	package new(PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, ? extends Converter<PROPERTY_TYPE>> theData,
+	package new(PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> theData,
 		boolean theShared, boolean theActualInstance, boolean theExactType,
 		ObjectFuncObject<PROPERTY_TYPE,OWNER_TYPE> theGetter,
 		ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> theSetter) {
@@ -1294,6 +1439,7 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
 		getter = theGetter
 		setter = theSetter
 		bean = Bean.isAssignableFrom(theData.dataType)
+		converter = theData.converter
 	}
 
 	/** Constructor */
@@ -1301,7 +1447,19 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
 		Class<PROPERTY_TYPE> theContentType, boolean theShared, boolean theActualInstance,
 		boolean theExactType, ObjectFuncObject<PROPERTY_TYPE,OWNER_TYPE> theGetter,
 		ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> theSetter, boolean theVirtual) {
-		this(builder.preRegisterProperty(theOwner, theSimpleName, new DummyConverter(theContentType),
+		this(builder.preRegisterProperty(theOwner, theSimpleName,
+			new NOPObjectConverter(theContentType) as ObjectConverter as CONVERTER,
+			PropertyType::OBJECT, -1, theContentType, theVirtual), theShared, theActualInstance,
+			theExactType, requireNonNull(theGetter, "theGetter"),
+			theSetter)
+	}
+
+	/** Constructor */
+	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
+		CONVERTER theConverter, Class<PROPERTY_TYPE> theContentType, boolean theShared, boolean theActualInstance,
+		boolean theExactType, ObjectFuncObject<PROPERTY_TYPE,OWNER_TYPE> theGetter,
+		ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> theSetter, boolean theVirtual) {
+		this(builder.preRegisterProperty(theOwner, theSimpleName, theConverter,
 			PropertyType::OBJECT, -1, theContentType, theVirtual), theShared, theActualInstance,
 			theExactType, requireNonNull(theGetter, "theGetter"),
 			theSetter)
@@ -1328,6 +1486,53 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
 	/** Returns true, if the property is immutable. */
 	override final boolean isImmutable() {
 		setter === null
+	}
+
+	/** Returns the value of this property, by setting it in an Any */
+	override final OWNER_TYPE getAny(OWNER_TYPE object, Any any) {
+		any.setObject(getter.apply(object))
+		object
+	}
+
+	/** Sets the value of this property, by reading it from an Any */
+	override final OWNER_TYPE setAny(OWNER_TYPE object, Any any) {
+		setter.apply(object, any.getObject() as PROPERTY_TYPE)
+		object
+	}
+
+	/** Returns the value of this property, by setting it in an AnyArray */
+	override final OWNER_TYPE getAnyArray(OWNER_TYPE object, AnyArray anyArray, int index) {
+		anyArray.setObject(index, getter.apply(object))
+		object
+	}
+
+	/** Sets the value of this property, by reading it from an AnyArray */
+	override final OWNER_TYPE setAnyArray(OWNER_TYPE object, AnyArray anyArray, int index) {
+		setter.apply(object, anyArray.getObject(index) as PROPERTY_TYPE)
+		object
+	}
+}
+
+/**
+ * Represents an String Property.
+ *
+ * @author monster
+ */
+class StringProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER
+extends StringConverter<OWNER_TYPE, PROPERTY_TYPE>>
+extends ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, String, CONVERTER> {
+
+	/** The converter. Used to convert primitive values to/from Objects. */
+	public val CONVERTER converter
+
+	/** Constructor */
+	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
+		CONVERTER theConverter, Class<PROPERTY_TYPE> theContentType, boolean theShared, boolean theActualInstance,
+		boolean theExactType, ObjectFuncObject<PROPERTY_TYPE,OWNER_TYPE> theGetter,
+		ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> theSetter, boolean theVirtual) {
+		super(builder, theOwner, theSimpleName, theConverter, theContentType, theShared, theActualInstance,
+		theExactType, theGetter, theSetter, theVirtual)
+		converter = Objects.requireNonNull(theConverter)
 	}
 }
 
@@ -1394,7 +1599,8 @@ implements ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> {
  * @author monster
  */
 class MetaProperty<OWNER_TYPE extends MetaBase<?>, PROPERTY_TYPE>
-extends ObjectProperty<OWNER_TYPE, PROPERTY_TYPE> {
+extends ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE,
+ObjectConverter<OWNER_TYPE,PROPERTY_TYPE,PROPERTY_TYPE>> {
 
     /** The default value */
     public val PROPERTY_TYPE defaultValue
@@ -1408,7 +1614,7 @@ extends ObjectProperty<OWNER_TYPE, PROPERTY_TYPE> {
 	}
 
 	/** Constructor */
-	private new(PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, ? extends Converter<PROPERTY_TYPE>> theData,
+	private new(PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, ObjectConverter<OWNER_TYPE,PROPERTY_TYPE,PROPERTY_TYPE>> theData,
 		PROPERTY_TYPE theDefaultValue) {
 		super(theData, true, true, false,
 			new MetaGetter<OWNER_TYPE,PROPERTY_TYPE>(theData.globalPropertyId, theDefaultValue),
@@ -1431,7 +1637,7 @@ extends ObjectProperty<OWNER_TYPE, PROPERTY_TYPE> {
 	protected new(HierarchyBuilder builder, Type<OWNER_TYPE> theOwner, String theSimpleName,
 		Class<PROPERTY_TYPE> theContentType, PROPERTY_TYPE theDefaultValue, boolean theVirtual) {
 		this(builder.preRegisterProperty(checkOwnerType(theOwner).type as Class<OWNER_TYPE>,
-			theSimpleName, new DummyConverter(theContentType),
+			theSimpleName, new NOPObjectConverter<OWNER_TYPE,PROPERTY_TYPE>(theContentType),
 			PropertyType::OBJECT, -1, theContentType, theVirtual), theDefaultValue)
 		parent = theOwner
 	}
@@ -1449,9 +1655,79 @@ extends ObjectProperty<OWNER_TYPE, PROPERTY_TYPE> {
  *
  * @author monster
  */
-abstract class PrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<PROPERTY_TYPE>>
-extends Property<OWNER_TYPE, PROPERTY_TYPE> {
-	/** The default converters */
+interface IPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<?,PROPERTY_TYPE>>
+extends IProperty<OWNER_TYPE, PROPERTY_TYPE> {
+	/** The zero-based Primitive (non-Object) property ID, within the owner type */
+	def int getPrimitivePropertyId()
+	/** The number of bits required to store this value (boolean == 1) */
+	def int getBits()
+	/** The number of bytes required to store this value (bits rounded up to a multiple of 8; boolean == 1) */
+	def int getBytes()
+	/** Is this a floating-point property? */
+	def boolean getFloatingPoint()
+	/** Is this a 64-bit property? */
+	def boolean getSixtyFourBit()
+	/** The zero-based non-64-bit property ID, within the owner type */
+	def int getNonSixtyFourBitPropertyId()
+	/** The zero-based 64-bit property ID, within the owner type */
+	def int getSixtyFourBitPropertyId()
+	/**
+	 * Long is the only primitive Java type that *cannot be accurately
+	 * represented in JavaScript*, and so is treated as a special case
+	 * to serve the GWT-compatible version.
+	 *
+	 * The long property Id exists only in Long properties, of course.
+	 */
+	def int getNonLongPropertyId()
+	/** The converter. Used to convert primitive values to/from Objects. */
+	def CONVERTER getConverter()
+	/** Is this a signed property? */
+	def boolean getSigned()
+	/** Is this a default primitive "wrapper" property? */
+	def boolean getWrapper()
+}
+
+
+/**
+ * Represents an Enum Property.
+ *
+ * @author monster
+ */
+interface IEnumProperty<OWNER_TYPE, PROPERTY_TYPE extends Enum<PROPERTY_TYPE>,
+CONVERTER extends Converter<?,PROPERTY_TYPE>>
+extends IProperty<OWNER_TYPE, PROPERTY_TYPE> {
+}
+
+
+/**
+ * Represents an (non-long) Primitive (non-Object) Property.
+ * Those properties can all be expressed as a double.
+ *
+ * @author monster
+ */
+interface INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<?,PROPERTY_TYPE>>
+extends IPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
+	/** Returns the value of this property, as a double */
+	def double toDouble(OWNER_TYPE object)
+
+	/** Sets the value of this property, as a double */
+	def OWNER_TYPE fromDouble(OWNER_TYPE object, double value)
+}
+
+
+/**
+ * Represents an Primitive (non-Object) Property.
+ *
+ * The purpose of the Converter, is that we need to be able to represent every
+ * property as an Object anyway. So with the Converter, we enable that Object
+ * to be something else then just a "primitive wrapper". We could, for whatever
+ * reason, for example, store a value internally as a long, and externally as
+ * a "Handle" (non-primitive), using a Converter.
+ *
+ * @author monster
+ */
+abstract class PrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<?,PROPERTY_TYPE>>
+extends Property<OWNER_TYPE, PROPERTY_TYPE> implements IPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** The zero-based Primitive (non-Object) property ID, within the owner type */
 	public val int primitivePropertyId
 	/** The number of bits required to store this value (boolean == 1) */
@@ -1500,6 +1776,67 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
 			|| (tp == Integer) || (tp == Long)
 			|| (tp == Float) || (tp == Double)
 	}
+
+	/** The zero-based Primitive (non-Object) property ID, within the owner type */
+	override final int getPrimitivePropertyId() {
+		primitivePropertyId
+	}
+
+	/** The number of bits required to store this value (boolean == 1) */
+	override final int getBits() {
+		bits
+	}
+
+	/** The number of bytes required to store this value (bits rounded up to a multiple of 8; boolean == 1) */
+	override final int getBytes() {
+		bytes
+	}
+
+	/** Is this a floating-point property? */
+	override final boolean getFloatingPoint() {
+		floatingPoint
+	}
+
+	/** Is this a 64-bit property? */
+	override final boolean getSixtyFourBit() {
+		sixtyFourBit
+	}
+
+	/** The zero-based non-64-bit property ID, within the owner type */
+	override final int getNonSixtyFourBitPropertyId() {
+		nonSixtyFourBitPropertyId
+	}
+
+	/** The zero-based 64-bit property ID, within the owner type */
+	override final int getSixtyFourBitPropertyId() {
+		sixtyFourBitPropertyId
+	}
+
+	/**
+	 * Long is the only primitive Java type that *cannot be accurately
+	 * represented in JavaScript*, and so is treated as a special case
+	 * to serve the GWT-compatible version.
+	 *
+	 * The long property Id exists only in Long properties, of course.
+	 */
+	override final int getNonLongPropertyId() {
+		nonLongPropertyId
+	}
+
+	/** The converter. Used to convert primitive values to/from Objects. */
+	override final CONVERTER getConverter() {
+		converter
+	}
+
+	/** Is this a signed property? */
+	override final boolean getSigned() {
+		signed
+	}
+
+	/** Is this a default primitive "wrapper" property? */
+	override final boolean getWrapper() {
+		wrapper
+	}
 }
 
 
@@ -1509,7 +1846,7 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
  * @author monster
  */
 abstract class NonSixtyFourBitPrimitiveProperty
-<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<PROPERTY_TYPE>>
+<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<?,PROPERTY_TYPE>>
 extends PrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** Constructor */
 	package new(PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> theData) {
@@ -1524,7 +1861,7 @@ extends PrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
  * @author monster
  */
 abstract class SixtyFourBitPrimitiveProperty
-<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<PROPERTY_TYPE>>
+<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<?,PROPERTY_TYPE>>
 extends PrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** Constructor */
 	package new(PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> theData) {
@@ -1540,7 +1877,8 @@ extends PrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
  */
 class BooleanProperty
 <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends BooleanConverter<OWNER_TYPE, PROPERTY_TYPE>>
-extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
+extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>
+implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** The zero-based Boolean property ID, within the owner type */
 	public val int booleanPropertyId
 
@@ -1604,6 +1942,41 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	override final boolean isImmutable() {
 		setter === null
 	}
+
+	/** Returns the value of this property, by setting it in an Any */
+	override final OWNER_TYPE getAny(OWNER_TYPE object, Any any) {
+		any.setBoolean(getter.apply(object))
+		object
+	}
+
+	/** Sets the value of this property, by reading it from an Any */
+	override final OWNER_TYPE setAny(OWNER_TYPE object, Any any) {
+		setter.apply(object, any.getBoolean)
+		object
+	}
+
+	/** Returns the value of this property, by setting it in an AnyArray */
+	override final OWNER_TYPE getAnyArray(OWNER_TYPE object, AnyArray anyArray, int index) {
+		anyArray.setBoolean(index, getter.apply(object))
+		object
+	}
+
+	/** Sets the value of this property, by reading it from an AnyArray */
+	override final OWNER_TYPE setAnyArray(OWNER_TYPE object, AnyArray anyArray, int index) {
+		setter.apply(object, anyArray.getBoolean(index))
+		object
+	}
+
+	/** Returns the value of this property, as a double */
+	override final double toDouble(OWNER_TYPE object) {
+		if (getter.apply(object)) 1.0 else 0.0
+	}
+
+	/** Sets the value of this property, as a double */
+	override final OWNER_TYPE fromDouble(OWNER_TYPE object, double value) {
+		setter.apply(object, value != 0.0)
+		object
+	}
 }
 
 
@@ -1632,7 +2005,8 @@ extends BooleanProperty<OWNER_TYPE, Boolean, BooleanConverter<OWNER_TYPE, Boolea
  * @author monster
  */
 class ByteProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends ByteConverter<OWNER_TYPE, PROPERTY_TYPE>>
-extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
+extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>
+implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** The zero-based Byte property ID, within the owner type */
 	public val int bytePropertyId
 
@@ -1696,6 +2070,41 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	override final boolean isImmutable() {
 		setter === null
 	}
+
+	/** Returns the value of this property, by setting it in an Any */
+	override final OWNER_TYPE getAny(OWNER_TYPE object, Any any) {
+		any.setByte(getter.apply(object))
+		object
+	}
+
+	/** Sets the value of this property, by reading it from an Any */
+	override final OWNER_TYPE setAny(OWNER_TYPE object, Any any) {
+		setter.apply(object, any.getByte)
+		object
+	}
+
+	/** Returns the value of this property, by setting it in an AnyArray */
+	override final OWNER_TYPE getAnyArray(OWNER_TYPE object, AnyArray anyArray, int index) {
+		anyArray.setByte(index, getter.apply(object))
+		object
+	}
+
+	/** Sets the value of this property, by reading it from an AnyArray */
+	override final OWNER_TYPE setAnyArray(OWNER_TYPE object, AnyArray anyArray, int index) {
+		setter.apply(object, anyArray.getByte(index))
+		object
+	}
+
+	/** Returns the value of this property, as a double */
+	override final double toDouble(OWNER_TYPE object) {
+		getter.apply(object)
+	}
+
+	/** Sets the value of this property, as a double */
+	override final OWNER_TYPE fromDouble(OWNER_TYPE object, double value) {
+		setter.apply(object, value as byte)
+		object
+	}
 }
 
 
@@ -1719,12 +2128,33 @@ extends ByteProperty<OWNER_TYPE, Byte, ByteConverter<OWNER_TYPE, Byte>> {
 
 
 /**
+ * Represents an Enum byte Property.
+ *
+ * @author monster
+ */
+class EnumByteProperty<OWNER_TYPE, PROPERTY_TYPE extends Enum<PROPERTY_TYPE>>
+extends ByteProperty<OWNER_TYPE, PROPERTY_TYPE, EnumByteConverter<OWNER_TYPE, PROPERTY_TYPE>>
+implements IEnumProperty<OWNER_TYPE, PROPERTY_TYPE, EnumByteConverter<OWNER_TYPE, PROPERTY_TYPE>> {
+	/** Constructor */
+	protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
+		Class<PROPERTY_TYPE> dataType, ByteFuncObject<OWNER_TYPE> theGetter,
+		ObjectFuncObjectByte<OWNER_TYPE,OWNER_TYPE> theSetter, boolean theVirtual) {
+		super(builder, theOwner, theSimpleName,
+			new EnumByteConverter<OWNER_TYPE, PROPERTY_TYPE>(dataType), 8,
+			dataType, theGetter, theSetter, theVirtual
+		)
+	}
+}
+
+
+/**
  * Represents a primitive char Property.
  *
  * @author monster
  */
 class CharacterProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends CharConverter<OWNER_TYPE, PROPERTY_TYPE>>
-extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
+extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>
+implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** The zero-based Character property ID, within the owner type */
 	public val int characterPropertyId
 
@@ -1788,6 +2218,41 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	override final boolean isImmutable() {
 		setter === null
 	}
+
+	/** Returns the value of this property, by setting it in an Any */
+	override final OWNER_TYPE getAny(OWNER_TYPE object, Any any) {
+		any.setChar(getter.apply(object))
+		object
+	}
+
+	/** Sets the value of this property, by reading it from an Any */
+	override final OWNER_TYPE setAny(OWNER_TYPE object, Any any) {
+		setter.apply(object, any.getChar)
+		object
+	}
+
+	/** Returns the value of this property, by setting it in an AnyArray */
+	override final OWNER_TYPE getAnyArray(OWNER_TYPE object, AnyArray anyArray, int index) {
+		anyArray.setChar(index, getter.apply(object))
+		object
+	}
+
+	/** Sets the value of this property, by reading it from an AnyArray */
+	override final OWNER_TYPE setAnyArray(OWNER_TYPE object, AnyArray anyArray, int index) {
+		setter.apply(object, anyArray.getChar(index))
+		object
+	}
+
+	/** Returns the value of this property, as a double */
+	override final double toDouble(OWNER_TYPE object) {
+		getter.apply(object)
+	}
+
+	/** Sets the value of this property, as a double */
+	override final OWNER_TYPE fromDouble(OWNER_TYPE object, double value) {
+		setter.apply(object, value as char)
+		object
+	}
 }
 
 
@@ -1817,7 +2282,8 @@ extends CharacterProperty<OWNER_TYPE, Character, CharConverter<OWNER_TYPE, Chara
  */
 class ShortProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER
 extends ShortConverter<OWNER_TYPE, PROPERTY_TYPE>>
-extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
+extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>
+implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** The zero-based Short property ID, within the owner type */
 	public val int shortPropertyId
 
@@ -1881,6 +2347,41 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	override final boolean isImmutable() {
 		setter === null
 	}
+
+	/** Returns the value of this property, by setting it in an Any */
+	override final OWNER_TYPE getAny(OWNER_TYPE object, Any any) {
+		any.setShort(getter.apply(object))
+		object
+	}
+
+	/** Sets the value of this property, by reading it from an Any */
+	override final OWNER_TYPE setAny(OWNER_TYPE object, Any any) {
+		setter.apply(object, any.getShort)
+		object
+	}
+
+	/** Returns the value of this property, by setting it in an AnyArray */
+	override final OWNER_TYPE getAnyArray(OWNER_TYPE object, AnyArray anyArray, int index) {
+		anyArray.setShort(index, getter.apply(object))
+		object
+	}
+
+	/** Sets the value of this property, by reading it from an AnyArray */
+	override final OWNER_TYPE setAnyArray(OWNER_TYPE object, AnyArray anyArray, int index) {
+		setter.apply(object, anyArray.getShort(index))
+		object
+	}
+
+	/** Returns the value of this property, as a double */
+	override final double toDouble(OWNER_TYPE object) {
+		getter.apply(object)
+	}
+
+	/** Sets the value of this property, as a double */
+	override final OWNER_TYPE fromDouble(OWNER_TYPE object, double value) {
+		setter.apply(object, value as short)
+		object
+	}
 }
 
 
@@ -1909,7 +2410,8 @@ extends ShortProperty<OWNER_TYPE, Short, ShortConverter<OWNER_TYPE, Short>> {
  * @author monster
  */
 class IntegerProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends IntConverter<OWNER_TYPE, PROPERTY_TYPE>>
-extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
+extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>
+implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** The zero-based Integer property ID, within the owner type */
 	public val int integerPropertyId
 
@@ -1973,6 +2475,41 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	override final boolean isImmutable() {
 		setter === null
 	}
+
+	/** Returns the value of this property, by setting it in an Any */
+	override final OWNER_TYPE getAny(OWNER_TYPE object, Any any) {
+		any.setInt(getter.apply(object))
+		object
+	}
+
+	/** Sets the value of this property, by reading it from an Any */
+	override final OWNER_TYPE setAny(OWNER_TYPE object, Any any) {
+		setter.apply(object, any.getInt)
+		object
+	}
+
+	/** Returns the value of this property, by setting it in an AnyArray */
+	override final OWNER_TYPE getAnyArray(OWNER_TYPE object, AnyArray anyArray, int index) {
+		anyArray.setInt(index, getter.apply(object))
+		object
+	}
+
+	/** Sets the value of this property, by reading it from an AnyArray */
+	override final OWNER_TYPE setAnyArray(OWNER_TYPE object, AnyArray anyArray, int index) {
+		setter.apply(object, anyArray.getInt(index))
+		object
+	}
+
+	/** Returns the value of this property, as a double */
+	override final double toDouble(OWNER_TYPE object) {
+		getter.apply(object)
+	}
+
+	/** Sets the value of this property, as a double */
+	override final OWNER_TYPE fromDouble(OWNER_TYPE object, double value) {
+		setter.apply(object, value as int)
+		object
+	}
 }
 
 
@@ -2001,7 +2538,8 @@ extends IntegerProperty<OWNER_TYPE, Integer, IntConverter<OWNER_TYPE, Integer>> 
  * @author monster
  */
 class FloatProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends FloatConverter<OWNER_TYPE, PROPERTY_TYPE>>
-extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
+extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>
+implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** The zero-based Float property ID, within the owner type */
 	public val int floatPropertyId
 
@@ -2064,6 +2602,41 @@ extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** Returns true, if the property is immutable. */
 	override final boolean isImmutable() {
 		setter === null
+	}
+
+	/** Returns the value of this property, by setting it in an Any */
+	override final OWNER_TYPE getAny(OWNER_TYPE object, Any any) {
+		any.setFloat(getter.apply(object))
+		object
+	}
+
+	/** Sets the value of this property, by reading it from an Any */
+	override final OWNER_TYPE setAny(OWNER_TYPE object, Any any) {
+		setter.apply(object, any.getFloat)
+		object
+	}
+
+	/** Returns the value of this property, by setting it in an AnyArray */
+	override final OWNER_TYPE getAnyArray(OWNER_TYPE object, AnyArray anyArray, int index) {
+		anyArray.setFloat(index, getter.apply(object))
+		object
+	}
+
+	/** Sets the value of this property, by reading it from an AnyArray */
+	override final OWNER_TYPE setAnyArray(OWNER_TYPE object, AnyArray anyArray, int index) {
+		setter.apply(object, anyArray.getFloat(index))
+		object
+	}
+
+	/** Returns the value of this property, as a double */
+	override final double toDouble(OWNER_TYPE object) {
+		getter.apply(object)
+	}
+
+	/** Sets the value of this property, as a double */
+	override final OWNER_TYPE fromDouble(OWNER_TYPE object, double value) {
+		setter.apply(object, value as float)
+		object
 	}
 }
 
@@ -2157,6 +2730,30 @@ extends SixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	override final boolean isImmutable() {
 		setter === null
 	}
+
+	/** Returns the value of this property, by setting it in an Any */
+	override final OWNER_TYPE getAny(OWNER_TYPE object, Any any) {
+		any.setLong(getter.apply(object))
+		object
+	}
+
+	/** Sets the value of this property, by reading it from an Any */
+	override final OWNER_TYPE setAny(OWNER_TYPE object, Any any) {
+		setter.apply(object, any.getLong)
+		object
+	}
+
+	/** Returns the value of this property, by setting it in an AnyArray */
+	override final OWNER_TYPE getAnyArray(OWNER_TYPE object, AnyArray anyArray, int index) {
+		anyArray.setLong(index, getter.apply(object))
+		object
+	}
+
+	/** Sets the value of this property, by reading it from an AnyArray */
+	override final OWNER_TYPE setAnyArray(OWNER_TYPE object, AnyArray anyArray, int index) {
+		setter.apply(object, anyArray.getLong(index))
+		object
+	}
 }
 
 
@@ -2186,7 +2783,8 @@ extends LongProperty<OWNER_TYPE, Long, LongConverter<OWNER_TYPE, Long>> {
  */
 class DoubleProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER
 extends DoubleConverter<OWNER_TYPE, PROPERTY_TYPE>>
-extends SixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
+extends SixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>
+implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	/** The zero-based Double property ID, within the owner type */
 	public val int doublePropertyId
 
@@ -2250,6 +2848,41 @@ extends SixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 	override final boolean isImmutable() {
 		setter === null
 	}
+
+	/** Returns the value of this property, by setting it in an Any */
+	override final OWNER_TYPE getAny(OWNER_TYPE object, Any any) {
+		any.setDouble(getter.apply(object))
+		object
+	}
+
+	/** Sets the value of this property, by reading it from an Any */
+	override final OWNER_TYPE setAny(OWNER_TYPE object, Any any) {
+		setter.apply(object, any.getDouble)
+		object
+	}
+
+	/** Returns the value of this property, by setting it in an AnyArray */
+	override final OWNER_TYPE getAnyArray(OWNER_TYPE object, AnyArray anyArray, int index) {
+		anyArray.setDouble(index, getter.apply(object))
+		object
+	}
+
+	/** Sets the value of this property, by reading it from an AnyArray */
+	override final OWNER_TYPE setAnyArray(OWNER_TYPE object, AnyArray anyArray, int index) {
+		setter.apply(object, anyArray.getDouble(index))
+		object
+	}
+
+	/** Returns the value of this property, as a double */
+	override final double toDouble(OWNER_TYPE object) {
+		getter.apply(object)
+	}
+
+	/** Sets the value of this property, as a double */
+	override final OWNER_TYPE fromDouble(OWNER_TYPE object, double value) {
+		setter.apply(object, value)
+		object
+	}
 }
 
 
@@ -2296,7 +2929,7 @@ public class MetaHierarchyBuilder extends HierarchyBuilder {
 	}
 
 	/** Creates and returns the property creation parameters */
-	override <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<PROPERTY_TYPE>>
+	override <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<?,PROPERTY_TYPE>>
 	PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> doPreRegisterProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, PropertyType thePropType,
@@ -2393,6 +3026,14 @@ class TypePackage extends MetaBase<Hierarchy> {
 	/** Constructor */
 	protected new(HierarchyBuilder builder, Type<?> ... theTypes) {
 		this(builder.preRegisterPackage(theTypes))
+	}
+
+	/** Accepts the visitor */
+	def final void accept(MetaVisitor visitor) {
+		visitor.visit(this)
+		for (t : types) {
+			t.accept(visitor)
+		}
 	}
 }
 

@@ -78,6 +78,12 @@
 				<groupId>org.eclipse.xtend</groupId>
 				<artifactId>xtend-maven-plugin</artifactId>
 			</plugin>
+			<plugin>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+			    	<forkMode>pertest</forkMode>
+			    </configuration>
+			</plugin>
 		</plugins>
 		<resources>
 			<resource>

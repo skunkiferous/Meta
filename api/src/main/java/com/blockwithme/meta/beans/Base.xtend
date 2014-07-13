@@ -245,10 +245,10 @@ interface Interceptor {
             long newValue)
 
 	/** Intercept the read access to a Object property */
-    def <E> E getObjectProperty(_Bean instance, ObjectProperty<?,E> prop, E value)
+    def <E> E getObjectProperty(_Bean instance, ObjectProperty<?,E,?,?> prop, E value)
 
 	/** Intercept the write access to a Object property */
-    def <E> E setObjectProperty(_Bean instance, ObjectProperty<?,E> prop, E oldValue,
+    def <E> E setObjectProperty(_Bean instance, ObjectProperty<?,E,?,?> prop, E oldValue,
             E newValue)
 }
 

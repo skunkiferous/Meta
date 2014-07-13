@@ -12,6 +12,10 @@ import com.blockwithme.util.shared.converters.IntConverter
 
 import static java.util.Objects.*
 import com.blockwithme.meta.beans.CollectionBeanConfig
+import com.blockwithme.meta.beans.impl._BeanImpl
+import com.blockwithme.meta.beans.Bean
+import test.com.blockwithme.MyBean
+import com.blockwithme.util.shared.converters.IntConverterBase
 
 enum MyEnum {
   A,
@@ -19,7 +23,11 @@ enum MyEnum {
   C
 }
 
-class EnumConverter implements IntConverter<Object,MyEnum> {
+class EnumConverter extends IntConverterBase<Object,MyEnum> {
+
+  new() {
+  	super(MyEnum)
+  }
 
   override fromObject(Object context, MyEnum obj) {
     if (!(requireNonNull(context, "context") instanceof MyType)) {
@@ -33,14 +41,6 @@ class EnumConverter implements IntConverter<Object,MyEnum> {
       throw new IllegalArgumentException("context should be a MyType, but is a "+context.class)
     }
     if(value < 0) null else MyEnum.values.get(value)
-  }
-
-  override bits() {
-    32
-  }
-
-  override type() {
-    MyEnum
   }
 
   public static val DEFAULT = new EnumConverter
@@ -94,6 +94,35 @@ class MySubType extends MyType {
     package var intProp2 = 0
 }
 
+class MyBeanImpl extends _BeanImpl implements MyBean {
+	new() {
+		super(TestMyBeanMeta.MY_BEAN_TYPE)
+	}
+	override MyBean copy() {
+		throw new UnsupportedOperationException("TODO: auto-generated method stub")
+	}
+	override MyBean snapshot() {
+		throw new UnsupportedOperationException("TODO: auto-generated method stub")
+	}
+	override MyBean wrapper() {
+		throw new UnsupportedOperationException("TODO: auto-generated method stub")
+	}
+}
+
+
+class TestMyBeanMeta {
+  /** Test Hierarchy Builder */
+  public static val BUILDER = HierarchyBuilderFactory.getHierarchyBuilder(MyBean.name)
+
+  public static val MY_BEAN_TYPE = BUILDER.newType(MyBean, null, Kind::Implementation)
+
+  /** The test.com.blockwithme.meta package */
+  public static val MY_PACKAGE = BUILDER.newTypePackage(MY_BEAN_TYPE)
+
+  /** Test Hierarchy */
+  public static val TEST = BUILDER.newHierarchy(newArrayList(MY_PACKAGE))
+}
+
 class MyCollectionType {
   /** unorderedSet CollectionBean Property*/
   package var unorderedSet = new CollectionBeanImpl<String>(
@@ -114,6 +143,10 @@ class MyCollectionType {
   /** fixedSize list CollectionBean Property*/
   package var fixedSizeList = new CollectionBeanImpl<String>(
   	Meta.COLLECTION_BEAN, JavaMeta.STRING, CollectionBeanConfig.newFixedSizeList(10,true))
+
+  /** Bean list CollectionBean Property*/
+  package var beanList = new CollectionBeanImpl<MyBean>(
+  	Meta.COLLECTION_BEAN, TestMyBeanMeta.MY_BEAN_TYPE, CollectionBeanConfig.LIST)
 }
 
 class TestMeta {
@@ -187,7 +220,7 @@ class TestMeta {
     [boolProp], [obj,value|obj.boolProp = value;obj], true
   )
 
-    public static val META_PROP = Hierarchy.postCreateMetaProperty(
+  public static val META_PROP = Hierarchy.postCreateMetaProperty(
       com.blockwithme.meta.Meta.BUILDER.newMetaProperty(
         com.blockwithme.meta.Meta.TYPE, "persistent", Boolean, Boolean.FALSE, false))
 

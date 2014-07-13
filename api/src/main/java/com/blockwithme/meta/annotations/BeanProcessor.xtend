@@ -915,7 +915,8 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
       val qualifiedName = beanInfo.pkgName+"."+simpleName
       val beanType = newTypeReference(qualifiedName)
       val TypeReference retTypeRef = if ("ObjectProperty" == propName) {
-        newTypeReference(metaPkg+"."+propName, beanType, newTypeReferenceWithGenerics(propInfo.type))
+  		val objType = newTypeReferenceWithGenerics(propInfo.type)
+        newTypeReference(metaPkg+"."+propName, beanType, objType, objType, newWildcardTypeReference())
       } else {
         newTypeReference(metaPkg+".True"+propName, beanType)
       }

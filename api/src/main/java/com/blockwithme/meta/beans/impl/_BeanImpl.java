@@ -264,10 +264,11 @@ public abstract class _BeanImpl implements _Bean {
         final int preLastDot = myPkg.lastIndexOf('.');
         final String parentPkg = myPkg.substring(0, preLastDot);
         final String myInterfaceName = parentPkg + "."
-                + myType.substring(lastDot + 1, myType.length() - 4);
+                + myType.substring(lastDot + 1, myType.length() - 4); // "Impl".length() == 4
         if (!myInterfaceName.equals(metaType.type.getName())) {
             throw new IllegalArgumentException("Type should be "
-                    + myInterfaceName + " but was " + metaType.type.getName());
+                    + myInterfaceName + "Impl but was "
+                    + metaType.type.getName());
         }
         this.metaType = metaType;
         // Setup the selectedArray. The idea is that small objects do not

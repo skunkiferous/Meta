@@ -18,13 +18,7 @@ package test.com.blockwithme.meta
 import static org.junit.Assert.*
 
 import org.junit.Test
-//import java.util.List
-//import com.blockwithme.meta.Hierarchy
-//import com.blockwithme.meta.Type
-//import com.blockwithme.meta.PropertyType
 import org.junit.BeforeClass
-//import com.blockwithme.meta.JavaMeta
-//import com.blockwithme.meta.beans.Meta
 import com.blockwithme.meta.beans.CollectionBean
 import java.util.Arrays
 import com.blockwithme.meta.JavaMeta
@@ -375,16 +369,24 @@ class CollectionBeanTest {
     	cb.unorderedSet.add(two)
     	cb.unorderedSet.add(one)
     	cb.unorderedSet.clear()
+    	cb.fixedSizeList.set(0, two)
+    	cb.fixedSizeList.set(1, one)
+    	cb.fixedSizeList.clear()
 
     	assertTrue("list.empty", cb.list.empty)
     	assertTrue("orderedSet.empty", cb.orderedSet.empty)
     	assertTrue("sortedSet.empty", cb.sortedSet.empty)
     	assertTrue("unorderedSet.empty", cb.unorderedSet.empty)
+    	assertFalse("fixedSizeList.empty", cb.fixedSizeList.empty)
 
     	assertEquals("list.size", 0, cb.list.size)
     	assertEquals("orderedSet.size", 0, cb.orderedSet.size)
     	assertEquals("sortedSet.size", 0, cb.sortedSet.size)
     	assertEquals("unorderedSet.size", 0, cb.unorderedSet.size)
+    	assertEquals("fixedSizeList.size", 10, cb.fixedSizeList.size)
+
+    	assertEquals("fixedSizeList.get(0)", null, cb.fixedSizeList.get(0))
+    	assertEquals("fixedSizeList.get(1)", null, cb.fixedSizeList.get(1))
 	}
 
     @Test
@@ -729,5 +731,45 @@ class CollectionBeanTest {
      	assertTrue("list.wrap.content == [one,two,three]", Arrays.equals(wrap.content, #[one,two,three]))
      	assertEquals("list.size", 2, cb.list.size)
      	assertEquals("list.wrap.size", 3, wrap.size)
+	}
+
+	@Test
+	public def void testListIterator() {
+    	val cb = new MyCollectionType
+     	val one = "one"
+    	val two = "two"
+    	val three = "three"
+    	cb.list.addAll(#[one,two,three])
+		val iter = cb.list.listIterator(1)
+     	assertTrue("list.listIterator(1).hasNext", iter.hasNext)
+     	assertEquals("list.listIterator(1).next", two, iter.next)
+     	iter.previous
+     	assertEquals("list.listIterator(1).previous", one, iter.previous)
+	}
+
+	@Test
+	public def void testLargeCapacity() {
+    	val cb = new MyCollectionType
+     	val one = "one"
+    	val two = "two"
+    	val three = "three"
+     	val four = "four"
+    	val five = "five"
+    	val six = "six"
+     	val seven = "seven"
+    	val eight = "eight"
+    	val nine = "nine"
+		cb.list.addAll(#[one,two,three,four,five,six,seven,eight,nine])
+     	assertEquals("list.size", 9, cb.list.size)
+	}
+
+	@Test
+	public def void testBeanIterator() {
+    	val cb = new MyCollectionType
+    	val a = new MyBeanImpl
+    	val b = new MyBeanImpl
+    	val c = new MyBeanImpl
+    	cb.beanList.addAll(#[a,b,c])
+    	cb.beanList.setSelectionRecursive()
 	}
 }

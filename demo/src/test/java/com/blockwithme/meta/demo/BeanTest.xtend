@@ -15,26 +15,25 @@
  */
 package com.blockwithme.meta.demo
 
-import com.blockwithme.meta.demo.impl.SixtyFivePropsImpl
-import com.blockwithme.meta.demo.impl.SixtyFivePropsProvider
-import org.junit.Assert
-import org.junit.Test
-import java.util.Collection
-import com.blockwithme.meta.demo.impl.PersonProvider
 import com.blockwithme.meta.Property
 import com.blockwithme.meta.beans._Bean
-import com.blockwithme.meta.demo.impl.DemoTypeChildProvider
-import com.blockwithme.meta.demo.impl.DemoTypeChildImpl
-import com.blockwithme.meta.demo.impl.PersonImpl
 import com.blockwithme.meta.beans.impl.WrapperInterceptor
-import com.blockwithme.meta.beans.impl.DefaultInterceptor
+import com.blockwithme.meta.demo.impl.DemoTypeChildImpl
+import com.blockwithme.meta.demo.impl.DemoTypeChildProvider
+import com.blockwithme.meta.demo.impl.PersonImpl
+import com.blockwithme.meta.demo.impl.PersonProvider
+import com.blockwithme.meta.demo.impl.SixtyFivePropsImpl
+import com.blockwithme.meta.demo.impl.SixtyFivePropsProvider
+import java.util.Collection
+import org.junit.Assert
+import org.junit.Test
 
 /**
  * @author monster
  *
  */
 class BeanTest {
-	static val hierarchy = Meta.BUILDER.newHierarchy(com.blockwithme.meta.demo.Meta.PACKAGE, Meta.PACKAGE)
+	static val hierarchy = Meta.BUILDER.newHierarchy(Meta.PACKAGE, Meta.PACKAGE)
 
 	@Test
 	def void testImmutable() {
@@ -267,5 +266,16 @@ class BeanTest {
 		for (p : props) {
 			Assert.assertTrue("obj.selected("+p+")", obj.isSelected(p))
 		}
+	}
+
+	@Test
+	def void testChangeCounter() {
+		val person = new PersonProvider().get
+		val as_Bean = person as _Bean
+		val before = as_Bean.changeCounter
+		person.age = 33
+		person.name = "John"
+		person.profession = "Admin"
+		Assert.assertEquals("changeCounter", before+3, as_Bean.changeCounter)
 	}
 }

@@ -49,6 +49,7 @@ import com.blockwithme.util.shared.converters.FloatConverter
 import com.blockwithme.util.shared.converters.DoubleConverter
 import com.blockwithme.util.shared.converters.LongConverter
 import javax.inject.Provider
+import com.blockwithme.util.shared.converters.ObjectConverter
 
 /**
  * HierarchyBuilder records the temporary information needed to construct
@@ -171,7 +172,7 @@ class HierarchyBuilder {
 	 * DO NOT CALL DIRECTLY!
 	 * This method is only public because it is called from a lambda.
 	 */
-	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<PROPERTY_TYPE>>
+	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<?,PROPERTY_TYPE>>
 	PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> doPreRegisterProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, PropertyType thePropType,
@@ -363,7 +364,7 @@ class HierarchyBuilder {
 	}
 
 	/** Creates and returns the property creation parameters */
-	synchronized def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<PROPERTY_TYPE>>
+	synchronized def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<?,PROPERTY_TYPE>>
 	PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> preRegisterProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, PropertyType thePropType,
@@ -374,7 +375,7 @@ class HierarchyBuilder {
 	}
 
 	/** Creates and returns the property creation parameters (and computes meta flag) */
-	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<PROPERTY_TYPE>>
+	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<?,PROPERTY_TYPE>>
 	PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> preRegisterProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, PropertyType thePropType,
@@ -742,27 +743,60 @@ class HierarchyBuilder {
 	}
 
 	/** Creates a Object Property */
-	def <OWNER_TYPE, PROPERTY_TYPE> ObjectProperty<OWNER_TYPE, PROPERTY_TYPE> newObjectProperty(
+	def <OWNER_TYPE, PROPERTY_TYPE> ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE,
+	? extends ObjectConverter<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE>> newObjectProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		Class<?> theContentType, boolean theShared, boolean theActualInstance,
 		boolean theExactType, ObjectFuncObject<PROPERTY_TYPE,OWNER_TYPE> theGetter,
 		ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> theSetter, boolean theVirtual) {
 		// theContentType is not typesafe on purpose, as this makes the code
 		// generation much easier for object properties
-		new ObjectProperty<OWNER_TYPE, PROPERTY_TYPE>(this, theOwner, theSimpleName,
+		new ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE,
+			ObjectConverter<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE>>(this, theOwner, theSimpleName,
 			theContentType as Class<PROPERTY_TYPE>, theShared, theActualInstance, theExactType,
 			theGetter, theSetter, theVirtual)
 	}
 
 	/** Creates a Object Property */
-	def <OWNER_TYPE, PROPERTY_TYPE> ObjectProperty<OWNER_TYPE, PROPERTY_TYPE> newObjectProperty(
+	def <OWNER_TYPE, PROPERTY_TYPE> ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE,
+	? extends ObjectConverter<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE>> newObjectProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		Class<?> theContentType, boolean theShared, boolean theActualInstance,
 		boolean theExactType, ObjectPropertyAccessor<OWNER_TYPE,PROPERTY_TYPE> theAccessor, boolean theVirtual) {
 		// theContentType is not typesafe on purpose, as this makes the code
 		// generation much easier for object properties
-		new ObjectProperty<OWNER_TYPE, PROPERTY_TYPE>(this, theOwner, theSimpleName,
+		new ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE,
+			ObjectConverter<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE>>(this, theOwner, theSimpleName,
 			theContentType as Class<PROPERTY_TYPE>, theShared, theActualInstance, theExactType,
+			theAccessor, theAccessor, theVirtual)
+	}
+
+	/** Creates a Object Property */
+	def <OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE,
+		CONVERTER extends ObjectConverter<OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE>>
+		ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE, CONVERTER> newObjectProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName, CONVERTER theConverter,
+		Class<?> theContentType, boolean theShared, boolean theActualInstance,
+		boolean theExactType, ObjectFuncObject<PROPERTY_TYPE,OWNER_TYPE> theGetter,
+		ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> theSetter, boolean theVirtual) {
+		// theContentType is not typesafe on purpose, as this makes the code
+		// generation much easier for object properties
+		new ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE, CONVERTER>(this, theOwner, theSimpleName,
+			theConverter, theContentType as Class<PROPERTY_TYPE>, theShared, theActualInstance, theExactType,
+			theGetter, theSetter, theVirtual)
+	}
+
+	/** Creates a Object Property */
+	def <OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE,
+		CONVERTER extends ObjectConverter<OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE>>
+		ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE, CONVERTER> newObjectProperty(
+		Class<OWNER_TYPE> theOwner, String theSimpleName, CONVERTER theConverter,
+		Class<?> theContentType, boolean theShared, boolean theActualInstance,
+		boolean theExactType, ObjectPropertyAccessor<OWNER_TYPE,PROPERTY_TYPE> theAccessor, boolean theVirtual) {
+		// theContentType is not typesafe on purpose, as this makes the code
+		// generation much easier for object properties
+		new ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE, CONVERTER>(this, theOwner, theSimpleName,
+			theConverter, theContentType as Class<PROPERTY_TYPE>, theShared, theActualInstance, theExactType,
 			theAccessor, theAccessor, theVirtual)
 	}
 
@@ -783,7 +817,7 @@ class HierarchyBuilder {
 	/** Creates a new Type with parents and component types */
 	def <JAVA_TYPE> Type<JAVA_TYPE> newType(Class<JAVA_TYPE> theType,
 		Provider<JAVA_TYPE> theConstructor, Kind theKind, Type<?>[] theParents,
-		Property<JAVA_TYPE,?>[] theProperties, ObjectProperty<JAVA_TYPE,Type<?>> ... theComponents) {
+		Property<JAVA_TYPE,?>[] theProperties, ObjectProperty<JAVA_TYPE,Type<?>,?,?> ... theComponents) {
 		new Type(preRegisterType(theType), theType, theConstructor, theKind,
 			theParents, theProperties, theComponents)
 	}

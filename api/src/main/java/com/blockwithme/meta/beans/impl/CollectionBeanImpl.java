@@ -82,7 +82,7 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
                         CollectionBeanImpl.this, nextIndex, array[nextIndex]);
                 if (value instanceof _Bean) {
                     next = (_Bean) value;
-                    break;
+                    return;
                 }
                 nextIndex++;
             }

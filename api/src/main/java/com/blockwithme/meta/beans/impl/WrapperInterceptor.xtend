@@ -100,7 +100,7 @@ class WrapperInterceptor extends DefaultInterceptor {
         return prop.getLong(delegate)
 	}
 
-	override <E> getObjectProperty(_Bean instance, ObjectProperty<?, E> prop, E value) {
+	override <E> getObjectProperty(_Bean instance, ObjectProperty<?, E,?,?> prop, E value) {
         val delegate = instance.getDelegate()
         if ((delegate === null) || instance.isSelected(prop)) {
             return value
