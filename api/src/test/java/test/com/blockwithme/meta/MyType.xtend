@@ -136,6 +136,14 @@ class MyCollectionType {
   package var sortedSet = new CollectionBeanImpl<String>(
   	Meta.COLLECTION_BEAN, JavaMeta.STRING, CollectionBeanConfig.SORTED_SET)
 
+  /** displaySortedSet CollectionBean Property*/
+  package var displaySortedSet = new CollectionBeanImpl<String>(
+  	Meta.COLLECTION_BEAN, JavaMeta.STRING, CollectionBeanConfig.DISPLAY_SORTED_SET)
+
+  /** hashSet CollectionBean Property*/
+  package var hashSet = new CollectionBeanImpl<String>(
+  	Meta.COLLECTION_BEAN, JavaMeta.STRING, CollectionBeanConfig.HASH_SET)
+
   /** list CollectionBean Property*/
   package var list = new CollectionBeanImpl<String>(
   	Meta.COLLECTION_BEAN, JavaMeta.STRING, CollectionBeanConfig.LIST)

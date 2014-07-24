@@ -15,6 +15,7 @@
  */
 package com.blockwithme.meta.beans.impl;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
@@ -30,6 +31,7 @@ import com.blockwithme.meta.beans.CollectionBeanConfig;
 import com.blockwithme.meta.beans.ObjectCollectionInterceptor;
 import com.blockwithme.meta.beans._Bean;
 import com.blockwithme.meta.beans._CollectionBean;
+import com.blockwithme.util.shared.MurmurHash;
 
 /**
  * Base class for a Bean that contains a Collection of other Objects.
@@ -40,7 +42,7 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
         _CollectionBean<E> {
 
     /** Non-comparable Comparator. */
-    private static final Comparator<Object> CMP = new Comparator<Object>() {
+    private static final Comparator<Object> NON_COMPARABLE_CMP = new Comparator<Object>() {
         @Override
         public int compare(final Object o1, final Object o2) {
             if (o1 == null) {
@@ -58,9 +60,39 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
                 if (o1.equals(o2)) {
                     return 0;
                 }
-                return o1.toString().compareTo(o2.toString());
+                final int result = o1.toString().compareTo(o2.toString());
+                if (result == 0) {
+                    throw new IllegalStateException(
+                            "Two objects have the same hashcode(" + hash1
+                                    + ") and toString(" + o1
+                                    + "), but are NOT equals!");
+                }
+                return result;
             }
             return hash1 - hash2;
+        }
+    };
+
+    /**
+     * Null-friendly Comparator can be used to compare Comparables with null,
+     * as many Comparable fail when compared to null. The nulls are moved to
+     * the end of the array.
+     */
+    @SuppressWarnings("rawtypes")
+    private static final Comparator<Comparable> NULL_FRIENDLY_CMP = new Comparator<Comparable>() {
+        @SuppressWarnings("unchecked")
+        @Override
+        public int compare(final Comparable o1, final Comparable o2) {
+            if (o1 == null) {
+                if (o2 == null) {
+                    return 0;
+                }
+                return 1;
+            }
+            if (o2 == null) {
+                return -1;
+            }
+            return o1.compareTo(o2);
         }
     };
 
@@ -138,6 +170,7 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
      * Basic Collection Iterator
      */
     private class Itr implements Iterator<E> {
+        final ObjectCollectionInterceptor<E> oci = interceptor();
         int cursor;       // index of next element to return
         int lastRet = -1; // index of last element returned; -1 if no such
 
@@ -152,7 +185,6 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
             if (i >= size)
                 throw new NoSuchElementException();
             final E[] array = data;
-            final ObjectCollectionInterceptor<E> oci = interceptor();
             if (i >= array.length)
                 throw new ConcurrentModificationException();
             cursor = i + 1;
@@ -170,6 +202,57 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
                 if (config.getFixedSize() == -1) {
                     cursor = lastRet;
                 }
+                lastRet = -1;
+            } catch (final IndexOutOfBoundsException ex) {
+                throw new ConcurrentModificationException();
+            }
+        }
+    }
+
+    /**
+     * HashSet Collection Iterator
+     */
+    private class HashItr implements Iterator<E> {
+        final ObjectCollectionInterceptor<E> oci = interceptor();
+        int cursor;       // index of next element to return
+        int lastRet = -1; // index of last element returned; -1 if no such
+        E next;
+
+        @Override
+        public boolean hasNext() {
+            if (next == null) {
+                final E[] array = data;
+                if (cursor >= array.length)
+                    throw new ConcurrentModificationException();
+                while ((cursor < size) && (next == null)) {
+                    next = oci.getObjectAtIndex(CollectionBeanImpl.this,
+                            cursor, array[cursor]);
+                    cursor++;
+                }
+                return (next != null);
+            }
+            return true;
+        }
+
+        @Override
+        public E next() {
+            hasNext();
+            if (next == null)
+                throw new NoSuchElementException();
+            final E result = next;
+            next = null;
+            lastRet = cursor - 1;
+            return result;
+        }
+
+        @Override
+        public void remove() {
+            if (lastRet < 0)
+                throw new IllegalStateException();
+
+            try {
+                CollectionBeanImpl.this.remove(lastRet);
+                cursor--;
                 lastRet = -1;
             } catch (final IndexOutOfBoundsException ex) {
                 throw new ConcurrentModificationException();
@@ -207,7 +290,6 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
             if (i < 0)
                 throw new NoSuchElementException();
             final E[] array = data;
-            final ObjectCollectionInterceptor<E> oci = interceptor();
             if (i >= array.length)
                 throw new ConcurrentModificationException();
             cursor = i;
@@ -285,6 +367,9 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
                 newCapacity = MIN_SIZE;
             } else {
                 newCapacity = oldCapacity;
+                if (newCapacity < MIN_SIZE) {
+                    newCapacity = MIN_SIZE;
+                }
                 while (newCapacity < minCapacity) {
                     newCapacity *= 2;
                 }
@@ -360,7 +445,7 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
      */
     @Override
     public final boolean contains(final Object o) {
-        return indexOf(o) != -1;
+        return indexOf(o) >= 0;
     }
 
     /* (non-Javadoc)
@@ -415,11 +500,31 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
         final E[] array = data;
         final ObjectCollectionInterceptor<E> oci = interceptor();
         if (o == null) {
-            for (int i = 0; i < length; i++) {
-                if (oci.getObjectAtIndex(this, i, array[i]) == null) {
-                    return i;
+            if (!config.isSet()) {
+                for (int i = 0; i < length; i++) {
+                    if (oci.getObjectAtIndex(this, i, array[i]) == null) {
+                        return i;
+                    }
                 }
             }
+        } else if (config.isHashSet()) {
+            if (length == 0) {
+                return -1;
+            }
+            final int hash = MurmurHash.hash32(o.hashCode());
+            final int pos = hash % length;
+            if (o.equals(oci.getObjectAtIndex(this, pos, array[pos]))) {
+                return pos;
+            }
+            int nextTry = (pos + size - 1) % size;
+            if (o.equals(oci.getObjectAtIndex(this, nextTry, array[nextTry]))) {
+                return nextTry;
+            }
+            nextTry = (pos + 1) % size;
+            if (o.equals(oci.getObjectAtIndex(this, nextTry, array[nextTry]))) {
+                return nextTry;
+            }
+            return -pos - 1;
         } else {
             for (int i = 0; i < length; i++) {
                 if (o.equals(oci.getObjectAtIndex(this, i, array[i]))) {
@@ -435,6 +540,10 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
      */
     @Override
     public final int lastIndexOf(final Object o) {
+        if (config.isSet()) {
+            // Sets only allow a single copy of anything.
+            return indexOf(o);
+        }
         final int length = size;
         final E[] array = data;
         final ObjectCollectionInterceptor<E> oci = interceptor();
@@ -459,12 +568,13 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
      */
     @Override
     public final boolean retainAll(final Collection<?> c) {
+        final boolean hashSet = config.isHashSet();
         boolean modified = false;
         final E[] array = data;
         final ObjectCollectionInterceptor<E> oci = interceptor();
         for (int i = 0; i < size; i++) {
             final E value = oci.getObjectAtIndex(this, i, array[i]);
-            if (!c.contains(value)) {
+            if (!c.contains(value) && ((value != null) || !hashSet)) {
                 remove(i--);
                 modified = true;
             }
@@ -478,7 +588,7 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
     @Override
     public final boolean remove(final Object o) {
         final int index = indexOf(o);
-        if (index == -1) {
+        if (index < 0) {
             return false;
         }
         remove(index);
@@ -506,7 +616,7 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
      */
     @Override
     public final Iterator<E> iterator() {
-        return new Itr();
+        return config.isHashSet() ? new HashItr() : new Itr();
     }
 
     /* (non-Javadoc)
@@ -516,6 +626,10 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
     public final ListIterator<E> listIterator(final int index) {
         if (index < 0 || index > size)
             throw new IndexOutOfBoundsException("Index: " + index);
+        if (config.isSet()) {
+            throw new UnsupportedOperationException(
+                    "listIterator(int) not allowed for Set!");
+        }
         return new ListItr(index);
     }
 
@@ -524,6 +638,10 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
      */
     @Override
     public final ListIterator<E> listIterator() {
+        if (config.isSet()) {
+            throw new UnsupportedOperationException(
+                    "listIterator() not allowed for Set!");
+        }
         return new ListItr(0);
     }
 
@@ -614,7 +732,7 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
         rangeCheck(index);
         validateNewValue(newValue);
         if (config.isSet()) {
-            throw new IllegalArgumentException(
+            throw new UnsupportedOperationException(
                     "set(int,E) not allowed for Set!");
         }
         final E[] array = data;
@@ -637,18 +755,30 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
             final E[] array = data;
             final ObjectCollectionInterceptor<E> oci = interceptor();
             final E result = oci.getObjectAtIndex(this, index, array[index]);
-            if (config.isUnorderedSet()) {
-                oci.removeObjectAtIndex(this, index, result, false);
-                array[index] = oci.getObjectAtIndex(this, index,
-                        array[size - 1]);
-            } else {
-                for (int i = size - 1; i > index; i--) {
-                    array[i - 1] = oci.getObjectAtIndex(this, i, array[i]);
-                }
-                oci.removeObjectAtIndex(this, index, result, true);
+            if ((result == null) && config.isHashSet()) {
+                throw new UnsupportedOperationException(
+                        this
+                                + ": only valid values can be removed from an hash-set!");
             }
-            size--;
-            array[size] = null;
+            if (config.isHashSet()) {
+                if (oci.getObjectAtIndex(this, index, array[index]) != null) {
+                    oci.removeObjectAtIndex(this, index, result, false);
+                    array[index] = null;
+                }
+            } else {
+                if (config.pseudoUnorderedSet()) {
+                    oci.removeObjectAtIndex(this, index, result, false);
+                    array[index] = oci.getObjectAtIndex(this, index,
+                            array[size - 1]);
+                } else {
+                    for (int i = size - 1; i > index; i--) {
+                        array[i - 1] = oci.getObjectAtIndex(this, i, array[i]);
+                    }
+                    oci.removeObjectAtIndex(this, index, result, true);
+                }
+                size--;
+                array[size] = null;
+            }
             return result;
         }
         // In fixed-size lists, "removing" means setting to null.
@@ -680,10 +810,90 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
         }
     }
 
+    /**
+     * add(E) implementation of HashSet.
+     * @return true if successful.
+     */
+    private boolean hashSetAdd2(final int pos, final E element) {
+        final ObjectCollectionInterceptor<E> oci = interceptor();
+        final E[] array = data;
+        if (oci.getObjectAtIndex(this, pos, array[pos]) == null) {
+            array[pos] = oci.addObjectAtIndex(this, pos, element, false);
+        } else {
+            int nextTry = (pos + size - 1) % size;
+            if (oci.getObjectAtIndex(this, nextTry, array[nextTry]) == null) {
+                array[nextTry] = oci.addObjectAtIndex(this, nextTry, element,
+                        false);
+            } else {
+                nextTry = (pos + 1) % size;
+                if (oci.getObjectAtIndex(this, nextTry, array[nextTry]) == null) {
+                    array[nextTry] = oci.addObjectAtIndex(this, nextTry,
+                            element, false);
+                } else {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /** add(E) implementation of HashSet. */
+    private void hashSetAdd(final int pos, final E element) {
+        if ((size == 0) || !hashSetAdd2(pos, element)) {
+            E[] oldContent = getContent();
+            final List<E> content = new ArrayList<E>(oldContent.length + 1);
+            content.add(element);
+            for (final E e : oldContent) {
+                content.add(e);
+            }
+            oldContent = null;
+            E[] array = data;
+            int newSize = array.length * 2;
+            if (newSize == 0) {
+                newSize = MIN_SIZE;
+            }
+            array = null;
+            while (true) {
+                clear();
+                ensureCapacityInternal(newSize);
+                size = newSize;
+                for (final E e : content) {
+                    if (!hashSetAdd2(-indexOf(e) - 1, e)) {
+                        newSize *= 2;
+                        continue;
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+    /** add(E) implementation of SortedSet. */
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    private void sortedSetAdd(final int index, final E element) {
+        final Comparable cmp = (Comparable) element;
+        final E[] array = data;
+        final ObjectCollectionInterceptor<E> oci = interceptor();
+        boolean added = false;
+        for (int i = 0; !added && (i < size); i++) {
+            if (cmp.compareTo(oci.getObjectAtIndex(this, i, array[i])) < 0) {
+                for (int j = size; j > i; j--) {
+                    array[j] = oci.getObjectAtIndex(this, j - 1, array[j - 1]);
+                }
+                size++;
+                array[i] = oci.addObjectAtIndex(this, i, element, true);
+                added = true;
+            }
+        }
+        if (!added) {
+            size++;
+            array[index] = oci.addObjectAtIndex(this, index, element, false);
+        }
+    }
+
     /* (non-Javadoc)
      * @see java.util.List#add(int,java.lang.Object)
      */
-    @SuppressWarnings({ "rawtypes", "unchecked" })
     private boolean add2(final int index, final E element) {
         if (index > size || index < 0)
             throw new IndexOutOfBoundsException("Index: " + index);
@@ -694,49 +904,39 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
             throw new UnsupportedOperationException(this + " is immutable!");
         }
         validateNewValue(element);
-        ensureCapacityInternal(size + 1);
-        final E[] array = data;
         final ObjectCollectionInterceptor<E> oci = interceptor();
         if (index == size) {
             if (config.isSet()) {
-                if (!contains(element)) {
+                final int pos = indexOf(element);
+                if (pos < 0) {
                     if (!config.isSortedSet()) {
-                        size++;
-                        array[index] = oci.addObjectAtIndex(this, index,
-                                element, false);
-                    } else {
-                        final Comparable cmp = (Comparable) element;
-                        boolean added = false;
-                        for (int i = 0; !added && (i < size); i++) {
-                            if (cmp.compareTo(oci.getObjectAtIndex(this, i,
-                                    array[i])) < 0) {
-                                for (int j = size; j > i; j--) {
-                                    array[j] = oci.getObjectAtIndex(this,
-                                            j - 1, array[j - 1]);
-                                }
-                                size++;
-                                array[i] = oci.addObjectAtIndex(this, i,
-                                        element, true);
-                                added = true;
-                            }
-                        }
-                        if (!added) {
+                        if (config.isHashSet()) {
+                            hashSetAdd(-pos - 1, element);
+                        } else {
+                            ensureCapacityInternal(size + 1);
                             size++;
-                            array[index] = oci.addObjectAtIndex(this, index,
+                            data[index] = oci.addObjectAtIndex(this, index,
                                     element, false);
                         }
+                    } else {
+                        ensureCapacityInternal(size + 1);
+                        sortedSetAdd(index, element);
                     }
+                } else {
+                    return false;
                 }
             } else {
+                ensureCapacityInternal(size + 1);
                 size++;
-                array[index] = oci
-                        .addObjectAtIndex(this, index, element, false);
+                data[index] = oci.addObjectAtIndex(this, index, element, false);
             }
         } else {
             if (config.isSet()) {
                 throw new IllegalArgumentException(
                         "add(int,E) not allowed for Set!");
             }
+            ensureCapacityInternal(size + 1);
+            final E[] array = data;
             for (int i = size; i > index; i--) {
                 array[i] = oci.getObjectAtIndex(this, i - 1, array[i - 1]);
             }
@@ -752,12 +952,25 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
     @SuppressWarnings("unchecked")
     @Override
     public final E[] getContent() {
-        final E[] result = (E[]) toArray();
-        if (config.isUnorderedSet()) {
-            if (Comparable.class.isAssignableFrom(getMetaType().type)) {
-                Arrays.sort(result);
+        E[] result = (E[]) toArray();
+        if (config.pseudoUnorderedSet()) {
+            if (Comparable.class.isAssignableFrom(getValueType().type)) {
+                if (config.isHashSet()) {
+                    Arrays.sort(result, (Comparator<E>) NULL_FRIENDLY_CMP);
+                    int last = result.length - 1;
+                    while ((last >= 0) && (result[last] == null)) {
+                        last--;
+                    }
+                    if (last != result.length - 1) {
+                        final E[] tmp = newArray(last + 1);
+                        System.arraycopy(result, 0, tmp, 0, last + 1);
+                        result = tmp;
+                    }
+                } else {
+                    Arrays.sort(result);
+                }
             } else {
-                Arrays.sort(result, CMP);
+                Arrays.sort(result, NON_COMPARABLE_CMP);
             }
         }
         return result;

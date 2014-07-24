@@ -43,24 +43,32 @@ class CollectionBeanTest {
     	assertNotNull("orderedSet", cb.orderedSet)
     	assertNotNull("sortedSet", cb.sortedSet)
     	assertNotNull("unorderedSet", cb.unorderedSet)
+    	assertNotNull("displaySortedSet", cb.displaySortedSet)
+    	assertNotNull("hashSet", cb.hashSet)
 
     	assertFalse("fixedSizeList.empty", cb.fixedSizeList.empty)
     	assertTrue("list.empty", cb.list.empty)
     	assertTrue("orderedSet.empty", cb.orderedSet.empty)
     	assertTrue("sortedSet.empty", cb.sortedSet.empty)
     	assertTrue("unorderedSet.empty", cb.unorderedSet.empty)
+    	assertTrue("displaySortedSet.empty", cb.displaySortedSet.empty)
+    	assertTrue("hashSet.empty", cb.hashSet.empty)
 
     	assertEquals("fixedSizeList.size", 10, cb.fixedSizeList.size)
     	assertEquals("list.size", 0, cb.list.size)
     	assertEquals("orderedSet.size", 0, cb.orderedSet.size)
     	assertEquals("sortedSet.size", 0, cb.sortedSet.size)
     	assertEquals("unorderedSet.size", 0, cb.unorderedSet.size)
+    	assertEquals("displaySortedSet.size", 0, cb.displaySortedSet.size)
+    	assertEquals("hashSet.size", 0, cb.hashSet.size)
 
     	assertEquals("fixedSizeList.valueType", JavaMeta.STRING, cb.fixedSizeList.valueType)
     	assertEquals("list.valueType", JavaMeta.STRING, cb.list.valueType)
     	assertEquals("orderedSet.valueType", JavaMeta.STRING, cb.orderedSet.valueType)
     	assertEquals("sortedSet.valueType", JavaMeta.STRING, cb.sortedSet.valueType)
     	assertEquals("unorderedSet.valueType", JavaMeta.STRING, cb.unorderedSet.valueType)
+    	assertEquals("displaySortedSet.valueType", JavaMeta.STRING, cb.displaySortedSet.valueType)
+    	assertEquals("hashSet.valueType", JavaMeta.STRING, cb.hashSet.valueType)
 
     	val iter = cb.fixedSizeList.iterator
     	var count = 0
@@ -75,6 +83,8 @@ class CollectionBeanTest {
     	assertEquals("orderedSet.toArray.length", 0, cb.orderedSet.toArray.length)
     	assertEquals("sortedSet.toArray.length", 0, cb.sortedSet.toArray.length)
     	assertEquals("unorderedSet.toArray.length", 0, cb.unorderedSet.toArray.length)
+    	assertEquals("displaySortedSet.toArray.length", 0, cb.displaySortedSet.toArray.length)
+    	assertEquals("hashSet.toArray.length", 0, cb.hashSet.toArray.length)
 
     	var cfg = cb.fixedSizeList.config
     	assertEquals("fixedSizeList.config.fixedSize", 10, cfg.fixedSize)
@@ -83,6 +93,8 @@ class CollectionBeanTest {
     	assertFalse("fixedSizeList.config.orderedSet", cfg.orderedSet)
     	assertFalse("fixedSizeList.config.sortedSet", cfg.sortedSet)
     	assertFalse("fixedSizeList.config.unorderedSet", cfg.unorderedSet)
+    	assertFalse("fixedSizeList.config.displaySortedSet", cfg.displaySortedSet)
+    	assertFalse("fixedSizeList.config.hashSet", cfg.hashSet)
     	assertTrue("fixedSizeList.config.nullAllowed", cfg.nullAllowed)
     	assertTrue("fixedSizeList.config.onlyExactType", cfg.onlyExactType)
 
@@ -93,6 +105,8 @@ class CollectionBeanTest {
     	assertFalse("list.config.orderedSet", cfg.orderedSet)
     	assertFalse("list.config.sortedSet", cfg.sortedSet)
     	assertFalse("list.config.unorderedSet", cfg.unorderedSet)
+    	assertFalse("list.config.displaySortedSet", cfg.displaySortedSet)
+    	assertFalse("list.config.hashSet", cfg.hashSet)
     	assertFalse("list.config.nullAllowed", cfg.nullAllowed)
     	assertFalse("list.config.onlyExactType", cfg.onlyExactType)
 
@@ -103,6 +117,8 @@ class CollectionBeanTest {
     	assertTrue("orderedSet.config.orderedSet", cfg.orderedSet)
     	assertFalse("orderedSet.config.sortedSet", cfg.sortedSet)
     	assertFalse("orderedSet.config.unorderedSet", cfg.unorderedSet)
+    	assertFalse("orderedSet.config.displaySortedSet", cfg.displaySortedSet)
+    	assertFalse("orderedSet.config.hashSet", cfg.hashSet)
     	assertFalse("orderedSet.config.nullAllowed", cfg.nullAllowed)
     	assertFalse("orderedSet.config.onlyExactType", cfg.onlyExactType)
 
@@ -113,6 +129,8 @@ class CollectionBeanTest {
     	assertFalse("sortedSet.config.orderedSet", cfg.orderedSet)
     	assertTrue("sortedSet.config.sortedSet", cfg.sortedSet)
     	assertFalse("sortedSet.config.unorderedSet", cfg.unorderedSet)
+    	assertFalse("sortedSet.config.displaySortedSet", cfg.displaySortedSet)
+    	assertFalse("sortedSet.config.hashSet", cfg.hashSet)
     	assertFalse("sortedSet.config.nullAllowed", cfg.nullAllowed)
     	assertFalse("sortedSet.config.onlyExactType", cfg.onlyExactType)
 
@@ -123,8 +141,34 @@ class CollectionBeanTest {
     	assertFalse("unorderedSet.config.orderedSet", cfg.orderedSet)
     	assertFalse("unorderedSet.config.sortedSet", cfg.sortedSet)
     	assertTrue("unorderedSet.config.unorderedSet", cfg.unorderedSet)
+    	assertFalse("unorderedSet.config.displaySortedSet", cfg.displaySortedSet)
+    	assertFalse("unorderedSet.config.hashSet", cfg.hashSet)
     	assertFalse("unorderedSet.config.nullAllowed", cfg.nullAllowed)
     	assertFalse("unorderedSet.config.onlyExactType", cfg.onlyExactType)
+
+    	cfg = cb.displaySortedSet.config
+    	assertEquals("displaySortedSet.config.fixedSize", -1, cfg.fixedSize)
+    	assertFalse("displaySortedSet.config.list", cfg.list)
+    	assertTrue("displaySortedSet.config.set", cfg.set)
+    	assertFalse("displaySortedSet.config.orderedSet", cfg.orderedSet)
+    	assertFalse("displaySortedSet.config.sortedSet", cfg.sortedSet)
+    	assertFalse("displaySortedSet.config.unorderedSet", cfg.unorderedSet)
+    	assertTrue("displaySortedSet.config.displaySortedSet", cfg.displaySortedSet)
+    	assertFalse("displaySortedSet.config.hashSet", cfg.hashSet)
+    	assertFalse("displaySortedSet.config.nullAllowed", cfg.nullAllowed)
+    	assertFalse("displaySortedSet.config.onlyExactType", cfg.onlyExactType)
+
+    	cfg = cb.hashSet.config
+    	assertEquals("hashSet.config.fixedSize", -1, cfg.fixedSize)
+    	assertFalse("hashSet.config.list", cfg.list)
+    	assertTrue("hashSet.config.set", cfg.set)
+    	assertFalse("hashSet.config.orderedSet", cfg.orderedSet)
+    	assertFalse("hashSet.config.sortedSet", cfg.sortedSet)
+    	assertFalse("hashSet.config.unorderedSet", cfg.unorderedSet)
+    	assertFalse("hashSet.config.displaySortedSet", cfg.displaySortedSet)
+    	assertTrue("hashSet.config.hashSet", cfg.hashSet)
+    	assertFalse("hashSet.config.nullAllowed", cfg.nullAllowed)
+    	assertFalse("hashSet.config.onlyExactType", cfg.onlyExactType)
 	}
 
     @Test
@@ -144,24 +188,32 @@ class CollectionBeanTest {
     	cb.orderedSet.add(one)
     	cb.sortedSet.add(one)
     	cb.unorderedSet.add(one)
+    	cb.displaySortedSet.add(one)
+    	cb.hashSet.add(one)
 
     	assertTrue("fixedSizeList.contains(null)", cb.fixedSizeList.contains(null))
     	assertFalse("list.contains(null)", cb.list.contains(null))
     	assertFalse("orderedSet.contains(null)", cb.orderedSet.contains(null))
     	assertFalse("sortedSet.contains(null)", cb.sortedSet.contains(null))
     	assertFalse("unorderedSet.contains(null)", cb.unorderedSet.contains(null))
+    	assertFalse("displaySortedSet.contains(null)", cb.displaySortedSet.contains(null))
+    	assertFalse("hashSet.contains(null)", cb.hashSet.contains(null))
 
     	assertFalse("fixedSizeList.empty", cb.fixedSizeList.empty)
     	assertFalse("list.empty", cb.list.empty)
     	assertFalse("orderedSet.empty", cb.orderedSet.empty)
     	assertFalse("sortedSet.empty", cb.sortedSet.empty)
     	assertFalse("unorderedSet.empty", cb.unorderedSet.empty)
+    	assertFalse("displaySortedSet.empty", cb.displaySortedSet.empty)
+    	assertFalse("hashSet.empty", cb.hashSet.empty)
 
     	assertEquals("fixedSizeList.size", 10, cb.fixedSizeList.size)
     	assertEquals("list.size", 1, cb.list.size)
     	assertEquals("orderedSet.size", 1, cb.orderedSet.size)
     	assertEquals("sortedSet.size", 1, cb.sortedSet.size)
     	assertEquals("unorderedSet.size", 1, cb.unorderedSet.size)
+    	assertEquals("displaySortedSet.size", 1, cb.displaySortedSet.size)
+    	assertEquals("hashSet.size", 8, cb.hashSet.size)
 
     	assertTrue("fixedSizeList.toArray", Arrays.equals(
     		#[null,null,null,null,null,null,null,null,null,null], cb.fixedSizeList.toArray))
@@ -169,6 +221,9 @@ class CollectionBeanTest {
     	assertTrue("orderedSet.toArray", Arrays.equals(#[one], cb.orderedSet.toArray))
     	assertTrue("sortedSet.toArray", Arrays.equals(#[one], cb.sortedSet.toArray))
     	assertTrue("unorderedSet.toArray", Arrays.equals(#[one], cb.unorderedSet.toArray))
+    	assertTrue("displaySortedSet.toArray", Arrays.equals(#[one], cb.displaySortedSet.toArray))
+    	// hashSet.toArray could be about anything
+    	assertTrue("hashSet.toArray", cb.hashSet.toArray.contains(one))
 
     	var iter = cb.fixedSizeList.iterator
     	assertTrue("fixedSizeList.iterator.hasNext", iter.hasNext)
@@ -190,6 +245,14 @@ class CollectionBeanTest {
     	assertTrue("unorderedSet.iterator.hasNext", iter.hasNext)
     	assertEquals("unorderedSet.iterator.next", one, iter.next)
     	assertFalse("unorderedSet.iterator.hasNext", iter.hasNext)
+    	iter = cb.displaySortedSet.iterator
+    	assertTrue("displaySortedSet.iterator.hasNext", iter.hasNext)
+    	assertEquals("displaySortedSet.iterator.next", one, iter.next)
+    	assertFalse("displaySortedSet.iterator.hasNext", iter.hasNext)
+    	iter = cb.hashSet.iterator
+    	assertTrue("hashSet.iterator.hasNext", iter.hasNext)
+    	assertEquals("hashSet.iterator.next", one, iter.next)
+    	assertFalse("hashSet.iterator.hasNext", iter.hasNext)
 	}
 
     @Test
@@ -206,33 +269,49 @@ class CollectionBeanTest {
     	cb.sortedSet.add(one)
     	cb.unorderedSet.add(two)
     	cb.unorderedSet.add(one)
+    	cb.displaySortedSet.add(two)
+    	cb.displaySortedSet.add(one)
+    	cb.hashSet.add(two)
+    	cb.hashSet.add(one)
 
     	assertTrue("fixedSizeList.contains(null)", cb.fixedSizeList.contains(null))
     	assertFalse("list.contains(null)", cb.list.contains(null))
     	assertFalse("orderedSet.contains(null)", cb.orderedSet.contains(null))
     	assertFalse("sortedSet.contains(null)", cb.sortedSet.contains(null))
     	assertFalse("unorderedSet.contains(null)", cb.unorderedSet.contains(null))
+    	assertFalse("displaySortedSet.contains(null)", cb.displaySortedSet.contains(null))
+    	assertFalse("hashSet.contains(null)", cb.hashSet.contains(null))
 
     	assertFalse("list.empty", cb.list.empty)
     	assertFalse("orderedSet.empty", cb.orderedSet.empty)
     	assertFalse("sortedSet.empty", cb.sortedSet.empty)
     	assertFalse("unorderedSet.empty", cb.unorderedSet.empty)
+    	assertFalse("displaySortedSet.empty", cb.displaySortedSet.empty)
+    	assertFalse("hashSet.empty", cb.hashSet.empty)
 
     	assertEquals("list.size", 2, cb.list.size)
     	assertEquals("orderedSet.size", 2, cb.orderedSet.size)
     	assertEquals("sortedSet.size", 2, cb.sortedSet.size)
     	assertEquals("unorderedSet.size", 2, cb.unorderedSet.size)
+    	assertEquals("displaySortedSet.size", 2, cb.displaySortedSet.size)
+    	assertEquals("hashSet.size", 8, cb.hashSet.size)
 
     	assertTrue("list.toArray", Arrays.equals(#[two,one], cb.list.toArray))
     	assertTrue("orderedSet.toArray", Arrays.equals(#[two,one], cb.orderedSet.toArray))
     	assertTrue("sortedSet.toArray", Arrays.equals(#[one,two], cb.sortedSet.toArray))
     	assertTrue("unorderedSet.toArray", Arrays.equals(#[one,two], cb.unorderedSet.toArray)
     		|| Arrays.equals(#[two,one], cb.unorderedSet.toArray))
+    	assertTrue("displaySortedSet.toArray", Arrays.equals(#[one,two], cb.displaySortedSet.toArray)
+    		|| Arrays.equals(#[two,one], cb.displaySortedSet.toArray))
+    	// hashSet.toArray could be about anything
+    	assertTrue("hashSet.toArray", cb.hashSet.toArray.contains(one) && cb.hashSet.toArray.contains(two))
 
     	assertTrue("list.content", Arrays.equals(#[two,one], cb.list.content))
     	assertTrue("orderedSet.content", Arrays.equals(#[two,one], cb.orderedSet.content))
     	assertTrue("sortedSet.content", Arrays.equals(#[one,two], cb.sortedSet.content))
     	assertTrue("unorderedSet.content", Arrays.equals(#[one,two], cb.unorderedSet.content))
+    	assertTrue("displaySortedSet.content", Arrays.equals(#[one,two], cb.displaySortedSet.content))
+    	assertTrue("hashSet.content", Arrays.equals(#[one,two], cb.hashSet.content))
 
     	var iter = cb.list.iterator
     	assertTrue("list.iterator.hasNext", iter.hasNext)
@@ -260,6 +339,23 @@ class CollectionBeanTest {
     	assertFalse("unorderedSet.iterator.hasNext", iter.hasNext)
     	assertTrue("unorderedSet.iterator", Arrays.equals(#[one,two], #[first,second])
     		|| Arrays.equals(#[two,one], #[first,second]))
+    	iter = cb.displaySortedSet.iterator
+    	assertTrue("displaySortedSet.iterator.hasNext", iter.hasNext)
+    	val firstD = iter.next
+    	assertTrue("displaySortedSet.iterator.hasNext", iter.hasNext)
+    	val secondD = iter.next
+    	assertFalse("displaySortedSet.iterator.hasNext", iter.hasNext)
+    	assertTrue("displaySortedSet.iterator", Arrays.equals(#[one,two], #[firstD,secondD])
+    		|| Arrays.equals(#[two,one], #[firstD,secondD]))
+
+    	iter = cb.hashSet.iterator
+    	assertTrue("hashSet.iterator.hasNext", iter.hasNext)
+    	val firstH = iter.next
+    	assertTrue("hashSet.iterator.hasNext", iter.hasNext)
+    	val secondH = iter.next
+    	assertFalse("hashSet.iterator.hasNext", iter.hasNext)
+    	assertTrue("hashSet.iterator", Arrays.equals(#[one,two], #[firstH,secondH])
+    		|| Arrays.equals(#[two,one], #[firstH,secondH]))
 
     	assertTrue("list.contains(one)", cb.list.contains(one))
     	assertTrue("list.contains(two)", cb.list.contains(two))
@@ -269,29 +365,44 @@ class CollectionBeanTest {
     	assertTrue("sortedSet.contains(two)", cb.sortedSet.contains(two))
     	assertTrue("unorderedSet.contains(one)", cb.unorderedSet.contains(one))
     	assertTrue("unorderedSet.contains(two)", cb.unorderedSet.contains(two))
+    	assertTrue("displaySortedSet.contains(one)", cb.displaySortedSet.contains(one))
+    	assertTrue("displaySortedSet.contains(two)", cb.displaySortedSet.contains(two))
+    	assertTrue("hashSet.contains(one)", cb.hashSet.contains(one))
+    	assertTrue("hashSet.contains(two)", cb.hashSet.contains(two))
 
     	assertTrue("list.containsAll(#[one,two])", cb.list.containsAll(#[one,two]))
     	assertTrue("orderedSet.containsAll(#[one,two])", cb.orderedSet.containsAll(#[one,two]))
     	assertTrue("sortedSet.containsAll(#[one,two])", cb.sortedSet.containsAll(#[one,two]))
     	assertTrue("unorderedSet.containsAll(#[one,two])", cb.unorderedSet.containsAll(#[one,two]))
+    	assertTrue("displaySortedSet.containsAll(#[one,two])", cb.displaySortedSet.containsAll(#[one,two]))
+    	assertTrue("hashSet.containsAll(#[one,two])", cb.hashSet.containsAll(#[one,two]))
 
     	assertFalse("list.retainAll(#[one,two])", cb.list.retainAll(#[one,two]))
     	assertFalse("orderedSet.retainAll(#[one,two])", cb.orderedSet.retainAll(#[one,two]))
     	assertFalse("sortedSet.retainAll(#[one,two])", cb.sortedSet.retainAll(#[one,two]))
     	assertFalse("unorderedSet.retainAll(#[one,two])", cb.unorderedSet.retainAll(#[one,two]))
+    	assertFalse("displaySortedSet.retainAll(#[one,two])", cb.displaySortedSet.retainAll(#[one,two]))
+    	assertFalse("hashSet.retainAll(#[one,two])", cb.hashSet.retainAll(#[one,two]))
     	assertEquals("list.size", 2, cb.list.size)
     	assertEquals("orderedSet.size", 2, cb.orderedSet.size)
     	assertEquals("sortedSet.size", 2, cb.sortedSet.size)
     	assertEquals("unorderedSet.size", 2, cb.unorderedSet.size)
+    	assertEquals("displaySortedSet.size", 2, cb.displaySortedSet.size)
+    	assertEquals("hashSet.size", 8, cb.hashSet.size)
 
     	assertTrue("list.retainAll(#[one,two])", cb.list.removeAll(#[one,two]))
     	assertTrue("orderedSet.retainAll(#[one,two])", cb.orderedSet.removeAll(#[one,two]))
     	assertTrue("sortedSet.retainAll(#[one,two])", cb.sortedSet.removeAll(#[one,two]))
     	assertTrue("unorderedSet.retainAll(#[one,two])", cb.unorderedSet.removeAll(#[one,two]))
+    	assertTrue("displaySortedSet.retainAll(#[one,two])", cb.displaySortedSet.removeAll(#[one,two]))
+    	assertTrue("hashSet.retainAll(#[one,two])", cb.hashSet.removeAll(#[one,two]))
     	assertTrue("list.empty", cb.list.empty)
     	assertTrue("orderedSet.empty", cb.orderedSet.empty)
     	assertTrue("sortedSet.empty", cb.sortedSet.empty)
     	assertTrue("unorderedSet.empty", cb.unorderedSet.empty)
+    	assertTrue("displaySortedSet.empty", cb.displaySortedSet.empty)
+    	// hashSet don't shrink!
+//    	assertTrue("hashSet.empty", cb.hashSet.empty)
 	}
 
     @Test
@@ -312,26 +423,41 @@ class CollectionBeanTest {
     	cb.unorderedSet.add(two)
     	cb.unorderedSet.add(one)
     	cb.unorderedSet.remove(two)
+    	cb.displaySortedSet.add(two)
+    	cb.displaySortedSet.add(one)
+    	cb.displaySortedSet.remove(two)
+    	cb.hashSet.add(two)
+    	cb.hashSet.add(one)
+    	cb.hashSet.remove(two)
 
     	assertFalse("list.contains(null)", cb.list.contains(null))
     	assertFalse("orderedSet.contains(null)", cb.orderedSet.contains(null))
     	assertFalse("sortedSet.contains(null)", cb.sortedSet.contains(null))
     	assertFalse("unorderedSet.contains(null)", cb.unorderedSet.contains(null))
+    	assertFalse("displaySortedSet.contains(null)", cb.displaySortedSet.contains(null))
+    	assertFalse("hashSet.contains(null)", cb.hashSet.contains(null))
 
     	assertFalse("list.empty", cb.list.empty)
     	assertFalse("orderedSet.empty", cb.orderedSet.empty)
     	assertFalse("sortedSet.empty", cb.sortedSet.empty)
     	assertFalse("unorderedSet.empty", cb.unorderedSet.empty)
+    	assertFalse("displaySortedSet.empty", cb.displaySortedSet.empty)
+    	assertFalse("hashSet.empty", cb.hashSet.empty)
 
     	assertEquals("list.size", 1, cb.list.size)
     	assertEquals("orderedSet.size", 1, cb.orderedSet.size)
     	assertEquals("sortedSet.size", 1, cb.sortedSet.size)
     	assertEquals("unorderedSet.size", 1, cb.unorderedSet.size)
+    	assertEquals("displaySortedSet.size", 1, cb.displaySortedSet.size)
+    	assertEquals("hashSet.size", 8, cb.hashSet.size)
 
     	assertTrue("list.toArray", Arrays.equals(#[one], cb.list.toArray))
     	assertTrue("orderedSet.toArray", Arrays.equals(#[one], cb.orderedSet.toArray))
     	assertTrue("sortedSet.toArray", Arrays.equals(#[one], cb.sortedSet.toArray))
     	assertTrue("unorderedSet.toArray", Arrays.equals(#[one], cb.unorderedSet.toArray))
+    	assertTrue("displaySortedSet.toArray", Arrays.equals(#[one], cb.displaySortedSet.toArray))
+    	// hashSet.toArray could be about anything
+    	assertTrue("hashSet.toArray", cb.hashSet.toArray.contains(one))
 
     	var iter = cb.list.iterator
     	assertTrue("list.iterator.hasNext", iter.hasNext)
@@ -349,6 +475,14 @@ class CollectionBeanTest {
     	assertTrue("unorderedSet.iterator.hasNext", iter.hasNext)
     	assertEquals("unorderedSet.iterator.next", one, iter.next)
     	assertFalse("unorderedSet.iterator.hasNext", iter.hasNext)
+    	iter = cb.displaySortedSet.iterator
+    	assertTrue("displaySortedSet.iterator.hasNext", iter.hasNext)
+    	assertEquals("displaySortedSet.iterator.next", one, iter.next)
+    	assertFalse("displaySortedSet.iterator.hasNext", iter.hasNext)
+    	iter = cb.hashSet.iterator
+    	assertTrue("hashSet.iterator.hasNext", iter.hasNext)
+    	assertEquals("hashSet.iterator.next", one, iter.next)
+    	assertFalse("hashSet.iterator.hasNext", iter.hasNext)
 	}
 
     @Test
@@ -369,6 +503,12 @@ class CollectionBeanTest {
     	cb.unorderedSet.add(two)
     	cb.unorderedSet.add(one)
     	cb.unorderedSet.clear()
+    	cb.displaySortedSet.add(two)
+    	cb.displaySortedSet.add(one)
+    	cb.displaySortedSet.clear()
+    	cb.hashSet.add(two)
+    	cb.hashSet.add(one)
+    	cb.hashSet.clear()
     	cb.fixedSizeList.set(0, two)
     	cb.fixedSizeList.set(1, one)
     	cb.fixedSizeList.clear()
@@ -377,12 +517,16 @@ class CollectionBeanTest {
     	assertTrue("orderedSet.empty", cb.orderedSet.empty)
     	assertTrue("sortedSet.empty", cb.sortedSet.empty)
     	assertTrue("unorderedSet.empty", cb.unorderedSet.empty)
+    	assertTrue("displaySortedSet.empty", cb.displaySortedSet.empty)
+    	assertTrue("hashSet.empty", cb.hashSet.empty)
     	assertFalse("fixedSizeList.empty", cb.fixedSizeList.empty)
 
     	assertEquals("list.size", 0, cb.list.size)
     	assertEquals("orderedSet.size", 0, cb.orderedSet.size)
     	assertEquals("sortedSet.size", 0, cb.sortedSet.size)
     	assertEquals("unorderedSet.size", 0, cb.unorderedSet.size)
+    	assertEquals("displaySortedSet.size", 0, cb.displaySortedSet.size)
+    	assertEquals("hashSet.size", 0, cb.hashSet.size)
     	assertEquals("fixedSizeList.size", 10, cb.fixedSizeList.size)
 
     	assertEquals("fixedSizeList.get(0)", null, cb.fixedSizeList.get(0))
@@ -399,12 +543,18 @@ class CollectionBeanTest {
     	cb.orderedSet.addAll(#[two,one])
     	cb.sortedSet.addAll(#[two,one])
     	cb.unorderedSet.addAll(#[two,one])
+    	cb.displaySortedSet.addAll(#[two,one])
+    	cb.hashSet.addAll(#[two,one])
 
     	assertTrue("list.toArray", Arrays.equals(#[two,one], cb.list.toArray(<CharSequence>newArrayOfSize(2))))
     	assertTrue("orderedSet.toArray", Arrays.equals(#[two,one], cb.orderedSet.toArray(<CharSequence>newArrayOfSize(2))))
     	assertTrue("sortedSet.toArray", Arrays.equals(#[one,two], cb.sortedSet.toArray(<CharSequence>newArrayOfSize(2))))
     	assertTrue("unorderedSet.toArray", Arrays.equals(#[one,two], cb.unorderedSet.toArray(<CharSequence>newArrayOfSize(2)))
     		|| Arrays.equals(#[two,one], cb.unorderedSet.toArray(<CharSequence>newArrayOfSize(2))))
+    	assertTrue("displaySortedSet.toArray", Arrays.equals(#[one,two], cb.displaySortedSet.toArray(<CharSequence>newArrayOfSize(2)))
+    		|| Arrays.equals(#[two,one], cb.displaySortedSet.toArray(<CharSequence>newArrayOfSize(2))))
+    	// hashSet.toArray could be about anything
+    	assertTrue("hashSet.toArray", cb.hashSet.toArray.contains(one) && cb.hashSet.toArray.contains(two))
 	}
 
     @Test
@@ -439,6 +589,20 @@ class CollectionBeanTest {
     		failed = true
     	}
     	assertTrue("failed: unorderedSet.add(null)", failed)
+    	failed = false
+    	try {
+	    	cb.displaySortedSet.add(null)
+    	} catch(Throwable t) {
+    		failed = true
+    	}
+    	assertTrue("failed: displaySortedSet.add(null)", failed)
+    	failed = false
+    	try {
+	    	cb.hashSet.add(null)
+    	} catch(Throwable t) {
+    		failed = true
+    	}
+    	assertTrue("failed: hashSet.add(null)", failed)
 	}
 
     @Test
@@ -532,6 +696,8 @@ class CollectionBeanTest {
     	cb.orderedSet.add(one)
     	cb.sortedSet.add(one)
     	cb.unorderedSet.add(one)
+    	cb.displaySortedSet.add(one)
+    	cb.hashSet.add(one)
 
     	var failed = false
     	try {
@@ -568,6 +734,20 @@ class CollectionBeanTest {
     		failed = true
     	}
     	assertTrue("failed: unorderedSet.set(0,null)", failed)
+    	failed = false
+    	try {
+	    	cb.displaySortedSet.set(0,null)
+    	} catch(Throwable t) {
+    		failed = true
+    	}
+    	assertTrue("failed: displaySortedSet.set(0,null)", failed)
+    	failed = false
+    	try {
+	    	cb.hashSet.set(0,null)
+    	} catch(Throwable t) {
+    		failed = true
+    	}
+    	assertTrue("failed: hashSet.set(0,null)", failed)
 	}
 
     @Test

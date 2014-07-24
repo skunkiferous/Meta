@@ -100,14 +100,10 @@ Define a EnumProperty interface, extending the to-be-defined Property interfaces
 
 An Enum property to be based on byte.
 
+An Enum property to be based on String.
+
 TODO:
 =====
-
-String properties
-
-String convertible properties (uses Object-Object converter)
-
-An Enum property to be based on String.
 
 Array / Collection / Map properties
 
