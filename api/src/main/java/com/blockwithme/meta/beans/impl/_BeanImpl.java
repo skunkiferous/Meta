@@ -18,6 +18,7 @@ package com.blockwithme.meta.beans.impl;
 import java.io.IOException;
 import java.lang.reflect.UndeclaredThrowableException;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -38,6 +39,61 @@ import com.blockwithme.meta.beans._Bean;
  * @author monster
  */
 public abstract class _BeanImpl implements _Bean {
+
+    /** Non-comparable Comparator. */
+    protected static final Comparator<Object> NON_COMPARABLE_CMP = new Comparator<Object>() {
+        @Override
+        public int compare(final Object o1, final Object o2) {
+            if (o1 == null) {
+                if (o2 == null) {
+                    return 0;
+                }
+                return -1;
+            }
+            if (o2 == null) {
+                return 1;
+            }
+            final int hash1 = o1.hashCode();
+            final int hash2 = o2.hashCode();
+            if (hash1 == hash2) {
+                if (o1.equals(o2)) {
+                    return 0;
+                }
+                final int result = o1.toString().compareTo(o2.toString());
+                if (result == 0) {
+                    throw new IllegalStateException(
+                            "Two objects have the same hashcode(" + hash1
+                                    + ") and toString(" + o1
+                                    + "), but are NOT equals!");
+                }
+                return result;
+            }
+            return hash1 - hash2;
+        }
+    };
+
+    /**
+     * Null-friendly Comparator can be used to compare Comparables with null,
+     * as many Comparable fail when compared to null. The nulls are moved to
+     * the end of the array.
+     */
+    @SuppressWarnings("rawtypes")
+    protected static final Comparator<Comparable> NULL_FRIENDLY_CMP = new Comparator<Comparable>() {
+        @SuppressWarnings("unchecked")
+        @Override
+        public int compare(final Comparable o1, final Comparable o2) {
+            if (o1 == null) {
+                if (o2 == null) {
+                    return 0;
+                }
+                return 1;
+            }
+            if (o2 == null) {
+                return -1;
+            }
+            return o1.compareTo(o2);
+        }
+    };
 
     /** An Iterable<_Bean>, over the property values */
     private class SubBeanIterator implements Iterable<_Bean>, Iterator<_Bean> {

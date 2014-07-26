@@ -41,61 +41,6 @@ import com.blockwithme.util.shared.MurmurHash;
 public class CollectionBeanImpl<E> extends _BeanImpl implements
         _CollectionBean<E> {
 
-    /** Non-comparable Comparator. */
-    private static final Comparator<Object> NON_COMPARABLE_CMP = new Comparator<Object>() {
-        @Override
-        public int compare(final Object o1, final Object o2) {
-            if (o1 == null) {
-                if (o2 == null) {
-                    return 0;
-                }
-                return -1;
-            }
-            if (o2 == null) {
-                return 1;
-            }
-            final int hash1 = o1.hashCode();
-            final int hash2 = o2.hashCode();
-            if (hash1 == hash2) {
-                if (o1.equals(o2)) {
-                    return 0;
-                }
-                final int result = o1.toString().compareTo(o2.toString());
-                if (result == 0) {
-                    throw new IllegalStateException(
-                            "Two objects have the same hashcode(" + hash1
-                                    + ") and toString(" + o1
-                                    + "), but are NOT equals!");
-                }
-                return result;
-            }
-            return hash1 - hash2;
-        }
-    };
-
-    /**
-     * Null-friendly Comparator can be used to compare Comparables with null,
-     * as many Comparable fail when compared to null. The nulls are moved to
-     * the end of the array.
-     */
-    @SuppressWarnings("rawtypes")
-    private static final Comparator<Comparable> NULL_FRIENDLY_CMP = new Comparator<Comparable>() {
-        @SuppressWarnings("unchecked")
-        @Override
-        public int compare(final Comparable o1, final Comparable o2) {
-            if (o1 == null) {
-                if (o2 == null) {
-                    return 0;
-                }
-                return 1;
-            }
-            if (o2 == null) {
-                return -1;
-            }
-            return o1.compareTo(o2);
-        }
-    };
-
     /** An Iterable<_Bean>, over the Collection values */
     private class BeanCollectionIterator implements Iterable<_Bean>,
             Iterator<_Bean> {
@@ -221,13 +166,15 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
         @Override
         public boolean hasNext() {
             if (next == null) {
-                final E[] array = data;
-                if (cursor >= array.length)
-                    throw new ConcurrentModificationException();
-                while ((cursor < size) && (next == null)) {
-                    next = oci.getObjectAtIndex(CollectionBeanImpl.this,
-                            cursor, array[cursor]);
-                    cursor++;
+                if (cursor < size) {
+                    final E[] array = data;
+                    if (cursor >= array.length)
+                        throw new ConcurrentModificationException();
+                    while ((cursor < size) && (next == null)) {
+                        next = oci.getObjectAtIndex(CollectionBeanImpl.this,
+                                cursor, array[cursor]);
+                        cursor++;
+                    }
                 }
                 return (next != null);
             }
@@ -511,7 +458,8 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
             if (length == 0) {
                 return -1;
             }
-            final int hash = MurmurHash.hash32(o.hashCode());
+            final int hash = MurmurHash.hash32(o.hashCode())
+                    & Integer.MAX_VALUE;
             final int pos = hash % length;
             if (o.equals(oci.getObjectAtIndex(this, pos, array[pos]))) {
                 return pos;
@@ -788,19 +736,20 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
     /* (non-Javadoc)
      * @see java.util.Collection#clear()
      */
-    @SuppressWarnings("unchecked")
     @Override
     public final void clear() {
         if (isImmutable()) {
             throw new UnsupportedOperationException(this + " is immutable!");
         }
         if (config.getFixedSize() == -1) {
-            interceptor().clear(this);
-            size = 0;
-            data = (E[]) getMetaType().empty;
-            clearSelectionArray();
-            clearSelection(false, false);
-            incrementChangeCounter();
+            if (size > 0) {
+                interceptor().clear(this);
+                size = 0;
+                data = getValueType().empty;
+                clearSelectionArray();
+                clearSelection(false, false);
+                incrementChangeCounter();
+            }
         } else {
             final E[] array = data;
             final ObjectCollectionInterceptor<E> oci = interceptor();
@@ -1011,14 +960,10 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements
     /* (non-Javadoc)
      * @see com.blockwithme.meta.beans.Bean#wrapper()
      */
-    @SuppressWarnings("unchecked")
     @Override
     public final CollectionBeanImpl<E> wrapper() {
-        final CollectionBeanImpl<E> result = (CollectionBeanImpl<E>) doWrapper();
-        result.interceptor = CollectionWrapperInterceptor.INSTANCE;
-        result.ensureCapacityInternal(size);
-        result.size = size;
-        return result;
+        throw new UnsupportedOperationException(
+                "Wrapping doesn't work fo colledction because insert/remove changes the structure");
     }
 
     /* (non-Javadoc)

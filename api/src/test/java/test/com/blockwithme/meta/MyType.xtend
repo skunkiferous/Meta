@@ -16,6 +16,7 @@ import com.blockwithme.meta.beans.impl._BeanImpl
 import com.blockwithme.meta.beans.Bean
 import test.com.blockwithme.MyBean
 import com.blockwithme.util.shared.converters.IntConverterBase
+import com.blockwithme.meta.beans.impl.MapBeanImpl
 
 enum MyEnum {
   A,
@@ -155,6 +156,11 @@ class MyCollectionType {
   /** Bean list CollectionBean Property*/
   package var beanList = new CollectionBeanImpl<MyBean>(
   	Meta.COLLECTION_BEAN, TestMyBeanMeta.MY_BEAN_TYPE, CollectionBeanConfig.LIST)
+}
+
+class MyMapType {
+  /** unorderedSet CollectionBean Property*/
+  package var map = new MapBeanImpl<String,Long>(Meta.MAP_BEAN, JavaMeta.STRING, JavaMeta.LONG)
 }
 
 class TestMeta {

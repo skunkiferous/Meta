@@ -3202,6 +3202,12 @@ public interface JavaMeta {
   public static val SET = BUILDER.newType(Set, SetProvider.INSTANCE, Kind.Trait,
     #[COLLECTION], Property.NO_PROPERTIES, ONE_NULL_OBJECT_PROP)
 
+  /** The content/toArray "property" of the Maps */
+    public static val MAP_CONTENT_PROP = BUILDER.newObjectProperty(
+      Map, "content", typeof(Map.Entry[]), false, false, false,
+      [ if(it instanceof ContentOwner) content else entrySet.toArray(<Map.Entry>newArrayOfSize(size))],
+      [obj,value|obj.clear;for (v : value) {val e = v as Map.Entry/*TODO: Xtend bug*/; obj.put(e.key, e.value)};obj], false)
+
   /** The empty virtual property of the Maps */
     public static val MAP_EMPTY_PROP = BUILDER.newBooleanProperty(
       Map, "empty", [empty], null, true)
@@ -3216,7 +3222,7 @@ public interface JavaMeta {
 
   /** The Map Type */
   public static val MAP = BUILDER.newType(Map, MapProvider.INSTANCE, Kind.Trait,
-    Type.NO_TYPE, <Property>newArrayList(MAP_EMPTY_PROP, MAP_SIZE_PROP), TWO_NULL_OBJECT_PROPS)
+    Type.NO_TYPE, <Property>newArrayList(MAP_CONTENT_PROP, MAP_EMPTY_PROP, MAP_SIZE_PROP), TWO_NULL_OBJECT_PROPS)
 
   /** The java.lang package */
   public static val JAVA_LANG_PACKAGE = BUILDER.newTypePackage(OBJECT, VOID,

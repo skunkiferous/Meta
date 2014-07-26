@@ -62,5 +62,4 @@ implements ObjectCollectionInterceptor<E> {
 	override clear(_CollectionBean<E> instance) {
 		instance.setSelectedFrom(0)
 	}
-
 }

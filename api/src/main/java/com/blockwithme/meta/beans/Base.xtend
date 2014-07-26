@@ -33,6 +33,7 @@ import com.blockwithme.meta.Type
 import java.util.Collection
 import java.util.List
 import java.util.Set
+import java.util.Map
 
 /** Base for all data/bean objects */
 interface Bean {
@@ -272,6 +273,27 @@ interface ObjectCollectionInterceptor<E> extends Interceptor {
 
 }
 
+/** Interceptor for Map of objects */
+interface ObjectObjectMapInterceptor<K,V> extends Interceptor {
+	/** Intercept the read access to a Object key in a Map */
+    def K getKeyAtIndex(_MapBean<K, V> instance, int index, K key)
+
+	/** Intercept the read access to a Object value in a Map */
+    def V getValueAtIndex(_MapBean<K, V> instance, int index, V value)
+
+	/** Intercept the write access to a Object key in a Map */
+    def K setKeyAtIndex(_MapBean<K, V> instance, int index, K oldKey,
+            K newKey)
+
+	/** Intercept the write access to a Object value in a Map */
+    def V setValueAtIndex(_MapBean<K, V> instance, K key, int index, V oldValue,
+            V newValue)
+
+	/** Intercept the clear to a Map */
+    def void clear(_MapBean<K, V> instance)
+
+}
+
 /** A Bean that represents a Collection (either List or Set) */
 interface CollectionBean<E> extends List<E>, Set<E>, ContentOwner<E>, Bean {
     /** Returns the CollectionBeanConfig */
@@ -284,6 +306,20 @@ interface CollectionBean<E> extends List<E>, Set<E>, ContentOwner<E>, Bean {
 interface _CollectionBean<E> extends CollectionBean<E>, _Bean {
 	/** Returns the delegate, if any */
     override _CollectionBean<E> getDelegate()
+}
+
+/** A Bean that represents a Map (always an HashMap) */
+interface MapBean<K,V> extends Map<K,V>, ContentOwner<Map.Entry<K,V>>, Bean {
+    /** Returns the key Type (K) */
+    def Type<K> getKeyType()
+    /** Returns the value Type (V) */
+    def Type<V> getValueType()
+}
+
+/** A Bean that represents a Map (always an HashMap) */
+interface _MapBean<K,V> extends MapBean<K,V>, _Bean {
+	/** Returns the delegate, if any */
+    override _MapBean<K,V> getDelegate()
 }
 
 /**
@@ -343,9 +379,28 @@ interface Meta {
 		#[COLLECTION_BEAN, _BEAN], Property.NO_PROPERTIES,
 		COLLECTION_VALUE_TYPE_PROP as ObjectProperty)
 
+	/** The key-type property of the Map beans */
+    val MAP_KEY_TYPE_PROP = BUILDER.newObjectProperty(
+    	MapBean, "keyType", Type, true, true, true, [keyType], null, false)
+
+	/** The value-type property of the Map beans */
+    val MAP_VALUE_TYPE_PROP = BUILDER.newObjectProperty(
+    	MapBean, "valueType", Type, true, true, true, [valueType], null, false)
+
+	/** The MapBean Type */
+	val MAP_BEAN = BUILDER.newType(MapBean, null, Kind.Trait,
+		#[BEAN, JavaMeta.MAP], Property.NO_PROPERTIES, MAP_KEY_TYPE_PROP as ObjectProperty,
+		MAP_VALUE_TYPE_PROP as ObjectProperty)
+
+	/** The _MapBean Type */
+	val _MAP_BEAN = BUILDER.newType(_MapBean, null, Kind.Trait,
+		#[MAP_BEAN, _BEAN], Property.NO_PROPERTIES, MAP_KEY_TYPE_PROP as ObjectProperty,
+		MAP_VALUE_TYPE_PROP as ObjectProperty)
+
 	/** The Beans package */
 	val COM_BLOCKWITHME_META_BEANS_PACKAGE = BUILDER.newTypePackage(
-		BEAN, _BEAN, ENTITY, _ENTITY, COLLECTION_BEAN_CONFIG, COLLECTION_BEAN, _COLLECTION_BEAN)
+		BEAN, _BEAN, ENTITY, _ENTITY, COLLECTION_BEAN_CONFIG, COLLECTION_BEAN,
+		_COLLECTION_BEAN, MAP_BEAN, _MAP_BEAN)
 
 	/** The Hierarchy of Meta Types */
 	val HIERARCHY = BUILDER.newHierarchy(COM_BLOCKWITHME_META_BEANS_PACKAGE)

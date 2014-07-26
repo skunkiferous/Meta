@@ -22,6 +22,7 @@ import org.junit.BeforeClass
 import com.blockwithme.meta.beans.CollectionBean
 import java.util.Arrays
 import com.blockwithme.meta.JavaMeta
+import java.util.Collections
 
 /**
  * Tests the CollectionBean.
@@ -70,13 +71,23 @@ class CollectionBeanTest {
     	assertEquals("displaySortedSet.valueType", JavaMeta.STRING, cb.displaySortedSet.valueType)
     	assertEquals("hashSet.valueType", JavaMeta.STRING, cb.hashSet.valueType)
 
-    	val iter = cb.fixedSizeList.iterator
+    	var iter = cb.fixedSizeList.iterator
     	var count = 0
     	while (iter.hasNext) {
     		assertNull("iter.next", iter.next)
     		count = count + 1
     	}
     	assertEquals("count", 10, count)
+    	iter = cb.orderedSet.iterator
+    	assertFalse("orderedSet.iterator.hasNext", iter.hasNext)
+    	iter = cb.sortedSet.iterator
+    	assertFalse("sortedSet.iterator.hasNext", iter.hasNext)
+    	iter = cb.unorderedSet.iterator
+    	assertFalse("unorderedSet.iterator.hasNext", iter.hasNext)
+    	iter = cb.displaySortedSet.iterator
+    	assertFalse("displaySortedSet.iterator.hasNext", iter.hasNext)
+    	iter = cb.hashSet.iterator
+    	assertFalse("hashSet.iterator.hasNext", iter.hasNext)
 
     	assertEquals("fixedSizeList.toArray.length", 10, cb.fixedSizeList.toArray.length)
     	assertEquals("list.toArray.length", 0, cb.list.toArray.length)
@@ -843,7 +854,7 @@ class CollectionBeanTest {
 	}
 
     @Test
-    public def void testCopySnapshotWrapper() {
+    public def void testCopySnapshot() {
     	val cb = new MyCollectionType
      	val one = "one"
     	val two = "two"
@@ -858,10 +869,6 @@ class CollectionBeanTest {
      	var snap = cb.list.snapshot
      	assertTrue("list.content == list.snapshot.content", Arrays.equals(cb.list.content, snap.content))
      	assertTrue("list.snapshot.immutable", snap.immutable)
-
-     	var wrap = cb.list.wrapper
-     	assertTrue("list.content == list.wrapper.content", Arrays.equals(cb.list.content, wrap.content))
-     	assertFalse("list.wrap.immutable", wrap.immutable)
 
 		assertEquals("copy.remove(1)", two, copy.remove(1))
      	assertTrue("list.content == [one,two,three]", Arrays.equals(cb.list.content, #[one,two,three]))
@@ -879,16 +886,12 @@ class CollectionBeanTest {
      	assertEquals("list.size", 3, cb.list.size)
      	assertEquals("list.snap.size", 3, snap.size)
 
-		assertEquals("wrap.remove(1)", two, wrap.remove(1))
      	assertTrue("list.content == [one,two,three]", Arrays.equals(cb.list.content, #[one,two,three]))
-     	assertTrue("list.wrap.content == [one,three]", Arrays.equals(wrap.content, #[one,three]))
      	assertEquals("list.size", 3, cb.list.size)
-     	assertEquals("list.wrap.size", 2, wrap.size)
 
      	cb.list.remove(1)
      	copy = cb.list.copy
      	snap = cb.list.snapshot
-     	wrap = cb.list.wrapper
 
 		copy.add(1,two)
      	assertTrue("list.content == [one,three]", Arrays.equals(cb.list.content, #[one,three]))
@@ -906,11 +909,8 @@ class CollectionBeanTest {
      	assertEquals("list.size", 2, cb.list.size)
      	assertEquals("list.snap.size", 2, snap.size)
 
-		wrap.add(1,two)
      	assertTrue("list.content == [one,three]", Arrays.equals(cb.list.content, #[one,three]))
-     	assertTrue("list.wrap.content == [one,two,three]", Arrays.equals(wrap.content, #[one,two,three]))
      	assertEquals("list.size", 2, cb.list.size)
-     	assertEquals("list.wrap.size", 3, wrap.size)
 	}
 
 	@Test
@@ -951,5 +951,25 @@ class CollectionBeanTest {
     	val c = new MyBeanImpl
     	cb.beanList.addAll(#[a,b,c])
     	cb.beanList.setSelectionRecursive()
+	}
+
+	@Test
+	public def void testHashSet() {
+    	val cb = new MyCollectionType
+     	val one = "one"
+    	val two = "two"
+    	val three = "three"
+     	val four = "four"
+    	val five = "five"
+    	val six = "six"
+     	val seven = "seven"
+    	val eight = "eight"
+    	val nine = "nine"
+    	val list = newArrayList(one,two,three,four,five,six,seven,eight,nine)
+		cb.hashSet.addAll(list)
+     	assertEquals("hashSet.size", 16, cb.hashSet.size)
+     	Collections.sort(list)
+     	val content = cb.hashSet.content
+     	assertTrue(list+" vs "+Arrays.asList(content), list.equals(Arrays.asList(content)))
 	}
 }
