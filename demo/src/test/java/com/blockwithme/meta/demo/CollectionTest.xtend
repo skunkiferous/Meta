@@ -37,7 +37,7 @@ class CollectionTest {
 	static val hierarchy = Meta.BUILDER.newHierarchy(Meta.PACKAGE, Meta.PACKAGE)
 
 	@Test
-	def void testCreationAndLazyInit() {
+	def void testCreation() {
 		val co = new CollectionOwnerProvider().get
 
 		assertEquals("co.rawDefaultSet", null, co.rawDefaultSet)
@@ -48,6 +48,11 @@ class CollectionTest {
 		assertEquals("co.rawList", null, co.rawList)
 		assertEquals("co.rawFixedSizeList", null, co.rawFixedSizeList)
 		assertEquals("co.rawNullList", null, co.rawNullList)
+	}
+
+	@Test
+	def void testLazyInit() {
+		val co = new CollectionOwnerProvider().get
 
 		assertNotNull("co.defaultSet", co.defaultSet)
 		assertNotNull("co.unorderedSet", co.unorderedSet)
@@ -103,5 +108,133 @@ class CollectionTest {
 		assertTrue("co.fixedSizeList.config.list", co.fixedSizeList.config.list)
 		assertEquals("co.fixedSizeList.config.fixedSize", 10, co.fixedSizeList.config.fixedSize)
 		assertEquals("co.nullList.config", CollectionBeanConfig.NULL_LIST, co.nullList.config)
+	}
+
+	@Test
+	def void testClearing() {
+		val co = new CollectionOwnerProvider().get
+
+		assertNotNull("co.defaultSet", co.defaultSet)
+		assertNotNull("co.unorderedSet", co.unorderedSet)
+		assertNotNull("co.orderedSet", co.orderedSet)
+		assertNotNull("co.sortedSet", co.sortedSet)
+		assertNotNull("co.hashSet", co.hashSet)
+		assertNotNull("co.list", co.list)
+		assertNotNull("co.fixedSizeList", co.fixedSizeList)
+		assertNotNull("co.nullList", co.nullList)
+
+		co.defaultSet = null;
+		co.unorderedSet = null;
+		co.orderedSet = null;
+		co.sortedSet = null;
+		co.hashSet = null;
+		co.list = null;
+		co.fixedSizeList = null;
+		co.nullList = null;
+
+		assertEquals("co.rawDefaultSet", null, co.rawDefaultSet)
+		assertEquals("co.rawUnorderedSet", null, co.rawUnorderedSet)
+		assertEquals("co.rawOrderedSet", null, co.rawOrderedSet)
+		assertEquals("co.rawSortedSet", null, co.rawSortedSet)
+		assertEquals("co.rawHashSet", null, co.rawHashSet)
+		assertEquals("co.rawList", null, co.rawList)
+		assertEquals("co.rawFixedSizeList", null, co.rawFixedSizeList)
+		assertEquals("co.rawNullList", null, co.rawNullList)
+	}
+
+	@Test
+	def void testSetFails() {
+		val co = new CollectionOwnerProvider().get
+
+		assertNotNull("co.defaultSet", co.defaultSet)
+		assertNotNull("co.unorderedSet", co.unorderedSet)
+		assertNotNull("co.orderedSet", co.orderedSet)
+		assertNotNull("co.sortedSet", co.sortedSet)
+		assertNotNull("co.hashSet", co.hashSet)
+		assertNotNull("co.list", co.list)
+		assertNotNull("co.fixedSizeList", co.fixedSizeList)
+		assertNotNull("co.nullList", co.nullList)
+
+		var exception = false
+		try {
+			// Setting a collection to itself is the easiest way to get the
+			// right object type, and is also illegal.
+			co.defaultSet = co.defaultSet;
+		} catch(Throwable t) {
+			exception = true
+		}
+		assertTrue("co.defaultSet = <not null>", exception)
+		exception = false
+		try {
+			// Setting a collection to itself is the easiest way to get the
+			// right object type, and is also illegal.
+			co.unorderedSet = co.unorderedSet;
+		} catch(Throwable t) {
+			exception = true
+		}
+		assertTrue("co.unorderedSet = <not null>", exception)
+		exception = false
+		try {
+			// Setting a collection to itself is the easiest way to get the
+			// right object type, and is also illegal.
+			co.orderedSet = co.orderedSet;
+		} catch(Throwable t) {
+			exception = true
+		}
+		assertTrue("co.orderedSet = <not null>", exception)
+		exception = false
+		try {
+			// Setting a collection to itself is the easiest way to get the
+			// right object type, and is also illegal.
+			co.sortedSet = co.sortedSet;
+		} catch(Throwable t) {
+			exception = true
+		}
+		assertTrue("co.sortedSet = <not null>", exception)
+		exception = false
+		try {
+			// Setting a collection to itself is the easiest way to get the
+			// right object type, and is also illegal.
+			co.hashSet = co.hashSet;
+		} catch(Throwable t) {
+			exception = true
+		}
+		assertTrue("co.hashSet = <not null>", exception)
+		exception = false
+		try {
+			// Setting a collection to itself is the easiest way to get the
+			// right object type, and is also illegal.
+			co.list = co.list;
+		} catch(Throwable t) {
+			exception = true
+		}
+		assertTrue("co.list = <not null>", exception)
+		exception = false
+		try {
+			// Setting a collection to itself is the easiest way to get the
+			// right object type, and is also illegal.
+			co.fixedSizeList = co.fixedSizeList;
+		} catch(Throwable t) {
+			exception = true
+		}
+		assertTrue("co.fixedSizeList = <not null>", exception)
+		exception = false
+		try {
+			// Setting a collection to itself is the easiest way to get the
+			// right object type, and is also illegal.
+			co.nullList = co.nullList;
+		} catch(Throwable t) {
+			exception = true
+		}
+		assertTrue("co.nullList = <not null>", exception)
+
+		assertNotNull("co.rawDefaultSet", co.rawDefaultSet)
+		assertNotNull("co.rawUnorderedSet", co.rawUnorderedSet)
+		assertNotNull("co.rawOrderedSet", co.rawOrderedSet)
+		assertNotNull("co.rawSortedSet", co.rawSortedSet)
+		assertNotNull("co.rawHashSet", co.rawHashSet)
+		assertNotNull("co.rawList", co.rawList)
+		assertNotNull("co.rawFixedSizeList", co.rawFixedSizeList)
+		assertNotNull("co.rawNullList", co.rawNullList)
 	}
 }

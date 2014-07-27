@@ -739,10 +739,18 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
         returnType = interf.newTypeReference
         // STEP 31
         // Comments on properties must be transfered to generated code
-        if (doc.empty) {
-          docComment = "Setter for "+fieldName
+        if (fieldType.array) {
+	        if (doc.empty) {
+	          docComment = "Setter (accepts only null!) for "+fieldName
+	        } else {
+	          docComment = "Setter (accepts only null!) for "+doc
+	        }
         } else {
-          docComment = "Setter for "+doc
+	        if (doc.empty) {
+	          docComment = "Setter for "+fieldName
+	        } else {
+	          docComment = "Setter for "+doc
+	        }
         }
       ]
       warn(BeanProcessor, "transform", interf, "Adding " + setter+" to "+interf.qualifiedName)
@@ -1231,9 +1239,12 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		val setter = "set"+tfu
 		val valueType = propTypeRef
 		if ((!isVirtual || !setterJavaCode.empty) && impl.findDeclaredMethod(setter, valueType) === null) {
-			val bodyText = if (isVirtual) setterJavaCode+";"
+			val bodyText0 = if (isVirtual) setterJavaCode+";"
 				else '''«propInfo.name» = interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», newValue);
 return this;'''
+			val bodyText = if (colType === null) bodyText0 else
+			'''if (newValue != null) throw new IllegalArgumentException("Collection setters only accepts null");
+'''+bodyText0
 			impl.addMethod(setter) [
 				visibility = Visibility.PUBLIC
 				final = true
@@ -1245,11 +1256,19 @@ return this;'''
 				]
 				// STEP 31
 				// Comments on properties must be transfered to generated code
-				if (doc.empty) {
-					docComment = "Setter for "+propInfo.name
-				} else {
-					docComment = "Setter for "+doc
-				}
+		        if (colType !== null) {
+			        if (doc.empty) {
+			          docComment = "Setter (accepts only null!) for "+propInfo.name
+			        } else {
+			          docComment = "Setter (accepts only null!) for "+doc
+			        }
+		        } else {
+			        if (doc.empty) {
+			          docComment = "Setter for "+propInfo.name
+			        } else {
+			          docComment = "Setter for "+doc
+			        }
+		        }
 			]
 			warn(BeanProcessor, "transform", impl, setter+" added to "+impl.qualifiedName)
 		}
@@ -1291,7 +1310,7 @@ return this;'''
       			}
       			val bodyText = '''«propTypeRef» result = «getter»();
 if (result == null) {
-	«setter»(new «CollectionBeanImpl.name»<«componentType»>(«Meta.name».COLLECTION_BEAN, «componentTypeType2»,«config»));
+	«propInfo.name» = interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», new «CollectionBeanImpl.name»<«componentType»>(«Meta.name».COLLECTION_BEAN, «componentTypeType2»,«config»));
 	result = «getter»();
 }
 return result;'''
