@@ -102,10 +102,10 @@ An Enum property to be based on byte.
 
 An Enum property to be based on String.
 
+Array / Collection / Map properties
+
 TODO:
 =====
-
-Array / Collection / Map properties
 
 We need to detect if a property/method/type/package was "forgotten"
 at the creation of it's parent.
