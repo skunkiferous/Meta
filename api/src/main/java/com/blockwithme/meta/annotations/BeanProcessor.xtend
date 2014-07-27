@@ -424,15 +424,21 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 
   /** Returns false if the given type name is not valid for a property */
   private def validPropertyType(Map<String,Object> processingContext, TypeReference typeRef, TypeDeclaration parent) {
-    val name = ProcessorUtil.qualifiedName(typeRef)
     if (typeRef.array || typeRef.primitive || typeRef.wrapper
       || (typeRef == string) || (typeRef == classTypeRef)) {
       return true
     }
+    val name = ProcessorUtil.qualifiedName(typeRef)
+    val start = name.indexOf('<')
+    val nameNoGen = if (start < 0) name else name.substring(0, start)
+    // Collections can also be defined the old-fashioned way.
+    if (("java.util.List" == nameNoGen) || ("java.util.Set" == nameNoGen)) {
+    	return true
+    }
   	val allTypes = processingContext.get(PC_ALL_FILE_TYPES) as List<TypeDeclaration>
-    var org.eclipse.xtend.lib.macro.declaration.Type type = allTypes.findFirst[it.qualifiedName == name]
+    var org.eclipse.xtend.lib.macro.declaration.Type type = allTypes.findFirst[it.qualifiedName == nameNoGen]
     if (type === null) {
-	    type = findTypeGlobally(name)
+	    type = findTypeGlobally(nameNoGen)
 	    if (isBean(type)) {
 	      return true
 	    }
@@ -592,6 +598,10 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
         index = 0
         for (f : fields) {
           val ftypeName = f.type.name
+		  val start = ftypeName.indexOf('<')
+		  val nameNoGen = if (start < 0) ftypeName else ftypeName.substring(0, start)
+		  // Collections can also be defined the old-fashioned way.
+		  val oldStyleCol = (("java.util.List" == nameNoGen) || ("java.util.Set" == nameNoGen))
           val doc = if (f.docComment === null) "" else f.docComment
       	  val unorderedSetAnnot = f.findAnnotation(findTypeGlobally(UnorderedSetProperty))
       	  val orderedSetAnnot = f.findAnnotation(findTypeGlobally(OrderedSetProperty))
@@ -609,14 +619,23 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	      	  setterJavaCode = virtualAnnot.getStringValue("setterJavaCode")
 	          requireNonNull(setterJavaCode, qualifiedName+"."+f.simpleName+".setterJavaCode")
           }
-          if (f.type.array) {
+          if (f.type.array || oldStyleCol) {
           	// A collection property!
-          	val componentTypeName = f.type.arrayComponentType.name
-          	val typeName = CollectionBean.name+"<"+componentTypeName+">"
+          	val componentTypeName = if (oldStyleCol) {
+          		ftypeName.substring(start+1, ftypeName.length - 1)
+      		} else {
+	          	f.type.arrayComponentType.name
+          	}
+          	val String typeName = CollectionBean.name+"<"+componentTypeName+">"
           	var String collType = null
           	var fixedSize = -1
           	var nullAllowed = false
           	if (isCollProp) {
+          		if (oldStyleCol) {
+          				throw new IllegalStateException(
+          					"'old-style' collection types do not support collection annotations on "
+          					+qualifiedName+"."+f.simpleName)
+          		}
           		if (unorderedSetAnnot !== null) {
           			collType = CollectionPropertyType.unorderedSet
           		}
@@ -650,6 +669,11 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
           			fixedSize = listAnnot.getIntValue("fixedSize")
           			nullAllowed = listAnnot.getBooleanValue("nullAllowed")
       			}
+  			} else if (oldStyleCol) {
+      			collType = if ("java.util.List" == nameNoGen)
+      				CollectionPropertyType.list
+  				else
+      				CollectionPropertyType.unorderedSet
           	} else {
       			collType = CollectionPropertyType.unorderedSet
           	}
@@ -711,8 +735,15 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
     val fieldName = fieldDeclaration.simpleName
     val toFirstUpper = to_FirstUpper(fieldName)
     val fieldType = fieldDeclaration.type
+    val start = fieldType.name.indexOf('<')
+    val nameNoGen = if (start < 0) fieldType.name else fieldType.name.substring(0, start)
+    // Collections can also be defined the old-fashioned way.
+    val oldStyleCol = (("java.util.List" == nameNoGen) || ("java.util.Set" == nameNoGen))
     val propertyType = if (fieldType.array) {
     	val componentType = fieldType.arrayComponentType
+    	newTypeReference(CollectionBean, componentType)
+    } else if (oldStyleCol) {
+    	val componentType = fieldType.actualTypeArguments.get(0)
     	newTypeReference(CollectionBean, componentType)
     } else
     	fieldType
@@ -739,7 +770,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
         returnType = interf.newTypeReference
         // STEP 31
         // Comments on properties must be transfered to generated code
-        if (fieldType.array) {
+        if (fieldType.array || oldStyleCol) {
 	        if (doc.empty) {
 	          docComment = "Setter (accepts only null!) for "+fieldName
 	        } else {
@@ -755,7 +786,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
       ]
       warn(BeanProcessor, "transform", interf, "Adding " + setter+" to "+interf.qualifiedName)
     }
-    if (fieldType.array) {
+    if (fieldType.array || oldStyleCol) {
 	    val getter2 = 'getRaw' + toFirstUpper
 	    if (interf.findDeclaredMethod(getter2) === null) {
 	      interf.addMethod(getter2) [

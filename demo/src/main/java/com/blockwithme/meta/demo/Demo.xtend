@@ -21,6 +21,8 @@ import com.blockwithme.meta.annotations.OrderedSetProperty
 import com.blockwithme.meta.annotations.SortedSetProperty
 import com.blockwithme.meta.annotations.UnorderedSetProperty
 import com.blockwithme.meta.annotations.HashSetProperty
+import java.util.List
+import java.util.Set
 
 /**
  * Hierarchy "root".
@@ -211,6 +213,10 @@ interface CollectionOwner extends Root {
 
   @ListProperty(nullAllowed=true)
   String[] nullList
+
+  List<String> realList
+
+  Set<String> realSet
 }
 
 ///** Example of the Trace annotation */
