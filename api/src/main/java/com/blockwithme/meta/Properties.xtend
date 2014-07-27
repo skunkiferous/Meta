@@ -3205,8 +3205,8 @@ public interface JavaMeta {
   /** The content/toArray "property" of the Maps */
     public static val MAP_CONTENT_PROP = BUILDER.newObjectProperty(
       Map, "content", typeof(Map.Entry[]), false, false, false,
-      [ if(it instanceof ContentOwner) content else entrySet.toArray(<Map.Entry>newArrayOfSize(size))],
-      [obj,value|obj.clear;for (v : value) {val e = v as Map.Entry/*TODO: Xtend bug*/; obj.put(e.key, e.value)};obj], false)
+      [ if(it instanceof ContentOwner) content else entrySet.toArray(<Map.Entry<?,?>>newArrayOfSize(size))],
+      [obj,value|obj.clear;for (v : value) { val e = v as Map.Entry<?,?>; obj.put(e.key, e.value)};obj], false)
 
   /** The empty virtual property of the Maps */
     public static val MAP_EMPTY_PROP = BUILDER.newBooleanProperty(
