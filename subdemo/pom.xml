@@ -77,6 +77,12 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
 				<groupId>org.eclipse.xtend</groupId>
 				<artifactId>xtend-maven-plugin</artifactId>
 			</plugin>
+			<plugin>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+			    	<forkMode>pertest</forkMode>
+			    </configuration>
+			</plugin>
 		</plugins>
 		<resources>
 			<resource>
