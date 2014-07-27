@@ -295,17 +295,37 @@ interface ObjectObjectMapInterceptor<K,V> extends Interceptor {
 }
 
 /** A Bean that represents a Collection (either List or Set) */
-interface CollectionBean<E> extends List<E>, Set<E>, ContentOwner<E>, Bean {
+interface CollectionBean<E> extends Collection<E>, ContentOwner<E>, Bean {
     /** Returns the CollectionBeanConfig */
     def CollectionBeanConfig getConfig()
     /** Returns the value Type (E) */
     def Type<E> getValueType()
 }
 
+/** A Bean that represents a List */
+interface ListBean<E> extends List<E>, CollectionBean<E> {
+}
+
+/** A Bean that represents a Set */
+interface SetBean<E> extends Set<E>, CollectionBean<E> {
+}
+
 /** A Bean that represents a Collection (either List or Set) */
 interface _CollectionBean<E> extends CollectionBean<E>, _Bean {
 	/** Returns the delegate, if any */
     override _CollectionBean<E> getDelegate()
+}
+
+/** A Bean that represents a List */
+interface _ListBean<E> extends ListBean<E>, _CollectionBean<E> {
+	/** Returns the delegate, if any */
+    override _ListBean<E> getDelegate()
+}
+
+/** A Bean that represents a Set */
+interface _SetBean<E> extends SetBean<E>, _CollectionBean<E> {
+	/** Returns the delegate, if any */
+    override _SetBean<E> getDelegate()
 }
 
 /** A Bean that represents a Map (always an HashMap) */
@@ -374,9 +394,29 @@ interface Meta {
 		#[BEAN, JavaMeta.LIST, JavaMeta.SET], <Property>newArrayList(COLLECTION_CONFIG_PROP),
 		COLLECTION_VALUE_TYPE_PROP as ObjectProperty)
 
+	/** The ListBean Type */
+	val LIST_BEAN = BUILDER.newType(ListBean, null, Kind.Trait,
+		#[COLLECTION_BEAN, JavaMeta.LIST], Property.NO_PROPERTIES,
+		COLLECTION_VALUE_TYPE_PROP as ObjectProperty)
+
+	/** The SetBean Type */
+	val SET_BEAN = BUILDER.newType(SetBean, null, Kind.Trait,
+		#[COLLECTION_BEAN, JavaMeta.SET], Property.NO_PROPERTIES,
+		COLLECTION_VALUE_TYPE_PROP as ObjectProperty)
+
 	/** The _CollectionBean Type */
 	val _COLLECTION_BEAN = BUILDER.newType(_CollectionBean, null, Kind.Trait,
 		#[COLLECTION_BEAN, _BEAN], Property.NO_PROPERTIES,
+		COLLECTION_VALUE_TYPE_PROP as ObjectProperty)
+
+	/** The _ListBean Type */
+	val _LIST_BEAN = BUILDER.newType(_ListBean, null, Kind.Trait,
+		#[_COLLECTION_BEAN, LIST_BEAN], Property.NO_PROPERTIES,
+		COLLECTION_VALUE_TYPE_PROP as ObjectProperty)
+
+	/** The _SetBean Type */
+	val _SET_BEAN = BUILDER.newType(_SetBean, null, Kind.Trait,
+		#[_COLLECTION_BEAN, SET_BEAN], Property.NO_PROPERTIES,
 		COLLECTION_VALUE_TYPE_PROP as ObjectProperty)
 
 	/** The key-type property of the Map beans */
@@ -400,7 +440,7 @@ interface Meta {
 	/** The Beans package */
 	val COM_BLOCKWITHME_META_BEANS_PACKAGE = BUILDER.newTypePackage(
 		BEAN, _BEAN, ENTITY, _ENTITY, COLLECTION_BEAN_CONFIG, COLLECTION_BEAN,
-		_COLLECTION_BEAN, MAP_BEAN, _MAP_BEAN)
+		_COLLECTION_BEAN, LIST_BEAN, SET_BEAN, _LIST_BEAN, _SET_BEAN, MAP_BEAN, _MAP_BEAN)
 
 	/** The Hierarchy of Meta Types */
 	val HIERARCHY = BUILDER.newHierarchy(COM_BLOCKWITHME_META_BEANS_PACKAGE)

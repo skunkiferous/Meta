@@ -17,6 +17,8 @@ package com.blockwithme.meta.demo
 
 import com.blockwithme.meta.Property
 import com.blockwithme.meta.beans._Bean
+import com.blockwithme.meta.beans._SetBean
+import com.blockwithme.meta.beans._ListBean
 import com.blockwithme.meta.beans._CollectionBean
 import java.util.Collection
 import static org.junit.Assert.*
@@ -48,6 +50,8 @@ class CollectionTest {
 		assertEquals("co.rawList", null, co.rawList)
 		assertEquals("co.rawFixedSizeList", null, co.rawFixedSizeList)
 		assertEquals("co.rawNullList", null, co.rawNullList)
+		assertEquals("co.rawRealList", null, co.rawRealList)
+		assertEquals("co.rawRealSet", null, co.rawRealSet)
 	}
 
 	@Test
@@ -62,6 +66,8 @@ class CollectionTest {
 		assertNotNull("co.list", co.list)
 		assertNotNull("co.fixedSizeList", co.fixedSizeList)
 		assertNotNull("co.nullList", co.nullList)
+		assertNotNull("co.realList", co.realList)
+		assertNotNull("co.realSet", co.realSet)
 
 		assertNotNull("co.rawDefaultSet", co.rawDefaultSet)
 		assertNotNull("co.rawUnorderedSet", co.rawUnorderedSet)
@@ -71,6 +77,8 @@ class CollectionTest {
 		assertNotNull("co.rawList", co.rawList)
 		assertNotNull("co.rawFixedSizeList", co.rawFixedSizeList)
 		assertNotNull("co.rawNullList", co.rawNullList)
+		assertNotNull("co.rawRealSet", co.rawRealSet)
+		assertNotNull("co.rawRealList", co.rawRealList)
 
 		assertTrue("co.defaultSet.empty", co.defaultSet.empty)
 		assertTrue("co.unorderedSet.empty", co.unorderedSet.empty)
@@ -80,6 +88,8 @@ class CollectionTest {
 		assertTrue("co.list.empty", co.list.empty)
 		assertFalse("co.fixedSizeList.empty", co.fixedSizeList.empty)
 		assertTrue("co.nullList.empty", co.nullList.empty)
+		assertTrue("co.realList.empty", co.realList.empty)
+		assertTrue("co.realSet.empty", co.realSet.empty)
 
 		assertEquals("co.defaultSet.size", 0, co.defaultSet.size)
 		assertEquals("co.unorderedSet.size", 0, co.unorderedSet.size)
@@ -89,15 +99,19 @@ class CollectionTest {
 		assertEquals("co.list.size", 0, co.list.size)
 		assertEquals("co.fixedSizeList.size", 10, co.fixedSizeList.size)
 		assertEquals("co.nullList.size", 0, co.nullList.size)
+		assertEquals("co.realList.size", 0, co.realList.size)
+		assertEquals("co.realSet.size", 0, co.realSet.size)
 
-		assertTrue("co.defaultSet instanceof _CollectionBean", co.defaultSet instanceof _CollectionBean)
-		assertTrue("co.unorderedSet instanceof _CollectionBean", co.unorderedSet instanceof _CollectionBean)
-		assertTrue("co.orderedSet instanceof _CollectionBean", co.orderedSet instanceof _CollectionBean)
-		assertTrue("co.sortedSet instanceof _CollectionBean", co.sortedSet instanceof _CollectionBean)
-		assertTrue("co.hashSet instanceof _CollectionBean", co.hashSet instanceof _CollectionBean)
-		assertTrue("co.list instanceof _CollectionBean", co.list instanceof _CollectionBean)
-		assertTrue("co.fixedSizeList instanceof _CollectionBean", co.fixedSizeList instanceof _CollectionBean)
-		assertTrue("co.nullList instanceof _CollectionBean", co.nullList instanceof _CollectionBean)
+		assertTrue("co.defaultSet instanceof _SetBean", co.defaultSet instanceof _SetBean)
+		assertTrue("co.unorderedSet instanceof _SetBean", co.unorderedSet instanceof _SetBean)
+		assertTrue("co.orderedSet instanceof _SetBean", co.orderedSet instanceof _SetBean)
+		assertTrue("co.sortedSet instanceof _SetBean", co.sortedSet instanceof _SetBean)
+		assertTrue("co.hashSet instanceof _SetBean", co.hashSet instanceof _SetBean)
+		assertTrue("co.list instanceof _ListBean", co.list instanceof _ListBean)
+		assertTrue("co.fixedSizeList instanceof _ListBean", co.fixedSizeList instanceof _ListBean)
+		assertTrue("co.nullList instanceof _ListBean", co.nullList instanceof _ListBean)
+		assertTrue("co.realList instanceof _ListBean", co.realList instanceof _ListBean)
+		assertTrue("co.realSet instanceof _SetBean", co.realSet instanceof _SetBean)
 
 		assertEquals("co.defaultSet.config", CollectionBeanConfig.UNORDERED_SET, co.defaultSet.config)
 		assertEquals("co.unorderedSet.config", CollectionBeanConfig.UNORDERED_SET, co.unorderedSet.config)
@@ -108,6 +122,8 @@ class CollectionTest {
 		assertTrue("co.fixedSizeList.config.list", co.fixedSizeList.config.list)
 		assertEquals("co.fixedSizeList.config.fixedSize", 10, co.fixedSizeList.config.fixedSize)
 		assertEquals("co.nullList.config", CollectionBeanConfig.NULL_LIST, co.nullList.config)
+		assertEquals("co.realList.config", CollectionBeanConfig.LIST, co.realList.config)
+		assertEquals("co.realSet.config", CollectionBeanConfig.UNORDERED_SET, co.realSet.config)
 	}
 
 	@Test
@@ -122,6 +138,8 @@ class CollectionTest {
 		assertNotNull("co.list", co.list)
 		assertNotNull("co.fixedSizeList", co.fixedSizeList)
 		assertNotNull("co.nullList", co.nullList)
+		assertNotNull("co.realList", co.realList)
+		assertNotNull("co.realSet", co.realSet)
 
 		co.defaultSet = null;
 		co.unorderedSet = null;
@@ -131,6 +149,8 @@ class CollectionTest {
 		co.list = null;
 		co.fixedSizeList = null;
 		co.nullList = null;
+		co.realList = null;
+		co.realSet = null;
 
 		assertEquals("co.rawDefaultSet", null, co.rawDefaultSet)
 		assertEquals("co.rawUnorderedSet", null, co.rawUnorderedSet)
@@ -140,6 +160,8 @@ class CollectionTest {
 		assertEquals("co.rawList", null, co.rawList)
 		assertEquals("co.rawFixedSizeList", null, co.rawFixedSizeList)
 		assertEquals("co.rawNullList", null, co.rawNullList)
+		assertEquals("co.rawRealList", null, co.rawRealList)
+		assertEquals("co.rawRealSet", null, co.rawRealSet)
 	}
 
 	@Test
@@ -154,6 +176,8 @@ class CollectionTest {
 		assertNotNull("co.list", co.list)
 		assertNotNull("co.fixedSizeList", co.fixedSizeList)
 		assertNotNull("co.nullList", co.nullList)
+		assertNotNull("co.realList", co.realList)
+		assertNotNull("co.realSet", co.realSet)
 
 		var exception = false
 		try {
@@ -227,6 +251,24 @@ class CollectionTest {
 			exception = true
 		}
 		assertTrue("co.nullList = <not null>", exception)
+		exception = false
+		try {
+			// Setting a collection to itself is the easiest way to get the
+			// right object type, and is also illegal.
+			co.realList = co.realList;
+		} catch(Throwable t) {
+			exception = true
+		}
+		assertTrue("co.realList = <not null>", exception)
+		exception = false
+		try {
+			// Setting a collection to itself is the easiest way to get the
+			// right object type, and is also illegal.
+			co.realSet = co.realSet;
+		} catch(Throwable t) {
+			exception = true
+		}
+		assertTrue("co.realSet = <not null>", exception)
 
 		assertNotNull("co.rawDefaultSet", co.rawDefaultSet)
 		assertNotNull("co.rawUnorderedSet", co.rawUnorderedSet)
@@ -236,5 +278,7 @@ class CollectionTest {
 		assertNotNull("co.rawList", co.rawList)
 		assertNotNull("co.rawFixedSizeList", co.rawFixedSizeList)
 		assertNotNull("co.rawNullList", co.rawNullList)
+		assertNotNull("co.rawRealList", co.rawRealList)
+		assertNotNull("co.rawRealSet", co.rawRealSet)
 	}
 }

@@ -30,7 +30,8 @@ import com.blockwithme.meta.Type;
 import com.blockwithme.meta.beans.CollectionBeanConfig;
 import com.blockwithme.meta.beans.ObjectCollectionInterceptor;
 import com.blockwithme.meta.beans._Bean;
-import com.blockwithme.meta.beans._CollectionBean;
+import com.blockwithme.meta.beans._ListBean;
+import com.blockwithme.meta.beans._SetBean;
 import com.blockwithme.util.shared.MurmurHash;
 
 /**
@@ -38,8 +39,8 @@ import com.blockwithme.util.shared.MurmurHash;
  *
  * @author monster
  */
-public class CollectionBeanImpl<E> extends _BeanImpl implements
-        _CollectionBean<E> {
+public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
+        _SetBean<E> {
 
     /** An Iterable<_Bean>, over the Collection values */
     private class BeanCollectionIterator implements Iterable<_Bean>,

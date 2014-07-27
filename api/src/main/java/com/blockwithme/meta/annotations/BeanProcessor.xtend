@@ -56,6 +56,8 @@ import org.eclipse.xtend.lib.macro.declaration.TypeReference
 import org.eclipse.xtend.lib.macro.declaration.Visibility
 
 import static java.util.Objects.*
+import com.blockwithme.meta.beans.ListBean
+import com.blockwithme.meta.beans.SetBean
 
 /**
  * Annotates an interface declared in a C-style-struct syntax
@@ -626,7 +628,6 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
       		} else {
 	          	f.type.arrayComponentType.name
           	}
-          	val String typeName = CollectionBean.name+"<"+componentTypeName+">"
           	var String collType = null
           	var fixedSize = -1
           	var nullAllowed = false
@@ -677,6 +678,10 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
           	} else {
       			collType = CollectionPropertyType.unorderedSet
           	}
+          	val String typeName = if (CollectionPropertyType.list == collType)
+          		ListBean.name+"<"+componentTypeName+">"
+      		else
+          		SetBean.name+"<"+componentTypeName+">"
             properties.set(index, new PropertyInfo(
 	            requireNonNull(f.simpleName, "f.simpleName"),
 	            requireNonNull(typeName, "typeName"), doc, collType, fixedSize,
@@ -741,10 +746,17 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
     val oldStyleCol = (("java.util.List" == nameNoGen) || ("java.util.Set" == nameNoGen))
     val propertyType = if (fieldType.array) {
     	val componentType = fieldType.arrayComponentType
-    	newTypeReference(CollectionBean, componentType)
+      	val listAnnot = fieldDeclaration.findAnnotation(findTypeGlobally(ListProperty))
+      	if (listAnnot === null)
+    		newTypeReference(SetBean, componentType)
+		else
+    		newTypeReference(ListBean, componentType)
     } else if (oldStyleCol) {
     	val componentType = fieldType.actualTypeArguments.get(0)
-    	newTypeReference(CollectionBean, componentType)
+    	if ("java.util.List" == nameNoGen)
+    		newTypeReference(ListBean, componentType)
+		else
+    		newTypeReference(SetBean, componentType)
     } else
     	fieldType
     val doc = if (fieldDeclaration.docComment != null) fieldDeclaration.docComment else "";
@@ -1215,12 +1227,19 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
     MutableClassDeclaration impl, BeanInfo beanInfo, PropertyInfo propInfo) {
 	val isVirtual = !propInfo.getterJavaCode.empty
     if (!isVirtual && impl.findDeclaredField(propInfo.name) === null) {
+      val propInfoType = if (propInfo.colType === null)
+      	propInfo.type
+  	  else {
+  	  	// The field must be CollectionBeanImpl, it looks like it can be List OR Set
+  	  	val start = propInfo.type.indexOf('<')
+  	  	CollectionBeanImpl.name+propInfo.type.substring(start)
+  	  }
       val doc = propInfo.comment
       impl.addField(propInfo.name) [
         visibility = Visibility.PRIVATE
         final = false
         static = false
-        type = newTypeReferenceWithGenerics(propInfo.type)
+        type = newTypeReferenceWithGenerics(propInfoType)
         // STEP 31
         // Comments on properties must be transfered to generated code
         if (doc.empty) {
@@ -1232,6 +1251,12 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
       warn(BeanProcessor, "transform", impl, propInfo.name+" added to "+impl.qualifiedName)
     }
   }
+
+    private def castForColProp(PropertyInfo propInfo) {
+  	  	// The field must be CollectionBeanImpl, it looks like it can be List OR Set
+  	  	val start = propInfo.type.indexOf('<')
+  	  	if (start < 0) "" else "("+CollectionBeanImpl.name+propInfo.type.substring(start)+") "
+    }
 
 	/** Generates the getter, setter for the given property */
 	private def void generatePropertyMethods(Map<String, Object> processingContext,
@@ -1271,7 +1296,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		val valueType = propTypeRef
 		if ((!isVirtual || !setterJavaCode.empty) && impl.findDeclaredMethod(setter, valueType) === null) {
 			val bodyText0 = if (isVirtual) setterJavaCode+";"
-				else '''«propInfo.name» = interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», newValue);
+				else '''«propInfo.name» = «castForColProp(propInfo)»interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», newValue);
 return this;'''
 			val bodyText = if (colType === null) bodyText0 else
 			'''if (newValue != null) throw new IllegalArgumentException("Collection setters only accepts null");
@@ -1341,7 +1366,7 @@ return this;'''
       			}
       			val bodyText = '''«propTypeRef» result = «getter»();
 if (result == null) {
-	«propInfo.name» = interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», new «CollectionBeanImpl.name»<«componentType»>(«Meta.name».COLLECTION_BEAN, «componentTypeType2»,«config»));
+	«propInfo.name» = «castForColProp(propInfo)»interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», new «CollectionBeanImpl.name»<«componentType»>(«Meta.name».COLLECTION_BEAN, «componentTypeType2»,«config»));
 	result = «getter»();
 }
 return result;'''
