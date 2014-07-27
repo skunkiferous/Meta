@@ -195,10 +195,18 @@ package class BeanInfo {
   boolean isInstance
   String[] sortKeyes
   def pkgName() {
-    qualifiedName.substring(0,qualifiedName.lastIndexOf('.'))
+  	val index = qualifiedName.lastIndexOf('.')
+    if (index < 0)
+    	""
+	else
+    	qualifiedName.substring(0,index)
   }
   def simpleName() {
-    qualifiedName.substring(qualifiedName.lastIndexOf('.')+1)
+  	val index = qualifiedName.lastIndexOf('.')
+    if (index < 0)
+    	qualifiedName
+	else
+    	qualifiedName.substring(index+1)
   }
   // STEP 23
   // If we have more then one parent, find out all missing properties
@@ -520,7 +528,34 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
       putInCache(processingContext, key, noSameSimpleNameKey, result)
       return result
     }
-    beanInfo(processingContext, findTypeGlobally(qualifiedName) as TypeDeclaration)
+    if (td instanceof TypeDeclaration) {
+    	return beanInfo(processingContext, td)
+	}
+	  // Primitive type!
+	  val result = new BeanInfo(qualifiedName,NO_PARENTS,NO_PROPERTIES,
+	    newArrayList(), false, false, #[])
+	  result.check()
+	  val key = cacheKey(qualifiedName)
+	  val simpleName = qualifiedName.substring(qualifiedName.lastIndexOf(DOT)+1)
+	  val noSameSimpleNameKey = noSameSimpleNameKey(simpleName)
+	  putInCache(processingContext, key, noSameSimpleNameKey, result)
+	  return result
+  }
+
+  /** Returns the property creation method name */
+  private def String wrapperOrObject(String typeName) {
+    switch (typeName) {
+      case "void": "java.lang.Void"
+      case "boolean": "java.lang.Boolean"
+      case "byte": "java.lang.Byte"
+      case "char": "java.lang.Character"
+      case "short": "java.lang.Short"
+      case "int": "java.lang.Integer"
+      case "float": "java.lang.Float"
+      case "long": "java.lang.Long"
+      case "double": "java.lang.Double"
+      default: typeName
+    }
   }
 
   // STEP 1/2
@@ -623,11 +658,12 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
           }
           if (f.type.array || oldStyleCol) {
           	// A collection property!
-          	val componentTypeName = if (oldStyleCol) {
+          	val componentTypeName0 = if (oldStyleCol) {
           		ftypeName.substring(start+1, ftypeName.length - 1)
       		} else {
 	          	f.type.arrayComponentType.name
           	}
+          	val componentTypeName = wrapperOrObject(componentTypeName0)
           	var String collType = null
           	var fixedSize = -1
           	var nullAllowed = false
@@ -994,7 +1030,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
     val isVirtual = !propInfo.getterJavaCode.empty
     if (meta.findDeclaredField(name) === null) {
       val simpleName = beanInfo.simpleName
-      val qualifiedName = beanInfo.pkgName+"."+simpleName
+      val qualifiedName = beanInfo.qualifiedName
       val beanType = newTypeReference(qualifiedName)
       val TypeReference retTypeRef = if ("ObjectProperty" == propName) {
   		val objType = newTypeReferenceWithGenerics(propInfo.type)

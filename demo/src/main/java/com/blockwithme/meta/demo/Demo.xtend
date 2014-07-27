@@ -217,6 +217,8 @@ interface CollectionOwner extends Root {
   List<String> realList
 
   Set<String> realSet
+
+  int[] integerSet
 }
 
 ///** Example of the Trace annotation */

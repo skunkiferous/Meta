@@ -3122,14 +3122,14 @@ public interface JavaMeta {
   /** The primitive Object Type */
   public static val OBJECT = BUILDER.newType(Object, ObjectProvider.INSTANCE, Kind.Data)
 
-  /** The primitive Void Type */
-  public static val VOID = BUILDER.newType(Void, null, Kind.Data)
-
   /** The primitive Comparable Type */
   public static val COMPARABLE = BUILDER.newType(Comparable, null, Kind.Trait)
 
   /** The primitive Number Type */
   public static val NUMBER = BUILDER.newType(Number, null, Kind.Data, #[SERIALIZABLE])
+
+  /** The primitive Void Type */
+  public static val VOID = BUILDER.newType(Void, null, Kind.Data)
 
   /** The primitive Boolean Type */
   public static val BOOLEAN = BUILDER.newType(Boolean, new ConstantProvider(Boolean.FALSE), Kind.Data, #[SERIALIZABLE, COMPARABLE])
