@@ -23,6 +23,7 @@ import com.blockwithme.meta.annotations.UnorderedSetProperty
 import com.blockwithme.meta.annotations.HashSetProperty
 import java.util.List
 import java.util.Set
+import java.util.Map
 
 /**
  * Hierarchy "root".
@@ -219,6 +220,8 @@ interface CollectionOwner extends Root {
   Set<String> realSet
 
   int[] integerSet
+
+  Map<String,Integer> map
 }
 
 ///** Example of the Trace annotation */

@@ -58,6 +58,8 @@ import org.eclipse.xtend.lib.macro.declaration.Visibility
 import static java.util.Objects.*
 import com.blockwithme.meta.beans.ListBean
 import com.blockwithme.meta.beans.SetBean
+import com.blockwithme.meta.beans.MapBean
+import com.blockwithme.meta.beans.impl.MapBeanImpl
 
 /**
  * Annotates an interface declared in a C-style-struct syntax
@@ -442,7 +444,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
     val start = name.indexOf('<')
     val nameNoGen = if (start < 0) name else name.substring(0, start)
     // Collections can also be defined the old-fashioned way.
-    if (("java.util.List" == nameNoGen) || ("java.util.Set" == nameNoGen)) {
+    if (("java.util.List" == nameNoGen) || ("java.util.Set" == nameNoGen) || ("java.util.Map" == nameNoGen)) {
     	return true
     }
   	val allTypes = processingContext.get(PC_ALL_FILE_TYPES) as List<TypeDeclaration>
@@ -558,6 +560,10 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
     }
   }
 
+  private static def isMap(PropertyInfo propInfo) {
+  	propInfo.type.startsWith(MapBean.name+"<")
+  }
+
   // STEP 1/2
   private def BeanInfo beanInfo(Map<String,Object> processingContext, TypeDeclaration td) {
     // Lazy init
@@ -639,6 +645,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		  val nameNoGen = if (start < 0) ftypeName else ftypeName.substring(0, start)
 		  // Collections can also be defined the old-fashioned way.
 		  val oldStyleCol = (("java.util.List" == nameNoGen) || ("java.util.Set" == nameNoGen))
+		  val isMap = ("java.util.Map" == nameNoGen)
           val doc = if (f.docComment === null) "" else f.docComment
       	  val unorderedSetAnnot = f.findAnnotation(findTypeGlobally(UnorderedSetProperty))
       	  val orderedSetAnnot = f.findAnnotation(findTypeGlobally(OrderedSetProperty))
@@ -722,6 +729,13 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	            requireNonNull(f.simpleName, "f.simpleName"),
 	            requireNonNull(typeName, "typeName"), doc, collType, fixedSize,
 	            nullAllowed, getterJavaCode, setterJavaCode))
+          } else if (isMap) {
+          	// A Map property!
+          	val String typeName = MapBean.name+ftypeName.substring(start)
+            properties.set(index, new PropertyInfo(
+	            requireNonNull(f.simpleName, "f.simpleName"),
+	            requireNonNull(typeName, "typeName"), doc, null, -1,
+	            true, getterJavaCode, setterJavaCode))
           } else {
           	  if (isCollProp) {
           		// NOT a collection property!
@@ -780,6 +794,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
     val nameNoGen = if (start < 0) fieldType.name else fieldType.name.substring(0, start)
     // Collections can also be defined the old-fashioned way.
     val oldStyleCol = (("java.util.List" == nameNoGen) || ("java.util.Set" == nameNoGen))
+    val isMap = ("java.util.Map" == nameNoGen)
     val propertyType = if (fieldType.array) {
     	val componentType = fieldType.arrayComponentType
       	val listAnnot = fieldDeclaration.findAnnotation(findTypeGlobally(ListProperty))
@@ -793,6 +808,9 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
     		newTypeReference(ListBean, componentType)
 		else
     		newTypeReference(SetBean, componentType)
+    } else if (isMap) {
+    	val actualTypeArguments = fieldType.actualTypeArguments
+    	newTypeReference(MapBean, actualTypeArguments.get(0), actualTypeArguments.get(1))
     } else
     	fieldType
     val doc = if (fieldDeclaration.docComment != null) fieldDeclaration.docComment else "";
@@ -818,7 +836,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
         returnType = interf.newTypeReference
         // STEP 31
         // Comments on properties must be transfered to generated code
-        if (fieldType.array || oldStyleCol) {
+        if (fieldType.array || oldStyleCol || isMap) {
 	        if (doc.empty) {
 	          docComment = "Setter (accepts only null!) for "+fieldName
 	        } else {
@@ -834,7 +852,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
       ]
       warn(BeanProcessor, "transform", interf, "Adding " + setter+" to "+interf.qualifiedName)
     }
-    if (fieldType.array || oldStyleCol) {
+    if (fieldType.array || oldStyleCol || isMap) {
 	    val getter2 = 'getRaw' + toFirstUpper
 	    if (interf.findDeclaredMethod(getter2) === null) {
 	      interf.addMethod(getter2) [
@@ -1263,7 +1281,10 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
     MutableClassDeclaration impl, BeanInfo beanInfo, PropertyInfo propInfo) {
 	val isVirtual = !propInfo.getterJavaCode.empty
     if (!isVirtual && impl.findDeclaredField(propInfo.name) === null) {
-      val propInfoType = if (propInfo.colType === null)
+      val propInfoType = if (propInfo.isMap) {
+  	  	val start = propInfo.type.indexOf('<')
+  	  	MapBeanImpl.name+propInfo.type.substring(start)
+  	  } else if (propInfo.colType === null)
       	propInfo.type
   	  else {
   	  	// The field must be CollectionBeanImpl, it looks like it can be List OR Set
@@ -1289,10 +1310,26 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
   }
 
     private def castForColProp(PropertyInfo propInfo) {
-  	  	// The field must be CollectionBeanImpl, it looks like it can be List OR Set
   	  	val start = propInfo.type.indexOf('<')
-  	  	if (start < 0) "" else "("+CollectionBeanImpl.name+propInfo.type.substring(start)+") "
+  	  	if (start < 0)
+  	  		""
+  		else if (propInfo.isMap)
+	  		"("+MapBeanImpl.name+propInfo.type.substring(start)+") "
+  		else
+	  		"("+CollectionBeanImpl.name+propInfo.type.substring(start)+") "
     }
+
+	private def checkComponentType(MutableClassDeclaration impl, BeanInfo beanInfo,
+			PropertyInfo propInfo, String componentType, String alternativeName) {
+		if (componentType === null) {
+			error(BeanProcessor, "transform", impl, "Could not find Type for "+alternativeName
+				+" in "+beanInfo.qualifiedName+"."+propInfo.name
+			)
+			"?"
+		} else {
+			componentType
+		}
+	}
 
 	/** Generates the getter, setter for the given property */
 	private def void generatePropertyMethods(Map<String, Object> processingContext,
@@ -1305,8 +1342,9 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		val doc = propInfo.comment
 		val propTypeRef = newTypeReferenceWithGenerics(propInfo.type)
 		val colType = propInfo.colType
+		val colOrMap = ((colType !== null) || propInfo.isMap)
 		val tfu = to_FirstUpper(propInfo.name)
-		val getter = if (colType !== null) "getRaw"+tfu else "get"+tfu
+		val getter = if (colOrMap) "getRaw"+tfu else "get"+tfu
 		if (impl.findDeclaredMethod(getter) === null) {
 			val bodyText = if (isVirtual) getterJavaCode+";"
 				else '''return interceptor.get«propertyMethodName»(this, «propertyFieldName», «propInfo.name»);'''
@@ -1334,8 +1372,8 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 			val bodyText0 = if (isVirtual) setterJavaCode+";"
 				else '''«propInfo.name» = «castForColProp(propInfo)»interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», newValue);
 return this;'''
-			val bodyText = if (colType === null) bodyText0 else
-			'''if (newValue != null) throw new IllegalArgumentException("Collection setters only accepts null");
+			val bodyText = if (!colOrMap) bodyText0 else
+			'''if (newValue != null) throw new IllegalArgumentException("Collection/Map setters only accepts null");
 '''+bodyText0
 			impl.addMethod(setter) [
 				visibility = Visibility.PUBLIC
@@ -1348,7 +1386,7 @@ return this;'''
 				]
 				// STEP 31
 				// Comments on properties must be transfered to generated code
-		        if (colType !== null) {
+		        if (colOrMap) {
 			        if (doc.empty) {
 			          docComment = "Setter (accepts only null!) for "+propInfo.name
 			        } else {
@@ -1390,19 +1428,59 @@ return this;'''
 						else
 							CollectionBeanConfig.name+".LIST"
 					} else {
-						throw new IllegalStateException(""+propInfo.colType)
+						throw new IllegalStateException(""+colType)
 					}
 				}
       			val componentTypeType = beanInfoToTypeCode(beanInfo(processingContext, componentType), beanInfo.pkgName)
-      			val componentTypeType2 = if (componentTypeType === null) {
-      				error(BeanProcessor, "transform", impl, "Could not find Type for "+componentType)
-      				"?"
-      			} else {
-      				componentTypeType
-      			}
+      			val componentTypeType2 = checkComponentType(impl, beanInfo, propInfo, componentTypeType, componentType)
       			val bodyText = '''«propTypeRef» result = «getter»();
 if (result == null) {
 	«propInfo.name» = «castForColProp(propInfo)»interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», new «CollectionBeanImpl.name»<«componentType»>(«Meta.name».COLLECTION_BEAN, «componentTypeType2»,«config»));
+	result = «getter»();
+}
+return result;'''
+				impl.addMethod(creator) [
+					visibility = Visibility.PUBLIC
+					final = true
+					static = false
+					returnType = propTypeRef
+					body = [
+						bodyText
+					]
+					// STEP 31
+					// Comments on properties must be transfered to generated code
+					if (doc.empty) {
+						docComment = "Creator for "+propInfo.name
+					} else {
+						docComment = "Creator for "+doc
+					}
+				]
+				warn(BeanProcessor, "transform", impl, creator+" added to "+impl.qualifiedName)
+			}
+		} else if (!isVirtual && propInfo.isMap) {
+			val creator = "get"+tfu
+			if (impl.findDeclaredMethod(creator) === null) {
+				val propType = propInfo.type
+				val start = propType.indexOf("<")
+	          	val componentTypeNames = propType.substring(start+1, propType.length - 1)
+	          	val coma = componentTypeNames.indexOf(',')
+	          	if (coma < 0) {
+	          		throw new IllegalStateException("Bad Map Type: "+propType)
+	          	}
+	          	val coma2 = componentTypeNames.lastIndexOf(',')
+	          	if (coma !== coma2) {
+	          		throw new UnsupportedOperationException(
+	          			"Map Property parameters cannot contain ',': "+propInfo.name+" "+propType)
+	          	}
+	          	val keyTypeName = componentTypeNames.substring(0, coma).trim
+	          	val valueTypeName = componentTypeNames.substring(coma+1).trim
+      			val keyTypeType = beanInfoToTypeCode(beanInfo(processingContext, keyTypeName), beanInfo.pkgName)
+      			val keyTypeType2 = checkComponentType(impl, beanInfo, propInfo, keyTypeType, keyTypeName)
+      			val valueTypeType = beanInfoToTypeCode(beanInfo(processingContext, valueTypeName), beanInfo.pkgName)
+      			val valueTypeType2 = checkComponentType(impl, beanInfo, propInfo, valueTypeType, valueTypeName)
+      			val bodyText = '''«propTypeRef» result = «getter»();
+if (result == null) {
+	«propInfo.name» = «castForColProp(propInfo)»interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», new «MapBeanImpl.name»<«keyTypeName»,«valueTypeName»>(«Meta.name».MAP_BEAN, «keyTypeType2»,«valueTypeType2»));
 	result = «getter»();
 }
 return result;'''
