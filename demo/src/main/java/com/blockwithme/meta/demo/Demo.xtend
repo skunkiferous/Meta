@@ -20,6 +20,7 @@ import com.blockwithme.meta.annotations.ListProperty
 import com.blockwithme.meta.annotations.OrderedSetProperty
 import com.blockwithme.meta.annotations.SortedSetProperty
 import com.blockwithme.meta.annotations.UnorderedSetProperty
+import com.blockwithme.meta.annotations.HashSetProperty
 
 /**
  * Hierarchy "root".
@@ -186,8 +187,10 @@ interface SixtyFiveProps extends Root {
 	boolean prop64
 }
 
-@Bean
+@Bean(instance=true)
 interface CollectionOwner extends Root {
+  String[] defaultSet
+
   @UnorderedSetProperty
   String[] unorderedSet
 
@@ -197,11 +200,17 @@ interface CollectionOwner extends Root {
   @SortedSetProperty
   String[] sortedSet
 
+  @HashSetProperty
+  String[] hashSet
+
   @ListProperty
   String[] list
 
   @ListProperty(fixedSize=10)
   String[] fixedSizeList
+
+  @ListProperty(nullAllowed=true)
+  String[] nullList
 }
 
 ///** Example of the Trace annotation */

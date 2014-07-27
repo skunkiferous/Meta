@@ -75,8 +75,9 @@ annotation Bean {
 
 /**
  * The possible types of collection properties.
- * This type *should be an enum*, but some bug in Xtend prevent me from using an enum.
- * Since I cannot create a *simple* test-case that shows the bug, they just won't fix it.
+ *
+ * TODO This type *should be an enum*, but some bug in Xtend prevent me from using an enum.
+ * Since I cannot create a *simple* test-case that shows the bug, they just won't fix it. :(
  */
 interface CollectionPropertyType {
 	/** Are we an unordered set? */
@@ -85,6 +86,8 @@ interface CollectionPropertyType {
 	val orderedSet = "orderedSet"
 	/** Are we a sorted set? */
 	val sortedSet = "sortedSet"
+	/** Are we a hash set? */
+	val hashSet = "hashSet"
 	/** Are we a list? */
 	val list = "list"
 }
@@ -115,11 +118,25 @@ annotation OrderedSetProperty {
  * Annotates a property field as a sorted set collection type.
  * Can only be applied to arrays.
  *
+ * Note that unordered-sets are *more efficient*, and are still sorted when
+ * getContent() is called (non-comparable types might not "look" sorted).
+ *
  * @author monster
  */
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.CLASS)
 annotation SortedSetProperty {
+}
+
+/**
+ * Annotates a property field as an hash set collection type.
+ * Can only be applied to arrays.
+ *
+ * @author monster
+ */
+@Target(ElementType.FIELD)
+@Retention(RetentionPolicy.CLASS)
+annotation HashSetProperty {
 }
 
 /**
@@ -132,6 +149,7 @@ annotation SortedSetProperty {
 @Retention(RetentionPolicy.CLASS)
 annotation ListProperty {
 	int fixedSize = -1
+	boolean nullAllowed = false
 }
 
 /**
@@ -158,6 +176,7 @@ package class PropertyInfo {
   String comment
   /*CollectionPropertyType*/String colType
   int fixedSize
+  boolean nullAllowed
   /** Virtual Property getter implementation */
   String getterJavaCode
   /** Optional Virtual Property setter implementation */
@@ -231,7 +250,7 @@ package class BeanInfo {
 @Retention(RetentionPolicy.CLASS)
 annotation _BeanInfo {
     Class<?>[] parents = #[]
-    String[] properties = #[] //name0,type0,comment0,colType0,fixedSize0,getterJavaCode0,setterJavaCode0...
+    String[] properties = #[] //name0,type0,comment0,colType0,fixedSize0,nullAllowed0,getterJavaCode0,setterJavaCode0...
     String[] validity = #[]
 	String[] sortKeyes = #[]
     boolean isBean
@@ -577,9 +596,10 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
       	  val unorderedSetAnnot = f.findAnnotation(findTypeGlobally(UnorderedSetProperty))
       	  val orderedSetAnnot = f.findAnnotation(findTypeGlobally(OrderedSetProperty))
       	  val sortedSetAnnot = f.findAnnotation(findTypeGlobally(SortedSetProperty))
+      	  val hashSetAnnot = f.findAnnotation(findTypeGlobally(HashSetProperty))
       	  val listAnnot = f.findAnnotation(findTypeGlobally(ListProperty))
       	  val isCollProp = (unorderedSetAnnot !== null) || (orderedSetAnnot !== null)
-      	  	|| (sortedSetAnnot !== null) || (listAnnot !== null)
+      	  	|| (sortedSetAnnot !== null) || (hashSetAnnot !== null) || (listAnnot !== null)
       	  val virtualAnnot = f.findAnnotation(findTypeGlobally(VirtualProperty))
       	  var getterJavaCode = ""
       	  var setterJavaCode = ""
@@ -595,6 +615,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
           	val typeName = CollectionBean.name+"<"+componentTypeName+">"
           	var String collType = null
           	var fixedSize = -1
+          	var nullAllowed = false
           	if (isCollProp) {
           		if (unorderedSetAnnot !== null) {
           			collType = CollectionPropertyType.unorderedSet
@@ -613,6 +634,13 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
           			}
           			collType = CollectionPropertyType.sortedSet
           		}
+          		if (hashSetAnnot !== null) {
+          			if (collType !== null) {
+          				throw new IllegalStateException(
+          					"Multiple collection types used on "+qualifiedName+"."+f.simpleName)
+          			}
+          			collType = CollectionPropertyType.hashSet
+          		}
           		if (listAnnot !== null) {
           			if (collType !== null) {
           				throw new IllegalStateException(
@@ -620,12 +648,15 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
           			}
           			collType = CollectionPropertyType.list
           			fixedSize = listAnnot.getIntValue("fixedSize")
+          			nullAllowed = listAnnot.getBooleanValue("nullAllowed")
       			}
+          	} else {
+      			collType = CollectionPropertyType.unorderedSet
           	}
             properties.set(index, new PropertyInfo(
 	            requireNonNull(f.simpleName, "f.simpleName"),
 	            requireNonNull(typeName, "typeName"), doc, collType, fixedSize,
-	            getterJavaCode, setterJavaCode))
+	            nullAllowed, getterJavaCode, setterJavaCode))
           } else {
           	  if (isCollProp) {
           		// NOT a collection property!
@@ -634,7 +665,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	          properties.set(index, new PropertyInfo(
 	            requireNonNull(f.simpleName, "f.simpleName"),
 	            requireNonNull(ftypeName, "ftypeName"),
-	            doc, null, -1, getterJavaCode, setterJavaCode))
+	            doc, null, -1, false, getterJavaCode, setterJavaCode))
           }
           index = index + 1
           if (!validPropertyType(processingContext, f.type, td)) {
@@ -1240,10 +1271,15 @@ return this;'''
 						CollectionBeanConfig.name+".ORDERED_SET"
 					} else if (CollectionPropertyType.sortedSet == colType) {
 						CollectionBeanConfig.name+".SORTED_SET"
+					} else if (CollectionPropertyType.hashSet == colType) {
+						CollectionBeanConfig.name+".HASH_SET"
 					} else if (CollectionPropertyType.list == colType) {
-						CollectionBeanConfig.name+".LIST"
+						if (propInfo.nullAllowed)
+							CollectionBeanConfig.name+".NULL_LIST"
+						else
+							CollectionBeanConfig.name+".LIST"
 					} else {
-							throw new IllegalStateException(""+propInfo.colType)
+						throw new IllegalStateException(""+propInfo.colType)
 					}
 				}
       			val componentTypeType = beanInfoToTypeCode(beanInfo(processingContext, componentType), beanInfo.pkgName)
@@ -1296,7 +1332,7 @@ return result;'''
 				}
 
 				if (!beanInfo.properties.empty) {
-					val props = <String>newArrayOfSize(beanInfo.properties.size*7)
+					val props = <String>newArrayOfSize(beanInfo.properties.size*8)
 					i = 0
 					for (p : beanInfo.properties) {
 						props.set(i, requireNonNull(p.name, p+": name"))
@@ -1308,6 +1344,8 @@ return result;'''
 						props.set(i, if (p.colType === null) "" else p.colType)
 						i = i + 1
 						props.set(i, String.valueOf(p.fixedSize))
+						i = i + 1
+						props.set(i, String.valueOf(p.nullAllowed))
 						i = i + 1
 						props.set(i, requireNonNull(p.getterJavaCode, p+": getterJavaCode"))
 						i = i + 1
@@ -1346,7 +1384,7 @@ return result;'''
 			parentList.add(beanInfo(processingContext, qname))
 		}
 
-		val properties = <PropertyInfo>newArrayOfSize(_props.size/7)
+		val properties = <PropertyInfo>newArrayOfSize(_props.size/8)
 		var i = 0
 		while (i < _props.size) {
 			val name = _props.get(i)
@@ -1355,11 +1393,12 @@ return result;'''
 			val colTypeName = _props.get(i+3)
 			val colType = if (colTypeName.empty) null else colTypeName
 			val fixedSize = Integer.parseInt(_props.get(i+4))
-			val getterJavaCode = _props.get(i+5)
-			val setterJavaCode = _props.get(i+6)
+			val nullAllowed = Boolean.parseBoolean(_props.get(i+5))
+			val getterJavaCode = _props.get(i+6)
+			val setterJavaCode = _props.get(i+7)
 			properties.set(i/7, new PropertyInfo(name, type, comment, colType,
-				fixedSize, getterJavaCode, setterJavaCode))
-			i = i + 7
+				fixedSize, nullAllowed, getterJavaCode, setterJavaCode))
+			i = i + 8
 		}
 		new BeanInfo(qualifiedName,
 			parentList.toArray(newArrayOfSize(parentList.size)),
