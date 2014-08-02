@@ -25,6 +25,7 @@ import java.util.List
 import java.util.Set
 import java.util.Map
 
+
 /**
  * Hierarchy "root".
  *
@@ -83,21 +84,31 @@ interface DemoTypeChild extends DemoType {
 /** Aspect of an an Object that has an "age". */
 @Bean
 interface Aged extends Root {
+	/** Implementation for all Aged objects. */
+	class Impl {
+		/** Returns true, if the age of the object is 18+ */
+		static def boolean adult(Aged it) {
+			age >= 18
+		}
+		/** Returns a salutation, based on the age. */
+		static def String hello(Aged it) {
+			if (adult) "Hello, Sir." else "Hi!"
+		}
+	}
 	/** age of something */
 	int age
-}
-
-/** Extension for all Aged objects. */
-class AgedExt {
-	/** Returns true, if the age of the object is 18+ */
-	static def boolean adult(Aged aged) {
-		aged.age >= 18
-	}
 }
 
 /** Aspect of an an Object that has a "Name". */
 @Bean
 interface Named extends Root {
+	/** Implementation for all Named objects. */
+	class Impl {
+		/** Returns a salutation, based on the name. */
+		static def String hello(Named it) {
+			"Hello, "+name
+		}
+	}
 	/** name of something */
 	String name
 }

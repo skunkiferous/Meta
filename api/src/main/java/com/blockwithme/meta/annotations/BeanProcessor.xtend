@@ -23,11 +23,14 @@ import com.blockwithme.meta.JavaMeta
 import com.blockwithme.meta.Kind
 import com.blockwithme.meta.Type
 import com.blockwithme.meta.TypePackage
-import com.blockwithme.meta.beans.CollectionBean
 import com.blockwithme.meta.beans.CollectionBeanConfig
 import com.blockwithme.meta.beans.Entity
+import com.blockwithme.meta.beans.ListBean
+import com.blockwithme.meta.beans.MapBean
 import com.blockwithme.meta.beans.Meta
+import com.blockwithme.meta.beans.SetBean
 import com.blockwithme.meta.beans.impl.CollectionBeanImpl
+import com.blockwithme.meta.beans.impl.MapBeanImpl
 import com.blockwithme.meta.beans.impl._BeanImpl
 import com.blockwithme.meta.beans.impl._EntityImpl
 import com.blockwithme.util.xtend.annotations.Processor
@@ -41,13 +44,16 @@ import java.util.HashMap
 import java.util.HashSet
 import java.util.List
 import java.util.Map
+import java.util.Objects
 import java.util.Set
 import javax.inject.Provider
 import org.eclipse.xtend.lib.macro.Active
 import org.eclipse.xtend.lib.macro.RegisterGlobalsContext
 import org.eclipse.xtend.lib.macro.TransformationContext
 import org.eclipse.xtend.lib.macro.declaration.AnnotationReference
+import org.eclipse.xtend.lib.macro.declaration.ClassDeclaration
 import org.eclipse.xtend.lib.macro.declaration.InterfaceDeclaration
+import org.eclipse.xtend.lib.macro.declaration.MethodDeclaration
 import org.eclipse.xtend.lib.macro.declaration.MutableClassDeclaration
 import org.eclipse.xtend.lib.macro.declaration.MutableFieldDeclaration
 import org.eclipse.xtend.lib.macro.declaration.MutableInterfaceDeclaration
@@ -56,10 +62,6 @@ import org.eclipse.xtend.lib.macro.declaration.TypeReference
 import org.eclipse.xtend.lib.macro.declaration.Visibility
 
 import static java.util.Objects.*
-import com.blockwithme.meta.beans.ListBean
-import com.blockwithme.meta.beans.SetBean
-import com.blockwithme.meta.beans.MapBean
-import com.blockwithme.meta.beans.impl.MapBeanImpl
 
 /**
  * Annotates an interface declared in a C-style-struct syntax
@@ -188,6 +190,16 @@ package class PropertyInfo {
 }
 
 @Data
+package class InnerImpl {
+  String qualifiedName
+  Map<String,String> declarationToClass
+  new (String qualifiedName) {
+  	_qualifiedName = Objects.requireNonNull(qualifiedName, "qualifiedName")
+  	_declarationToClass = new HashMap
+  }
+}
+
+@Data
 package class BeanInfo {
   String qualifiedName
   BeanInfo[] parents
@@ -196,6 +208,7 @@ package class BeanInfo {
   boolean isBean
   boolean isInstance
   String[] sortKeyes
+  InnerImpl innerImpl
   def pkgName() {
   	val index = qualifiedName.lastIndexOf('.')
     if (index < 0)
@@ -210,7 +223,7 @@ package class BeanInfo {
 	else
     	qualifiedName.substring(index+1)
   }
-  // STEP 23
+  // STEP 22
   // If we have more then one parent, find out all missing properties
   def Map<String,PropertyInfo[]> allProperties() {
     val result = new HashMap<String,PropertyInfo[]>
@@ -267,6 +280,16 @@ annotation _BeanInfo {
 	String[] sortKeyes = #[]
     boolean isBean
     boolean isInstance
+    String[] innerImpl
+}
+
+/**
+ * Stores in the implementation class-file the directly implemented interface
+ */
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.CLASS)
+annotation BeanImplemented {
+    Class<?> implemented
 }
 
 /**
@@ -281,35 +304,35 @@ annotation _BeanInfo {
  * 5) For each type, an Impl type under impl package is registered, if not defined yet
  * 6) For each type, a type Provider under impl package is registered, if not defined yet
  * 7) For each type *package*, a Meta interface is declared, if not defined yet
- * (REMOVED) 8) For each type, the internal API interface (_X) is registered, if not defined yet
+ * (REMOVED) 8)
  * 9) For each type property, an Accessor type under impl package is declared, if not defined yet
  * GENERATE:
  * 10) For each type, the fields are replaced with getters and setters
- * (REMOVED) 11) If the property starts with _, the getter and setter goes in _Type
- * (REMOVED) 12) _Type must extend Type
+ * 11) For every Type.Impl.(static)method(Type[...]), a method without the Type parameter is declared in Type
+ * (REMOVED) 12)
  * 13) A builder is created in Meta for that package
  * 14) For each type property, a property accessor class is generated
  * 15) For each type property, a property object in the "Meta" interface is generated.
- * 16) For each type, a type Provider under impl package is created.
+ * 16) For each type, a type Provider under impl package is generated.
  * 17) For each type, following the properties, a type instance is created.
  * 18) After all types, a package meta-object is created.
  * 19) The list of dependencies for the Hierarchy is computed.
- * (REMOVED) 20) After the package, the hierarchy is created.
- * 21) The Impl extends either the impl of the first parent, or BaseImpl or EntityImpl appropriately
- * 22) For all getters and setters in type, implementations are generated in Impl
- * 23) If we have more then one parent, find out all missing properties
- * 24) Add impl to all missing properties in Impl
- * (REMOVED) 25) If a TypeExt class exists in the same file, add it's static methods as instance methods in Type
- * (REMOVED) 26) If a TypeExt class exists in the same file, add it's static methods as instance methods in TypeImpl
+ * 20) The Impl extends either the impl of the first parent, or BaseImpl or EntityImpl appropriately
+ * 21) For all getters and setters in type, implementations are generated in Impl
+ * 22) If we have more then one parent, find out all missing properties
+ * 23) For all imported methods from the Type.Impl, delegators are generated in Impl
+ * 24) Generate implementations for all missing properties in Impl
+ * 25) Add BeanImplemented annotation to the implementation class.
+ * (REMOVED) 26)
  * 27) Implementation class should have comments too.
  * 28) Comments should be generated for Meta too
  * 29) Comments should be generated for the accessors.
- * (REMOVED) 30) Comments should be generated for _Type too
+ * (REMOVED) 30)
  * 31) Comments on properties must be transfered to generated code
  * 32) Comments should be generated for the providers.
  * 33) Comments should be generated for the implementation fields.
  * 34) @_BeanInfo must be generated on the type
- * 35) Make sure inheritance work across file boundaries
+ * 35) Make sure inheritance works across file boundaries
  * 36) Type should extend Bean
  * 37) Generate the "copy methods" in the Type
  * 38) Generate the "copy methods" in the implementation
@@ -522,7 +545,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
     if (td === null) {
       // Unknown/undefined type (too early to query?)
       val result = new BeanInfo(qualifiedName,NO_PARENTS,NO_PROPERTIES,
-        newArrayList("Undefined: "+qualifiedName), false, false, #[])
+        newArrayList("Undefined: "+qualifiedName), false, false, #[], null)
       result.check()
       val key = cacheKey(qualifiedName)
       val simpleName = qualifiedName.substring(qualifiedName.lastIndexOf(DOT)+1)
@@ -535,7 +558,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 	}
 	  // Primitive type!
 	  val result = new BeanInfo(qualifiedName,NO_PARENTS,NO_PROPERTIES,
-	    newArrayList(), false, false, #[])
+	    newArrayList(), false, false, #[], null)
 	  result.check()
 	  val key = cacheKey(qualifiedName)
 	  val simpleName = qualifiedName.substring(qualifiedName.lastIndexOf(DOT)+1)
@@ -568,10 +591,10 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
   private def BeanInfo beanInfo(Map<String,Object> processingContext, TypeDeclaration td) {
     // Lazy init
     if (!processingContext.containsKey(BEAN_KEY)) {
-      val b = new BeanInfo(BEAN_QUALIFIED_NAME,NO_PARENTS,NO_PROPERTIES, newArrayList(), true, false, #[])
+      val b = new BeanInfo(BEAN_QUALIFIED_NAME,NO_PARENTS,NO_PROPERTIES, newArrayList(), true, false, #[], null)
       b.check()
       processingContext.put(BEAN_KEY, b)
-      val bi = new BeanInfo(ENTITY_QUALIFIED_NAME,newArrayList(b),NO_PROPERTIES, newArrayList(), true, false, #[])
+      val bi = new BeanInfo(ENTITY_QUALIFIED_NAME,newArrayList(b),NO_PROPERTIES, newArrayList(), true, false, #[], null)
       bi.check()
       processingContext.put(ENTITY_KEY, bi)
     }
@@ -607,7 +630,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
           msg = msg + " because of "+check
         }
         result = new BeanInfo(qualifiedName,NO_PARENTS,NO_PROPERTIES,
-          newArrayList(msg), false, isInstance, #[])
+          newArrayList(msg), false, isInstance, #[], null)
         result.check()
         putInCache(processingContext, key, noSameSimpleNameKey, result)
       } else {
@@ -618,8 +641,11 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
         // Add early in cache, to prevent infinite loops
         val parents = <BeanInfo>newArrayOfSize(parentsTD.size)
         val properties = <PropertyInfo>newArrayOfSize(fields.size)
+
+        val innerImplName = qualifiedName+".Impl"
+		val innerImpl = new InnerImpl(innerImplName)
         result = new BeanInfo(qualifiedName,parents,properties,
-          newArrayList(), accept(processingContext, td), isInstance, sortKeyes)
+          newArrayList(), accept(processingContext, td), isInstance, sortKeyes, innerImpl)
         putInCache(processingContext, key, noSameSimpleNameKey, result)
         // Find parents
         var index = 0
@@ -637,6 +663,40 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
             parentFields.add(pp.name.toLowerCase)
           }
         }
+
+		// STEP 11
+		val innerImplClass = td.declaredClasses.findFirst[it.qualifiedName==innerImplName]
+		val ownInnerMethods = new HashMap<String,String>
+		if (innerImplClass != null) {
+			for (m : innerImplClass.declaredMethods) {
+				val declaration = innerMethodToString(td, m);
+				if (declaration != null) {
+					ownInnerMethods.put(declaration, innerImplName)
+				}
+			}
+			val innerMethods = new HashMap<String,String>
+	        for (p : parentsTD) {
+	            val parentInnerImpl = beanInfo(processingContext, p).innerImpl
+	            if (parentInnerImpl != null) {
+	            	for (e : parentInnerImpl.declarationToClass.entrySet) {
+	            		if (!ownInnerMethods.containsKey(e.key)) {
+	            			// Method from parent inner Impl that is not overidden
+	            			val current = innerMethods.get(e.key)
+	            			if ((current != null) && (current != e.value)) {
+	            				result.validity.add("Method "+e.key+" is not defined by "
+	            					+innerImplName+" but by parent "+p.qualifiedName
+	            					+" AND OTHERS: conflict!")
+	            			} else {
+	            				innerMethods.put(e.key, e.value)
+	            			}
+	            		}
+	            	}
+	            }
+            }
+            innerMethods.putAll(ownInnerMethods)
+            innerImpl.declarationToClass.putAll(innerMethods)
+		}
+
         // Find properties
         index = 0
         for (f : fields) {
@@ -871,6 +931,147 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
     warn(BeanProcessor, "transform", interf, "Removing "+fieldName+" from "+interf.qualifiedName)
     fieldDeclaration.remove()
   }
+
+    /** Concerts an inner Impl method to a declaration String, if the method qualifies */
+    def private String innerMethodToString(TypeDeclaration td, MethodDeclaration m) {
+		innerMethodToString(td.qualifiedName, m)
+    }
+
+    /** Concerts an inner Impl method to a declaration String, if the method qualifies */
+    def private String innerMethodToString(String qualifiedName, MethodDeclaration m) {
+		if (m.static && (m.parameters.head?.type?.name == qualifiedName)) {
+			val buf = new StringBuffer
+			buf.append(m.simpleName)
+			var sep = "("
+			for (p : m.parameters.tail) {
+				buf.append(sep)
+				sep = ","
+				buf.append(p.type.name)
+			}
+			return buf.toString
+		}
+    	null
+    }
+
+	/** Import methods from Type.Impl. */
+	def private importInnerImplIntoInterface(MutableInterfaceDeclaration mtd, BeanInfo beanInfo) {
+		// STEP 11
+		val innerImpl = beanInfo.innerImpl
+		if ((innerImpl != null) && !innerImpl.declarationToClass.empty) {
+			val qualifiedName = mtd.qualifiedName
+			// Must be public static ...
+			val innerImplClass = mtd.declaredClasses.findFirst[qualifiedName==innerImpl.qualifiedName]
+			if (innerImplClass != null) {
+				for (m : innerImplClass.declaredMethods) {
+					val key = innerMethodToString(mtd, m)
+					if (innerImpl.declarationToClass.containsKey(key)) {
+						val params = m.parameters.tail
+						var TypeReference[] paramTypes = newArrayOfSize(params.size)
+						paramTypes = params.map[type].toList.toArray(paramTypes)
+						val dup = mtd.findDeclaredMethod(m.simpleName, paramTypes)
+						if (dup === null) {
+							mtd.addMethod(m.simpleName) [
+								for (p : params) {
+						        	addParameter(p.simpleName, p.type)
+					        	}
+						        returnType = m.returnType
+						        docComment = m.docComment
+							]
+		      				warn(BeanProcessor, "transform", mtd, "Adding " + m.simpleName+" to "+qualifiedName)
+	      				}
+					}
+				}
+			}
+		}
+    }
+
+	/** For all imported methods from the Type.Impl, delegators are generated in Impl */
+	private def void importInnerImplIntoImpl(Map<String,Object> processingContext,
+		MutableClassDeclaration impl, BeanInfo beanInfo) {
+		val innerImpl = beanInfo.innerImpl
+		if ((innerImpl == null) || innerImpl.declarationToClass.empty) {
+			return
+		}
+		val parentImplMethods = new HashMap<String,String>
+		val beanImplAnn = findTypeGlobally(BeanImplemented)
+		if (impl.extendedClass?.type instanceof ClassDeclaration) {
+			val pt = impl.extendedClass.type as ClassDeclaration
+			val beanImpl = pt?.findAnnotation(beanImplAnn)
+			val implemented = beanImpl?.getClassValue("implemented")
+			val parentImplementedInerfaceName = implemented?.name
+			if (parentImplementedInerfaceName != null) {
+				val piBI = beanInfo(processingContext, parentImplementedInerfaceName)
+				if ((piBI != null) && (piBI.innerImpl != null)) {
+					parentImplMethods.putAll(piBI.innerImpl.declarationToClass)
+				}
+			}
+		}
+		val myImplMethods = new HashMap<String,String>(innerImpl.declarationToClass)
+		for (e : parentImplMethods.entrySet) {
+			val m = myImplMethods.get(e.key)
+			if (m == e.value) {
+				myImplMethods.remove(e.key)
+			}
+		}
+		if (myImplMethods.empty) {
+			return
+		}
+		val declImplToMethods = new HashMap<String,Iterable<? extends MethodDeclaration>>
+		val nameToMethod = new HashMap<String,MethodDeclaration>
+		val qualifiedName = impl.qualifiedName
+		for (e : myImplMethods.entrySet) {
+			val methodDecl = e.key
+			val declImplName = e.value
+			var declMethods = declImplToMethods.get(declImplName)
+			if (declMethods == null) {
+				val decl = findTypeGlobally(declImplName)
+				declMethods = (decl as ClassDeclaration).declaredMethods
+				declImplToMethods.put(declImplName, declMethods)
+			}
+			val intfName = beanInfo.qualifiedName
+			for (m : declMethods) {
+				if (methodDecl == innerMethodToString(intfName, m)) {
+					nameToMethod.put(methodDecl, m)
+				}
+			}
+			if (nameToMethod.get(methodDecl) == null) {
+  				error(BeanProcessor, "importInnerImplIntoImpl", impl,
+  					"Could not find "+methodDecl+" for "+qualifiedName)
+			}
+		}
+		for (m : nameToMethod.values) {
+			var TypeReference[] paramTypes = newArrayOfSize(m.parameters.size)
+			paramTypes = m.parameters.map[type].toList.toArray(paramTypes)
+			val dup = impl.findDeclaredMethod(m.simpleName, paramTypes)
+			if (dup === null) {
+				val bodyText = new StringBuffer
+				if (!m.returnType.void) {
+					bodyText.append("return ")
+				}
+				bodyText.append(innerImpl.qualifiedName).append(".")
+				bodyText.append(m.simpleName).append("(this")
+				impl.addMethod(m.simpleName) [
+					for (p : m.parameters.tail) {
+			        	addParameter(p.simpleName, p.type)
+			        	bodyText.append(",").append(p.simpleName)
+		        	}
+		        	bodyText.append(");")
+		        	visibility = Visibility.PUBLIC
+		        	static = false
+		        	abstract = false
+		        	// We always allow overriding
+		        	final = false
+			        returnType = m.returnType
+			        docComment = m.docComment
+			        body = [bodyText]
+				]
+  				warn(BeanProcessor, "transform", impl, "Adding " + m.simpleName+" to "+qualifiedName)
+			} else {
+				// Possibly due to incremental compilation?
+  				error(BeanProcessor, "transform", impl, "Could not add method " + m.simpleName+" to "+qualifiedName)
+			}
+		}
+	}
 
   /** Returns the name of the hierarchy root of this interface. */
   private def String getHierarchyRoot(MutableInterfaceDeclaration mtd) {
@@ -1221,23 +1422,6 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
       warn(BeanProcessor, "transform", meta, "Adding "+name+" to "+meta.qualifiedName)
     }
   }
-//
-//  /** Adds the Hierarchy */
-//  private def void addHierarchyField(MutableInterfaceDeclaration meta, String pkgName) {
-//    if (meta.findDeclaredField("HIERARCHY") === null) {
-//      meta.addField("HIERARCHY") [
-//        visibility = Visibility.PUBLIC
-//        final = true
-//        static = true
-//        type = newTypeReference(Hierarchy)
-//        initializer = [
-//          '''BUILDER.newHierarchy(«packageFieldName(pkgName)»)'''
-//        ]
-//        docComment = "Hierarchy field for this package"
-//      ]
-//      warn(BeanProcessor, "transform", meta, "Adding HIERARCHY to "+meta.qualifiedName)
-//    }
-//  }
 
   /** Creates the implementation class for a type */
   private def MutableClassDeclaration createImplementation(Map<String,Object> processingContext, MutableInterfaceDeclaration mtd) {
@@ -1273,6 +1457,11 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
     if (!beanInfo.isInstance) {
     	impl.setAbstract(true)
     }
+    // STEP 25
+    // Add _BeanImpl annotation to the implementation class.
+    impl.addAnnotation(newAnnotationReference(BeanImplemented, [
+    	set("implemented", newTypeReference(mtd))
+	]))
     impl
   }
 
@@ -1551,6 +1740,17 @@ return result;'''
 
 				setBooleanValue("isBean", beanInfo.isBean)
 				setBooleanValue("isInstance", beanInfo.isInstance)
+
+				if (beanInfo.innerImpl != null) {
+					val String[] innerImpl = <String>newArrayOfSize(1 + beanInfo.innerImpl.declarationToClass.size*2)
+					var j = 0
+					innerImpl.set(j++, beanInfo.innerImpl.qualifiedName)
+					for(e : beanInfo.innerImpl.declarationToClass.entrySet) {
+						innerImpl.set(j++, e.key)
+						innerImpl.set(j++, e.value)
+					}
+					set("innerImpl", innerImpl)
+				}
 			]))
 		}
 	}
@@ -1563,6 +1763,7 @@ return result;'''
 		val isBean = annotRef.getBooleanValue("isBean")
 		val isInstance = annotRef.getBooleanValue("isInstance")
 		val sortKeyes = annotRef.getStringArrayValue("sortKeyes")
+		val innerImpl = annotRef.getStringArrayValue("innerImpl")
 
 		val parentList = <BeanInfo>newArrayList()
 		for (p : _parents) {
@@ -1589,11 +1790,17 @@ return result;'''
 				fixedSize, nullAllowed, getterJavaCode, setterJavaCode))
 			i = i + 8
 		}
+		val innerImplObj = new InnerImpl(innerImpl.get(0))
+		for (i = 1; i < innerImpl.length; i+=2) {
+			val key = innerImpl.get(i)
+			val value = innerImpl.get(i+1)
+			innerImplObj.declarationToClass.put(key,value)
+		}
 		new BeanInfo(qualifiedName,
 			parentList.toArray(newArrayOfSize(parentList.size)),
 			properties,
 			newArrayList(_validity),
-			isBean, isInstance, sortKeyes)
+			isBean, isInstance, sortKeyes, innerImplObj)
 	}
 
 	/** Generates the "copy methods" */
@@ -1792,6 +1999,9 @@ return result;'''
 				processField(f, mtd)
 			}
 
+			// STEP 11
+			importInnerImplIntoInterface(mtd, beanInfo)
+
 			// STEP 13
 			// A builder is created in Meta for that package
 			val meta = getInterface(metaName(pkgName))
@@ -1818,11 +2028,11 @@ return result;'''
 			// For each type, following the properties, a type instance is created.
 			addTypeField(meta, beanInfo, allProps)
 
-			// STEP 21
+			// STEP 20
 			// The Impl extends either the impl of the first parent, or BaseImpl or EntityImpl appropriately
 			val impl = createImplementation(processingContext, mtd)
 
-			// STEP 22
+			// STEP 21
 			// For all getters and setters in type, implementations are generated in Impl
 			for (propInfo : beanInfo.properties) {
 				generatePropertyField(processingContext, impl, beanInfo, propInfo)
@@ -1847,7 +2057,7 @@ return result;'''
 				}
 			}
 
-			// STEP 21
+			// STEP 20
 			// The Impl extends either the impl of the first parent, or BaseImpl or EntityImpl appropriately
 			val typeTypeRef = newTypeReference(Type)
 			if (impl.findDeclaredConstructor(typeTypeRef) === null) {
@@ -1871,11 +2081,15 @@ return result;'''
 				]
 			}
 
-			// STEP 22
+			// STEP 21
 			// For all getters and setters in type, implementations are generated in Impl
 			for (propInfo : beanInfo.properties) {
 				generatePropertyMethods(processingContext, impl, beanInfo, propInfo)
 			}
+
+			// STEP 23
+			// For all imported methods from the Type.Impl, delegators are generated in Impl
+			importInnerImplIntoImpl(processingContext, impl, beanInfo)
 
 			// STEP 24
 			// Add impl to all missing properties in Impl
@@ -1920,9 +2134,5 @@ return result;'''
 		// After all types, a package meta-object is created.
 		val allTypes = processingContext.get(PC_ALL_FILE_TYPES) as List<TypeDeclaration>
 		addPackageField(processingContext, meta, allTypes, pkgName)
-//
-//		// STEP 20
-//		// After the package, the hierarchy is created.
-//		addHierarchyField(meta, pkgName)
 	}
 }
