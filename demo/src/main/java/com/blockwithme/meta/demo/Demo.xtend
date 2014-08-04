@@ -119,6 +119,13 @@ interface Named extends Root {
  */
 @Bean(instance=true,sortKeyes=#["name","age"])
 interface Person extends Named, Aged {
+	/** Implementation for all Named objects. */
+	class Impl {
+		/** Returns a salutation, based on the name. */
+		static def String hello(Person it) {
+			if (adult) "Hello, Sir. "+name else "Hi, "+name
+		}
+	}
 	/** profession of someone */
 	String profession
 }
