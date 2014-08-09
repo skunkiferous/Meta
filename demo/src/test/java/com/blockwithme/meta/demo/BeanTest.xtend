@@ -33,7 +33,7 @@ import org.junit.Test
  *
  */
 class BeanTest {
-	static val hierarchy = Meta.BUILDER.newHierarchy(Meta.PACKAGE, Meta.PACKAGE)
+	static val hierarchy = Meta.BUILDER.newHierarchy(Meta.PACKAGE)
 
 	@Test
 	def void testImmutable() {
@@ -128,9 +128,9 @@ class BeanTest {
 		Assert.assertEquals("person2.name", "Susy", person2.name)
 		Assert.assertEquals("person1.age", 33, person1.age)
 		Assert.assertEquals("person1.name", "John", person1.name)
-		Assert.assertTrue("person2.isSelected(Meta.AGED_AGE)", person2.isSelected(Meta.AGED_AGE))
-		Assert.assertTrue("person2.isSelected(Meta.NAMED_NAME)", person2.isSelected(Meta.NAMED_NAME))
-		Assert.assertFalse("person2.isSelected(Meta.PERSON_PROFESSION)", person2.isSelected(Meta.PERSON_PROFESSION))
+		Assert.assertTrue("person2.isSelected(Meta.AGED_AGE)", person2.isSelected(Meta.AGED__AGE))
+		Assert.assertTrue("person2.isSelected(Meta.NAMED_NAME)", person2.isSelected(Meta.NAMED__NAME))
+		Assert.assertFalse("person2.isSelected(Meta.PERSON_PROFESSION)", person2.isSelected(Meta.PERSON__PROFESSION))
 
 		Assert.assertEquals("person2.toString",
 		'{"#":0,"class":"com.blockwithme.meta.demo.impl.PersonImpl","age":16,"name":"Susy","profession":"Admin"}',

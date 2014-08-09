@@ -62,6 +62,9 @@ import org.eclipse.xtend.lib.macro.declaration.TypeReference
 import org.eclipse.xtend.lib.macro.declaration.Visibility
 
 import static java.util.Objects.*
+import java.util.ArrayList
+import java.util.Collections
+import org.eclipse.xtend.lib.macro.declaration.EnumerationTypeDeclaration
 
 /**
  * Annotates an interface declared in a C-style-struct syntax
@@ -196,7 +199,9 @@ package class InnerImpl {
   new (String qualifiedName) {
   	_qualifiedName = Objects.requireNonNull(qualifiedName, "qualifiedName")
   	_declarationToClass = new HashMap
+  	_hasInit = new ArrayList
   }
+  List<String> hasInit
 }
 
 @Data
@@ -308,8 +313,8 @@ annotation BeanImplemented {
  * 9) For each type property, an Accessor type under impl package is declared, if not defined yet
  * GENERATE:
  * 10) For each type, the fields are replaced with getters and setters
- * 11) For every Type.Impl.(static)method(Type[...]), a method without the Type parameter is declared in Type
- * (REMOVED) 12)
+ * 11) For every Type.Impl.(static,public)method(Type[...]), a method without the Type parameter is declared in Type
+ * 12) Type.Impl.(static,public)_init_(Type) method is used as a pseudo-constructor, if present.
  * 13) A builder is created in Meta for that package
  * 14) For each type property, a property accessor class is generated
  * 15) For each type property, a property object in the "Meta" interface is generated.
@@ -323,7 +328,7 @@ annotation BeanImplemented {
  * 23) For all imported methods from the Type.Impl, delegators are generated in Impl
  * 24) Generate implementations for all missing properties in Impl
  * 25) Add BeanImplemented annotation to the implementation class.
- * (REMOVED) 26)
+ * 26) Make sure "instance" Beans have all their abstract methods implemented.
  * 27) Implementation class should have comments too.
  * 28) Comments should be generated for Meta too
  * 29) Comments should be generated for the accessors.
@@ -355,6 +360,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
   static val String BEAN_KEY = cacheKey(BEAN_QUALIFIED_NAME)
   static val String ENTITY_KEY = cacheKey(ENTITY_QUALIFIED_NAME)
   static val BP_HIERARCHY_ROOT = "BP_HIERARCHY_ROOT"
+  static val INIT = "_init_()"
 
   /** Returns true, if the type is/should be a Bean */
   private def boolean isBean(org.eclipse.xtend.lib.macro.declaration.Type type) {
@@ -382,16 +388,21 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
     camelCase.replaceAll(
       String.format("%s|%s|%s",
         "(?<=[A-Z])(?=[A-Z][a-z])",
-        "(?<=[^A-Z])(?=[A-Z])",
-        "(?<=[A-Za-z])(?=[^A-Za-z])"
+        "(?<=[^A-Z_])(?=[A-Z])",
+        "(?<=[A-Za-z])(?=[^A-Za-z_])"
       ),
       "_"
     ).toUpperCase;
   }
 
-  /** Capitalizes the first letter, taking "_" into account */
-  private static def String to_FirstUpper(String str) {
-    if (str.startsWith("_")) "_"+str.substring(1).toFirstUpper else str.toFirstUpper
+  /** Capitalizes the first letter of a property name, taking "_" into account */
+  private static def String propertyToXetterSuffix(String property) {
+    if (property.startsWith("_"))
+    	// Do NOT capitalize the first letter, if property starts with _
+    	// Otherwise, we have to type person._Age instead of person._age
+    	"_"+property.substring(1)
+	else
+		property.toFirstUpper
   }
 
   /** Returns the Provider name */
@@ -402,7 +413,11 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
   /** Returns the Property Accessor name */
   private def propertyAccessorName(String pkgName, String simpleName, String property) {
     val name = if (property.startsWith('_')) '_'+simpleName else simpleName
-    pkgName+'.impl.'+name+to_FirstUpper(property)+'Accessor'
+    val to_FirstUpper = if (property.startsWith("_"))
+    	"_"+(property.substring(1)).toFirstUpper
+	else
+		property.toFirstUpper
+    pkgName+'.impl.'+name+to_FirstUpper+'Accessor'
   }
 
   /** Returns the implementation name */
@@ -486,7 +501,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
         return true
       }
 	    val enumType = findTypeGlobally(Enum)
-    	if (enumType.isAssignableFrom(type)) {
+    	if (enumType.isAssignableFrom(type) || (type instanceof EnumerationTypeDeclaration)) {
     		// Enum == Immutable!
     		return true
     	}
@@ -669,27 +684,46 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		val ownInnerMethods = new HashMap<String,String>
 		if (innerImplClass != null) {
 			for (m : innerImplClass.declaredMethods) {
-				val declaration = innerMethodToString(td, m);
-				if (declaration != null) {
-					ownInnerMethods.put(declaration, innerImplName)
+				if (m.static && m.visibility == Visibility.PUBLIC) {
+					val declaration = innerMethodToString(td, m);
+					if (declaration != null) {
+						ownInnerMethods.put(declaration, innerImplName)
+					}
 				}
 			}
 		}
+
+		// STEP 12
+		// Type.Impl.(static,public)_init_(Type) method is used as a pseudo-constructor, if present.
+		if (ownInnerMethods.remove(INIT) != null) {
+			innerImpl.hasInit.add(innerImplName)
+		}
+
+		// STEP 11
 		val innerMethods = new HashMap<String,String>
         for (p : parentsTD) {
             val parentInnerImpl = beanInfo(processingContext, p).innerImpl
             if (parentInnerImpl != null) {
             	for (e : parentInnerImpl.declarationToClass.entrySet) {
-            		if (!ownInnerMethods.containsKey(e.key)) {
-            			// Method from parent inner Impl that is not overidden
-            			val current = innerMethods.get(e.key)
-            			if ((current != null) && (current != e.value)) {
-            				result.validity.add("Method "+e.key+" is not defined by "
+            		val m = e.key
+            		if (!ownInnerMethods.containsKey(m)) {
+            			val declaringType = e.value
+            			// Method from parent inner Impl that is not overridden
+            			val current = innerMethods.get(m)
+            			if ((current != null) && (current != declaringType)) {
+            				result.validity.add("Method "+m+" is not defined by "
             					+innerImplName+" but by parent "+p.qualifiedName
             					+" AND OTHER(S): conflict!")
             			} else {
-            				innerMethods.put(e.key, e.value)
+            				innerMethods.put(m, declaringType)
             			}
+            		}
+            	}
+				// STEP 12
+				// TODO That probably won't give us the right initialization order
+            	for (hi : parentInnerImpl.hasInit) {
+            		if (!innerImpl.hasInit.contains(hi)) {
+            			innerImpl.hasInit.add(hi)
             		}
             	}
             }
@@ -816,11 +850,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
               +" is a duplicate from a parent property")
           }
         }
-        // Find methods
-        val methods = td.declaredMethods
-        if (methods.iterator.hasNext) {
-          result.validity.add("Has methods: "+methods.toList)
-        }
+
         val allProps = result.allProperties.values
         for (sortKey : sortKeyes) {
         	var found = false
@@ -848,7 +878,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
   def private void processField(MutableFieldDeclaration fieldDeclaration,
       MutableInterfaceDeclaration interf) {
     val fieldName = fieldDeclaration.simpleName
-    val toFirstUpper = to_FirstUpper(fieldName)
+    val toFirstUpper = propertyToXetterSuffix(fieldName)
     val fieldType = fieldDeclaration.type
     val start = fieldType.name.indexOf('<')
     val nameNoGen = if (start < 0) fieldType.name else fieldType.name.substring(0, start)
@@ -935,16 +965,16 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
     /** Concerts an inner Impl method to a declaration String, if the method qualifies */
     def private String innerMethodToString(TypeDeclaration td, MethodDeclaration m) {
     	val name = m.simpleName
-    	if (name.startsWith("is") || name.startsWith("get") || name.startsWith("set")) {
+    	if (name.startsWith("get") || name.startsWith("set")) {
     		error(BeanProcessor, "transform", td, "Inner Impl Method " + m.simpleName
-    			+" of "+td.qualifiedName+" must not start with 'is', 'set' or 'get'")
+    			+" of "+td.qualifiedName+" must not start with 'set' or 'get'")
     	}
 		innerMethodToString(td.qualifiedName, m)
     }
 
     /** Concerts an inner Impl method to a declaration String, if the method qualifies */
     def private String innerMethodToString(String qualifiedName, MethodDeclaration m) {
-		if (m.static && (m.parameters.head?.type?.name == qualifiedName)) {
+		if (m.static && (m.visibility == Visibility.PUBLIC) && (m.parameters.head?.type?.name == qualifiedName)) {
 			val buf = new StringBuffer
 			buf.append(m.simpleName)
 			if (m.parameters.length == 1) {
@@ -954,12 +984,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 				for (p : m.parameters.tail) {
 					buf.append(sep)
 					sep = ","
-					val name = p.type.name
-					val index = name.indexOf('<')
-					if (index < 0)
-						buf.append(name)
-					else
-						buf.append(name.substring(0,index))
+					buf.append(removeGeneric(p.type.name))
 				}
 			}
 			return buf.toString
@@ -998,6 +1023,21 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		}
     }
 
+    /** Returns the BeanInfo of the *parent* of a Class, if any */
+    private def BeanInfo findParentBeanInfo(Map<String,Object> processingContext, MutableClassDeclaration impl) {
+		if (impl.extendedClass?.type instanceof ClassDeclaration) {
+			val pt = impl.extendedClass.type as ClassDeclaration
+			val beanImplAnn = findTypeGlobally(BeanImplemented)
+			val beanImpl = pt?.findAnnotation(beanImplAnn)
+			val implemented = beanImpl?.getClassValue("implemented")
+			val parentImplementedInerfaceName = implemented?.name
+			if (parentImplementedInerfaceName != null) {
+				return beanInfo(processingContext, parentImplementedInerfaceName)
+			}
+		}
+		null
+    }
+
 	/** For all imported methods from the Type.Impl, delegators are generated in Impl */
 	private def void importInnerImplIntoImpl(Map<String,Object> processingContext,
 		MutableInterfaceDeclaration intf, MutableClassDeclaration impl, BeanInfo beanInfo) {
@@ -1006,18 +1046,9 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 			return
 		}
 		val parentImplMethods = new HashMap<String,String>
-		val beanImplAnn = findTypeGlobally(BeanImplemented)
-		if (impl.extendedClass?.type instanceof ClassDeclaration) {
-			val pt = impl.extendedClass.type as ClassDeclaration
-			val beanImpl = pt?.findAnnotation(beanImplAnn)
-			val implemented = beanImpl?.getClassValue("implemented")
-			val parentImplementedInerfaceName = implemented?.name
-			if (parentImplementedInerfaceName != null) {
-				val piBI = beanInfo(processingContext, parentImplementedInerfaceName)
-				if ((piBI != null) && (piBI.innerImpl != null)) {
-					parentImplMethods.putAll(piBI.innerImpl.declarationToClass)
-				}
-			}
+		val piBI = findParentBeanInfo(processingContext, impl)
+		if ((piBI != null) && (piBI.innerImpl != null)) {
+			parentImplMethods.putAll(piBI.innerImpl.declarationToClass)
 		}
 		val myImplMethods = new HashMap<String,String>(innerImpl.declarationToClass)
 		for (e : parentImplMethods.entrySet) {
@@ -1200,7 +1231,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
     // Add getter
     val instanceType = beanType
     if (accessor.findDeclaredMethod("apply", instanceType) === null) {
-      val bodyText = '''return instance.get«to_FirstUpper(propInfo.name)»();'''
+      val bodyText = '''return instance.get«propertyToXetterSuffix(propInfo.name)»();'''
       accessor.addMethod("apply") [
         visibility = Visibility.PUBLIC
         final = true
@@ -1216,7 +1247,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
     // Add setter
     val valueType = propTypeRef
     if (accessor.findDeclaredMethod("apply", instanceType, valueType) === null) {
-      val bodyText = '''return instance.set«to_FirstUpper(propInfo.name)»(newValue);'''
+      val bodyText = '''return instance.set«propertyToXetterSuffix(propInfo.name)»(newValue);'''
       accessor.addMethod("apply") [
         visibility = Visibility.PUBLIC
         final = true
@@ -1253,7 +1284,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 
   /** Returns the property field name */
   private def String getPropertyFieldNameInMeta(String simpleName, PropertyInfo propInfo) {
-    cameCaseToSnakeCase(simpleName)+"_"+cameCaseToSnakeCase(propInfo.name)
+    cameCaseToSnakeCase(simpleName)+"__"+cameCaseToSnakeCase(propInfo.name)
   }
 
   /** Creates a Property constant in meta */
@@ -1337,9 +1368,10 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 
   /** Returns the code pointing to a Type instance, for the given BeanInfo */
   private def String beanInfoToTypeCode(BeanInfo beanInfo, String localPackage) {
-    if (beanInfo.pkgName == localPackage) {
-      cameCaseToSnakeCase(beanInfo.simpleName)
-    } else if (beanInfo.isBean) {
+//    if (beanInfo.pkgName == localPackage) {
+//      cameCaseToSnakeCase(beanInfo.simpleName)
+//    } else
+    if (beanInfo.isBean) {
       beanInfo.pkgName+".Meta."+cameCaseToSnakeCase(beanInfo.simpleName)
     } else {
       val java = JavaMeta.HIERARCHY.findType(beanInfo.qualifiedName)
@@ -1482,6 +1514,50 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
     impl
   }
 
+  /** The Impl extends either the impl of the first parent, or BaseImpl or EntityImpl appropriately */
+  private def void addImplementationConstructors(Map<String,Object> processingContext,
+  	BeanInfo beanInfo, MutableInterfaceDeclaration mtd, MutableClassDeclaration impl) {
+	// STEP 20
+    val qualifiedName = mtd.qualifiedName
+    val index = qualifiedName.lastIndexOf(DOT)
+    val pkgName = qualifiedName.substring(0,index)
+    val simpleName = qualifiedName.substring(index+1)
+	val typeTypeRef = newTypeReference(Type)
+	if (impl.findDeclaredConstructor(typeTypeRef) === null) {
+		// STEP 12
+		val myInits = new ArrayList<String>()
+		if (beanInfo.innerImpl != null) {
+			myInits.addAll(beanInfo.innerImpl.hasInit)
+		}
+		val piBI = findParentBeanInfo(processingContext, impl)
+		if ((piBI != null) && (piBI.innerImpl != null)) {
+			myInits.removeAll(piBI.innerImpl.hasInit)
+		}
+		impl.addConstructor[
+			addParameter("metaType", typeTypeRef)
+			visibility = Visibility.PROTECTED
+			body = [
+				'''super(metaType);
+«FOR init : myInits»
+«init»._init_(this);
+«ENDFOR»
+				'''
+			]
+			docComment = "Creates a new "+qualifiedName+" taking it's metaType as parameter"
+		]
+	}
+	if ((impl.findDeclaredConstructor() === null) && beanInfo.isInstance) {
+		val bodyText = '''this(«pkgName».Meta.«metaTypeFieldName(simpleName)»);'''
+		impl.addConstructor[
+			visibility = Visibility.PUBLIC
+			body = [
+				bodyText
+			]
+			docComment = "Creates a new "+qualifiedName+" with it's default metaType"
+		]
+	}
+  }
+
   /** Generates the field for the given property */
   private def void generatePropertyField(Map<String, Object> processingContext,
     MutableInterfaceDeclaration intf, MutableClassDeclaration impl,
@@ -1550,7 +1626,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 		val propTypeRef = newTypeReferenceWithGenerics(propInfo.type)
 		val colType = propInfo.colType
 		val colOrMap = ((colType !== null) || propInfo.isMap)
-		val tfu = to_FirstUpper(propInfo.name)
+		val tfu = propertyToXetterSuffix(propInfo.name)
 		val getter = if (colOrMap) "getRaw"+tfu else "get"+tfu
 		if (impl.findDeclaredMethod(getter) === null) {
 			val bodyText = if (isVirtual) getterJavaCode+";"
@@ -1580,7 +1656,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
 				else '''«propInfo.name» = «castForColProp(propInfo)»interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», newValue);
 return this;'''
 			val bodyText = if (!colOrMap) bodyText0 else
-			'''if (newValue != null) throw new IllegalArgumentException("Collection/Map setters only accepts null");
+			'''checkNullOrImmutable(newValue);
 '''+bodyText0
 			impl.addMethod(setter) [
 				visibility = Visibility.PUBLIC
@@ -1760,12 +1836,18 @@ return result;'''
 				setBooleanValue("isInstance", beanInfo.isInstance)
 
 				if (beanInfo.innerImpl != null) {
-					val String[] innerImpl = <String>newArrayOfSize(1 + beanInfo.innerImpl.declarationToClass.size*2)
+					val declarationToClass = beanInfo.innerImpl.declarationToClass
+					val String[] innerImpl = <String>newArrayOfSize(
+						2 + declarationToClass.size*2 + beanInfo.innerImpl.hasInit.size)
 					var j = 0
 					innerImpl.set(j++, beanInfo.innerImpl.qualifiedName)
-					for(e : beanInfo.innerImpl.declarationToClass.entrySet) {
+					innerImpl.set(j++, String.valueOf(declarationToClass.size))
+					for(e : declarationToClass.entrySet) {
 						innerImpl.set(j++, e.key)
 						innerImpl.set(j++, e.value)
+					}
+					for (hi : beanInfo.innerImpl.hasInit) {
+						innerImpl.set(j++, hi)
 					}
 					set("innerImpl", innerImpl)
 				}
@@ -1809,10 +1891,15 @@ return result;'''
 			i = i + 8
 		}
 		val innerImplObj = new InnerImpl(innerImpl.get(0))
-		for (i = 1; i < innerImpl.length; i+=2) {
+		val len = Integer.parseInt(innerImpl.get(1))
+		for (i = 2; i < 2+len*2; i+=2) {
 			val key = innerImpl.get(i)
 			val value = innerImpl.get(i+1)
 			innerImplObj.declarationToClass.put(key,value)
+		}
+		for (i = 2+len*2; i < innerImpl.length; i++) {
+			val hi = innerImpl.get(i)
+			innerImplObj.hasInit.add(hi)
 		}
 		new BeanInfo(qualifiedName,
 			parentList.toArray(newArrayOfSize(parentList.size)),
@@ -1936,7 +2023,7 @@ return result;'''
 						int result = 0;
 						«FOR sortKey : sortKeyes»
 						if (result == 0) {
-							result = compare(get«to_FirstUpper(sortKey)»(), other.get«to_FirstUpper(sortKey)»());
+							result = compare(get«propertyToXetterSuffix(sortKey)»(), other.get«propertyToXetterSuffix(sortKey)»());
 						}
 						«ENDFOR»
 						return result;'''
@@ -1952,6 +2039,26 @@ return result;'''
 					docComment = "Compares to other"
 				]
 				warn(BeanProcessor, "genCompareToMethods", mtd, "compareTo(?) added to "+impl.qualifiedName)
+			}
+		}
+	}
+
+
+	/** Make sure "instance" Beans have all their abstract methods implemented. */
+	def private void checkAbstractOrImplemented(BeanInfo beanInfo, MutableInterfaceDeclaration mtd,
+		MutableClassDeclaration impl) {
+		if (beanInfo.isInstance && beanInfo.isBean) {
+			val allImplMethods = impl.findAllMethods().filter[!(static || native || visibility == Visibility.PRIVATE)]
+			val unimplemented = new ArrayList<MethodDeclaration>
+			for (m : allImplMethods) {
+				if (m.abstract) {
+					unimplemented.add(m)
+				}
+			}
+			if (!unimplemented.empty) {
+				// TODO Change to error, once findAllMethods() works correctly
+				warn(BeanProcessor, "checkAbstractOrImplemented", mtd, "Not implemented(?): "
+					+unimplemented.map[signatureWithoutGenerics])
 			}
 		}
 	}
@@ -2077,27 +2184,7 @@ return result;'''
 
 			// STEP 20
 			// The Impl extends either the impl of the first parent, or BaseImpl or EntityImpl appropriately
-			val typeTypeRef = newTypeReference(Type)
-			if (impl.findDeclaredConstructor(typeTypeRef) === null) {
-				impl.addConstructor[
-					addParameter("metaType", typeTypeRef)
-					visibility = Visibility.PROTECTED
-					body = [
-						'super(metaType);'
-					]
-					docComment = "Creates a new "+qualifiedName+" taking it's metaType as parameter"
-				]
-			}
-			if ((impl.findDeclaredConstructor() === null) && beanInfo.isInstance) {
-				val bodyText = '''this(«pkgName».Meta.«metaTypeFieldName(simpleName)»);'''
-				impl.addConstructor[
-					visibility = Visibility.PUBLIC
-					body = [
-						bodyText
-					]
-					docComment = "Creates a new "+qualifiedName+" with it's default metaType"
-				]
-			}
+			addImplementationConstructors(processingContext, beanInfo, mtd, impl)
 
 			// STEP 21
 			// For all getters and setters in type, implementations are generated in Impl
@@ -2134,6 +2221,10 @@ return result;'''
 			genCopyMethods(mtd, impl)
 
 			genCompareToMethods(mtd, impl, beanInfo.sortKeyes)
+
+		    // STEP 26
+		    // Make sure "instance" Beans have all their abstract methods implemented.
+		    checkAbstractOrImplemented(beanInfo, mtd, impl)
 		} else {
 			warn(BeanProcessor, "transform", mtd, qualifiedName
 				+" will NOT be transformed, because: "+beanInfo.validity)

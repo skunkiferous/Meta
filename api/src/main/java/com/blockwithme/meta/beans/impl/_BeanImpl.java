@@ -236,48 +236,48 @@ public abstract class _BeanImpl implements _Bean {
     }
 
     /** Compares two boolean */
-    protected final int compare(final boolean a, final boolean b) {
+    protected static final int compare(final boolean a, final boolean b) {
         return (a == b) ? 0 : (a ? 1 : -1);
     }
 
     /** Compares two byte */
-    protected final int compare(final byte a, final byte b) {
+    protected static final int compare(final byte a, final byte b) {
         return a - b;
     }
 
     /** Compares two short */
-    protected final int compare(final short a, final short b) {
+    protected static final int compare(final short a, final short b) {
         return a - b;
     }
 
     /** Compares two char */
-    protected final int compare(final char a, final char b) {
+    protected static final int compare(final char a, final char b) {
         return a - b;
     }
 
     /** Compares two int */
-    protected final int compare(final int a, final int b) {
+    protected static final int compare(final int a, final int b) {
         return a - b;
     }
 
     /** Compares two long */
-    protected final int compare(final long a, final long b) {
+    protected static final int compare(final long a, final long b) {
         return (a < b) ? -1 : ((a == b) ? 0 : 1);
     }
 
     /** Compares two float */
-    protected final int compare(final float a, final float b) {
+    protected static final int compare(final float a, final float b) {
         return Float.compare(a, b);
     }
 
     /** Compares two double */
-    protected final int compare(final double a, final double b) {
+    protected static final int compare(final double a, final double b) {
         return Double.compare(a, b);
     }
 
     /** Compares two Object */
     @SuppressWarnings({ "rawtypes", "unchecked" })
-    protected final int compare(final Comparable a, final Comparable b) {
+    protected static final int compare(final Comparable a, final Comparable b) {
         return (a == null) ? ((b == null) ? 0 : -1) : ((b == null) ? 1 : a
                 .compareTo(b));
     }
@@ -534,7 +534,8 @@ public abstract class _BeanImpl implements _Bean {
             }
         }
         for (final _Bean value : getBeanIterator()) {
-            value.setSelectionRecursive();
+            if (!value.isImmutable())
+                value.setSelectionRecursive();
         }
     }
 
@@ -697,10 +698,19 @@ public abstract class _BeanImpl implements _Bean {
     /** Returns true, if this Bean has the same (non-null) root as the Bean passed as parameter */
     @Override
     public final boolean hasSameRoot(final _Bean other) {
-        _Bean root;
-        return (other != null)
-                && ((this == other) || ((root = getRoot()) != null)
-                        && (root == other.getRoot()));
+        boolean result = false;
+        if (other != null) {
+            if (this == other) {
+                result = true;
+            } else {
+                final _Bean otherRoot = other.getRoot();
+                if (otherRoot != null) {
+                    final _Bean myRoot = getRoot();
+                    result = (myRoot == otherRoot);
+                }
+            }
+        }
+        return result;
     }
 
     /** Returns the current value of the change counter */
@@ -739,7 +749,11 @@ public abstract class _BeanImpl implements _Bean {
                     final _BeanImpl value = (_BeanImpl) p.getObject(other);
                     if (value != null) {
                         if (immutably) {
-                            p.setObject(this, value.doSnapshot());
+                            final _BeanImpl newVal = value.doSnapshot();
+                            p.setObject(this, newVal);
+                            // Setting immutable values does not set the parent
+                            // But here we created it, so we want the parent to be set.
+                            newVal.setParent(this);
                         } else {
                             p.setObject(this, value.doCopy());
                         }
@@ -793,5 +807,18 @@ public abstract class _BeanImpl implements _Bean {
     /** Returns the number of possible selections. */
     protected int getSelectionCount() {
         return metaType.inheritedPropertyCount;
+    }
+
+    /** Checks that the new value is either null or immutable. */
+    protected final void checkNullOrImmutable(final Object newValue) {
+        if (newValue != null) {
+            // TODO This is a work-around for creating immutable snapshots of beans that
+            // contain collections. We should not simply assume that immutable values
+            // are only set for collection properties during snapshots
+            if (!(newValue instanceof _Bean)
+                    || !((_Bean) newValue).isImmutable())
+                throw new IllegalArgumentException(
+                        "Collection/Map setters only accepts null");
+        }
     }
 }

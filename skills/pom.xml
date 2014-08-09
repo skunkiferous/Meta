@@ -11,12 +11,12 @@
 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.blockwithme</groupId>
-	<artifactId>MetaDemo</artifactId>
+	<artifactId>Skills</artifactId>
 	<version>0.1.0</version>
 	<packaging>jar</packaging>
-	<inceptionYear>2013</inceptionYear>
-	<name>Demo for Meta</name>
-	<description>A demo/test for the new Xtend Meta API. It *must be in a different project* as the API itself, due to the use of Active Annotations.</description>
+	<inceptionYear>2014</inceptionYear>
+	<name>Skills</name>
+	<description>Model for Reprica skills,</description>
 
 	<url>https://github.com/skunkiferous/Meta</url>
 

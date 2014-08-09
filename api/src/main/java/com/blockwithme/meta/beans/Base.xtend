@@ -357,20 +357,20 @@ interface Meta {
 	val BEAN = BUILDER.newType(Bean, null, Kind.Trait)
 
 	/** The change counter Bean property */
-    val CHANGE_COUNTER_BEAN_PROP = BUILDER.newIntegerProperty(
+    val _BEAN__CHANGE_COUNTER = BUILDER.newIntegerProperty(
     	_Bean, "changeCounter", [changeCounter], [obj,value|obj.changeCounter = value;obj], false)
 
 	/** The parent virtual Bean property */
-    val PARENT_BEAN_PROP = BUILDER.newObjectProperty(
+    val _BEAN__PARENT = BUILDER.newObjectProperty(
     	_Bean, "parent", _Bean, true, true, false, [parent], null, true)
 
 	/** The root virtual Bean property */
-    val ROOT_BEAN_PROP = BUILDER.newObjectProperty(
+    val _BEAN__ROOT = BUILDER.newObjectProperty(
     	_Bean, "root", _Bean, true, true, false, [root], null, true)
 
 	/** The _Bean Type */
 	val _BEAN = BUILDER.newType(_Bean, null, Kind.Trait, #[BEAN],
-		CHANGE_COUNTER_BEAN_PROP, PARENT_BEAN_PROP, ROOT_BEAN_PROP)
+		com.blockwithme.meta.beans.Meta._BEAN__CHANGE_COUNTER, _BEAN__PARENT, _BEAN__ROOT)
 
 	/** The Entity Type */
 	val ENTITY = BUILDER.newType(Entity, null, Kind.Trait, #[BEAN])
@@ -382,60 +382,60 @@ interface Meta {
 	val COLLECTION_BEAN_CONFIG = BUILDER.newType(CollectionBeanConfig, null, Kind.Data)
 
 	/** The configuration property of the collection beans */
-    val COLLECTION_CONFIG_PROP = BUILDER.newObjectProperty(
+    val COLLECTION_BEAN__CONFIG = BUILDER.newObjectProperty(
     	CollectionBean, "config", CollectionBeanConfig, true, true, true, [config], null, false)
 
 	/** The value-type property of the collection beans */
-    val COLLECTION_VALUE_TYPE_PROP = BUILDER.newObjectProperty(
+    val COLLECTION_BEAN__VALUE_TYPE = BUILDER.newObjectProperty(
     	CollectionBean, "valueType", Type, true, true, true, [valueType], null, false)
 
 	/** The CollectionBean Type */
 	val COLLECTION_BEAN = BUILDER.newType(CollectionBean, null, Kind.Trait,
-		#[BEAN, JavaMeta.LIST, JavaMeta.SET], <Property>newArrayList(COLLECTION_CONFIG_PROP),
-		COLLECTION_VALUE_TYPE_PROP as ObjectProperty)
+		#[BEAN, JavaMeta.LIST, JavaMeta.SET], <Property>newArrayList(COLLECTION_BEAN__CONFIG),
+		COLLECTION_BEAN__VALUE_TYPE as ObjectProperty)
 
 	/** The ListBean Type */
 	val LIST_BEAN = BUILDER.newType(ListBean, null, Kind.Trait,
 		#[COLLECTION_BEAN, JavaMeta.LIST], Property.NO_PROPERTIES,
-		COLLECTION_VALUE_TYPE_PROP as ObjectProperty)
+		COLLECTION_BEAN__VALUE_TYPE as ObjectProperty)
 
 	/** The SetBean Type */
 	val SET_BEAN = BUILDER.newType(SetBean, null, Kind.Trait,
 		#[COLLECTION_BEAN, JavaMeta.SET], Property.NO_PROPERTIES,
-		COLLECTION_VALUE_TYPE_PROP as ObjectProperty)
+		COLLECTION_BEAN__VALUE_TYPE as ObjectProperty)
 
 	/** The _CollectionBean Type */
 	val _COLLECTION_BEAN = BUILDER.newType(_CollectionBean, null, Kind.Trait,
 		#[COLLECTION_BEAN, _BEAN], Property.NO_PROPERTIES,
-		COLLECTION_VALUE_TYPE_PROP as ObjectProperty)
+		COLLECTION_BEAN__VALUE_TYPE as ObjectProperty)
 
 	/** The _ListBean Type */
 	val _LIST_BEAN = BUILDER.newType(_ListBean, null, Kind.Trait,
 		#[_COLLECTION_BEAN, LIST_BEAN], Property.NO_PROPERTIES,
-		COLLECTION_VALUE_TYPE_PROP as ObjectProperty)
+		COLLECTION_BEAN__VALUE_TYPE as ObjectProperty)
 
 	/** The _SetBean Type */
 	val _SET_BEAN = BUILDER.newType(_SetBean, null, Kind.Trait,
 		#[_COLLECTION_BEAN, SET_BEAN], Property.NO_PROPERTIES,
-		COLLECTION_VALUE_TYPE_PROP as ObjectProperty)
+		COLLECTION_BEAN__VALUE_TYPE as ObjectProperty)
 
 	/** The key-type property of the Map beans */
-    val MAP_KEY_TYPE_PROP = BUILDER.newObjectProperty(
+    val MAP_BEAN__KEY_TYPE = BUILDER.newObjectProperty(
     	MapBean, "keyType", Type, true, true, true, [keyType], null, false)
 
 	/** The value-type property of the Map beans */
-    val MAP_VALUE_TYPE_PROP = BUILDER.newObjectProperty(
+    val MAP_BEAN__VALUE_TYPE = BUILDER.newObjectProperty(
     	MapBean, "valueType", Type, true, true, true, [valueType], null, false)
 
 	/** The MapBean Type */
 	val MAP_BEAN = BUILDER.newType(MapBean, null, Kind.Trait,
-		#[BEAN, JavaMeta.MAP], Property.NO_PROPERTIES, MAP_KEY_TYPE_PROP as ObjectProperty,
-		MAP_VALUE_TYPE_PROP as ObjectProperty)
+		#[BEAN, JavaMeta.MAP], Property.NO_PROPERTIES, MAP_BEAN__KEY_TYPE as ObjectProperty,
+		MAP_BEAN__VALUE_TYPE as ObjectProperty)
 
 	/** The _MapBean Type */
 	val _MAP_BEAN = BUILDER.newType(_MapBean, null, Kind.Trait,
-		#[MAP_BEAN, _BEAN], Property.NO_PROPERTIES, MAP_KEY_TYPE_PROP as ObjectProperty,
-		MAP_VALUE_TYPE_PROP as ObjectProperty)
+		#[MAP_BEAN, _BEAN], Property.NO_PROPERTIES, MAP_BEAN__KEY_TYPE as ObjectProperty,
+		MAP_BEAN__VALUE_TYPE as ObjectProperty)
 
 	/** The Beans package */
 	val COM_BLOCKWITHME_META_BEANS_PACKAGE = BUILDER.newTypePackage(

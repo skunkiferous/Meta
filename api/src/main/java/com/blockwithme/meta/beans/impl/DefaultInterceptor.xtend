@@ -149,7 +149,7 @@ class DefaultInterceptor implements Interceptor {
             	oldValue.setParent(null)
             }
             if (newValue instanceof _Bean) {
-            	if (!(newValue instanceof Entity)) {
+            	if (!(newValue instanceof Entity) && !newValue.immutable) {
 	            	if (instance.hasSameRoot(newValue)) {
 	            		// Undo changes
 			            if (oldValue instanceof _Bean) {
