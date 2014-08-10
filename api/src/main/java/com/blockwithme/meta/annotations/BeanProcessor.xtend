@@ -965,7 +965,7 @@ class BeanProcessor extends Processor<InterfaceDeclaration,MutableInterfaceDecla
     /** Concerts an inner Impl method to a declaration String, if the method qualifies */
     def private String innerMethodToString(TypeDeclaration td, MethodDeclaration m) {
     	val name = m.simpleName
-    	if (name.startsWith("get") || name.startsWith("set")) {
+    	if ((name.length > 3) && (name.startsWith("get") || name.startsWith("set"))) {
     		error(BeanProcessor, "transform", td, "Inner Impl Method " + m.simpleName
     			+" of "+td.qualifiedName+" must not start with 'set' or 'get'")
     	}

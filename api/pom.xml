@@ -120,6 +120,12 @@
 		</dependency>
 		<dependency>
 			<groupId>com.blockwithme</groupId>
+			<artifactId>UtilServer</artifactId>
+			<version>0.5.0</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.blockwithme</groupId>
 			<artifactId>PrimitiveFuncUtil</artifactId>
 			<version>1.2.0</version>
 		</dependency>

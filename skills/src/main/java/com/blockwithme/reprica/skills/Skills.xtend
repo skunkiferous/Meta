@@ -21,6 +21,7 @@ import java.util.List
 import java.util.Set
 import java.util.Map
 import static java.util.Objects.*
+import javax.inject.Provider
 
 /** A Filter specifies if an Effect is going to be taken into account when evaluating a Value. */
 interface Filter {
@@ -107,7 +108,7 @@ interface MetaInfo extends Root {
 
 /** An Attribute type/descriptor. */
 @Bean(instance=true)
-interface AttributeType extends MetaInfo {
+interface AttributeType extends MetaInfo, Provider<Attribute> {
 	class Impl {
 		// TODO This should be a virtual property
 		/** {@inheritDoc} */
@@ -121,22 +122,145 @@ interface AttributeType extends MetaInfo {
 			max = Skills.DEFAULT_MAXIMUM_ATTRIBUTE_VALUE
 			moreIsBetter = true
 		}
+		/** Creates a new Attribute */
+		static def Attribute get(AttributeType it) {
+			val result = Meta.ATTRIBUTE.create
+			result.type = it
+			result.baseValue = defaultValue
+			result
+		}
 	}
+	/** The default value of an Attribute of this type. */
+	double defaultValue
 	/** Allows explicitly clamping the value of an attribute to some minimum */
 	double min
 	/** Allows explicitly clamping the value of an attribute to some maximum */
 	double max
 	/** Are bigger values better? That decided if effects are buffs or debuffs. */
 	boolean moreIsBetter
+	/** Is this attribute a percent/probability (between 0.0 and 1.0?), or an "integer value" */
+	boolean percent
 	/** The category of the attribute. */
 	AttributeCategory category
 }
 
 /** A Entity type/descriptor. */
 @Bean(instance=true)
-interface EntityType extends MetaInfo {
+interface EntityType extends MetaInfo, Provider<Entity> {
+	class Impl {
+		/** Creates and adds a new attribute type, with default value, min, max, and non-percent */
+		static def AttributeType newAttr(EntityType it,
+			String name, AttributeCategory category) {
+			newAttr(it, name, category, Skills.DEFAULT_ATTRIBUTE_VALUE,
+				Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE,
+				Skills.DEFAULT_MAXIMUM_ATTRIBUTE_VALUE, false)
+		}
+		/** Creates and adds a new non-percent attribute type */
+		static def AttributeType newAttr(EntityType it,
+			String name, AttributeCategory category, double defaultValue, double min, double max) {
+			newAttr(it, name, category, defaultValue, min, max, false)
+		}
+		/** Creates and adds a new attribute type, with default min, and non-percent */
+		static def AttributeType newAttr(EntityType it,
+			String name, AttributeCategory category, double defaultValue, double max) {
+			newAttr(it, name, category, defaultValue, Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE, max, false)
+		}
+		/** Creates and adds a new attribute type, with default value, min, and non-percent */
+		static def AttributeType newAttr(EntityType it,
+			String name, AttributeCategory category, double max) {
+			newAttr(it, name, category, Skills.DEFAULT_ATTRIBUTE_VALUE, Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE, max, false)
+		}
+		/** Creates and adds a new auxiliary attribute type, with default value, min, max, and non-percent */
+		static def AttributeType newAttr(EntityType it, String name) {
+			newAttr(it, name, AttributeCategory.Auxiliary, Skills.DEFAULT_ATTRIBUTE_VALUE,
+				Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE,
+				Skills.DEFAULT_MAXIMUM_ATTRIBUTE_VALUE, false)
+		}
+		/** Creates and adds a new auxiliary non-percent attribute type */
+		static def AttributeType newAttr(EntityType it, String name, double defaultValue, double min, double max) {
+			newAttr(it, name, AttributeCategory.Auxiliary, defaultValue, min, max, false)
+		}
+		/** Creates and adds a new auxiliary attribute type, with default min, and non-percent */
+		static def AttributeType newAttr(EntityType it, String name, double defaultValue, double max) {
+			newAttr(it, name, AttributeCategory.Auxiliary, defaultValue, Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE, max, false)
+		}
+		/** Creates and adds a new auxiliary attribute type, with default value, min, and non-percent */
+		static def AttributeType newAttr(EntityType it, String name, double max) {
+			newAttr(it, name, AttributeCategory.Auxiliary, Skills.DEFAULT_ATTRIBUTE_VALUE, Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE, max, false)
+		}
+		/** Creates and adds a new auxiliary attribute type */
+		static def AttributeType newAttr(EntityType it, String name, double defaultValue, double min, double max, boolean percent) {
+			newAttr(it, name, AttributeCategory.Auxiliary, defaultValue, Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE, max, false)
+		}
+		/** Creates and adds a new attribute type, with default value, min, max, and percent */
+		static def AttributeType newPercentAttr(EntityType it,
+			String name, AttributeCategory category) {
+			newAttr(it, name, category, Skills.DEFAULT_ATTRIBUTE_VALUE,
+				Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE,
+				Skills.DEFAULT_MAXIMUM_PERCENT_ATTRIBUTE_VALUE, true)
+		}
+		/** Creates and adds a new auxiliary attribute type, with default value, min, max, and percent */
+		static def AttributeType newPercentAttr(EntityType it, String name) {
+			newAttr(it, name, AttributeCategory.Auxiliary, Skills.DEFAULT_ATTRIBUTE_VALUE,
+				Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE,
+				Skills.DEFAULT_MAXIMUM_PERCENT_ATTRIBUTE_VALUE, true)
+		}
+		/** Creates and adds a new attribute type, with default value, min, max, and percent */
+		static def AttributeType newPercentAttr(EntityType it,
+			String name, AttributeCategory category, double defaultValue) {
+			newAttr(it, name, category, defaultValue,
+				Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE,
+				Skills.DEFAULT_MAXIMUM_PERCENT_ATTRIBUTE_VALUE, true)
+		}
+		/** Creates and adds a new auxiliary attribute type, with default value, min, max, and percent */
+		static def AttributeType newPercentAttr(EntityType it, String name, double defaultValue) {
+			newAttr(it, name, AttributeCategory.Auxiliary, defaultValue,
+				Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE,
+				Skills.DEFAULT_MAXIMUM_PERCENT_ATTRIBUTE_VALUE, true)
+		}
+		/** Creates and adds a new attribute type */
+		static def AttributeType newAttr(EntityType it, String name,
+			AttributeCategory category, double defaultValue, double min, double max, boolean percent) {
+			if (_attributes.containsKey(name)) {
+				throw new IllegalArgumentException("AttributeType "+name+" already exists in "+it.name)
+			}
+			val result = Meta.ATTRIBUTE_TYPE.create
+			result.name = name
+			result.category = category
+			result.defaultValue = defaultValue
+			result.min = min
+			result.max = max
+			_attributes.put(result.name, result)
+			result
+		}
+		/** Returns the attribute type with the given name, if any. */
+		static def AttributeType attr(EntityType it,
+			String name) {
+			_attributes.get(name)
+		}
+		/** Creates a new Entity */
+		static def Entity init(EntityType it, Entity entity) {
+			entity._type = it
+			for (at : _attributes.values) {
+				entity._attributes.put(at.name, at.get)
+			}
+			entity
+		}
+		/** Creates a new Entity */
+		static def Entity get(EntityType it) {
+			init(Meta.ENTITY.create)
+		}
+		/** Pseudo-constructor for entity types */
+		static def void _init_(EntityType it) {
+			val simpleName = it.class.simpleName
+			name = if (simpleName.endsWith("Impl"))
+				simpleName.substring(0, simpleName.length-4)
+			else
+				simpleName
+		}
+	}
 	/** The types of all the attributes of an entity */
-	Map<String,AttributeType> attributes
+	Map<String,AttributeType> _attributes
 }
 
 /** A System of Entity; all EntityTypes must be defined here. */
@@ -144,7 +268,7 @@ interface EntityType extends MetaInfo {
 interface EntitySystem extends MetaInfo {
 	class Impl {
 		/** Adds a new entity type to the system. */
-		static def void add(EntitySystem it, EntityType entityType) {
+		static def EntityType add(EntitySystem it, EntityType entityType) {
 			val name = requireNonNull(entityType,  "entityType").name
 			requireNonNull(name,  "entityType.name")
 			if (_entityTypes.containsKey(name)) {
@@ -154,6 +278,7 @@ interface EntitySystem extends MetaInfo {
 				throw new IllegalArgumentException("EntityType "+name+" must be immutable")
 			}
 			_entityTypes.put(name, entityType)
+			entityType
 		}
 
 		/** Lists all the entity types */
@@ -210,12 +335,13 @@ interface Attribute extends Root {
 		}
 
 		/** Adds one more effect to this attribute. */
-		static def void addEffect(Attribute it, Effect newEffect) {
-			val category = requireNonNull(requireNonNull(newEffect, "newEffect").category, "newEffect.category")
+		static def void operator_add(Attribute it, Effect newEffect) {
+			val type = requireNonNull(requireNonNull(newEffect, "newEffect").type, "newEffect.type")
+			val category = requireNonNull(type.category, "newEffect.type.category")
 			val iter = _effects.iterator
 			while (iter.hasNext) {
 				val next = iter.next
-				if (next.category == category) {
+				if (next.type.category == category) {
 					iter.remove
 				}
 			}
@@ -233,69 +359,55 @@ interface Attribute extends Root {
 /** A Entity can have zero or more properties. */
 interface Entity extends Root {
 	class Impl {
-		/** Creates a new attribute type */
-		protected static def AttributeType attrType(EntityType type,
-			String name, AttributeCategory category) {
-			val result = Meta.ATTRIBUTE_TYPE.create
-			result.name = name
-			result.category = category
-			type.attributes.put(result.name, result)
-			result
+		/** Returns the attribute with the given name, if any. */
+		static def Attribute attr(Entity it, String name) {
+			_attributes.get(name)
 		}
-
-		/** Creates a new attribute */
-		protected static def Attribute attr(AttributeType attributeType) {
-			val result = Meta.ATTRIBUTE.create
-			result.type = attributeType
-			result
+		/** Returns the attribute with the given AttributeType, if any. */
+		static def Attribute attr(Entity it, AttributeType attributeType) {
+			_attributes.get(attributeType.name)
+		}
+		/** The type of the entity */
+		static def EntityType type(Entity it) {
+			_type
 		}
 	}
 	/** The type of the entity */
-	EntityType type
+	EntityType _type
 	/** The attributes of the entity */
-	Attribute[] attributes
+	Map<String,Attribute> _attributes
+}
+
+/** The type of an effect. */
+@Bean(instance=true)
+interface EffectType extends EntityType {
+	class Impl {
+		/** Pseudo-constructor for basic effects */
+		static def void _init_(EffectType it) {
+			newPercentAttr("percentActivation", 1)
+			newPercentAttr("percentPerTurn", 1)
+			newAttr("duration", Skills.DEFAULT_DURATION_IN_TURN)
+			category = EffectCategory.Simple
+		}
+		/** Creates a new Effect */
+		static def Effect get(EffectType it) {
+			init(Meta.EFFECT.create) as Effect
+		}
+	}
+
+	/** The category of an effect */
+	EffectCategory category
+
+	/**
+	 * Does this effect adds up to the base stat as an absolute value (false)
+	 * or instead as a percent (true)?
+	 */
+	boolean percent
 }
 
 /** An effect can modify a value */
 interface Effect extends Entity {
-	class Impl extends Entity.Impl {
-		/** Cached entity type for Effect */
-		static var EntityType typeCache
-		/** Cached attribute type for "activationProbability" */
-		static var AttributeType activationProbabilityCache
-		/** Cached attribute type for "perTurnProbability" */
-		static var AttributeType perTurnProbabilityCache
-		/** Cached attribute type for "duration" */
-		static var AttributeType durationCache
-		/** Pseudo-constructor for basic effects */
-		static def void _init_(Effect it) {
-			if (typeCache == null) {
-				val type = Meta.ENTITY_TYPE.create
-				type.name = Effect.name
-
-				val activationProbability = attrType(type, "activationProbability", AttributeCategory.Auxiliary)
-				val perTurnProbability = attrType(type, "perTurnProbability", AttributeCategory.Auxiliary)
-				val duration = attrType(type, "duration", AttributeCategory.Auxiliary)
-
-				typeCache = type.snapshot
-
-				activationProbabilityCache = typeCache.attributes.get(activationProbability.name)
-				perTurnProbabilityCache = typeCache.attributes.get(perTurnProbability.name)
-				durationCache = typeCache.attributes.get(duration.name)
-
-				Skills.SYSTEM.add(typeCache)
-			}
-			type = typeCache
-
-			activationProbability = attr(activationProbabilityCache)
-			activationProbability.baseValue = Skills.DEFAULT_PROBABILITY_OF_ACTIVATION
-
-			perTurnProbability = attr(perTurnProbabilityCache)
-			perTurnProbability.baseValue = Skills.DEFAULT_PROBABILITY_PER_TURN
-
-			duration = attr(durationCache)
-			duration.baseValue = Skills.DEFAULT_DURATION_IN_TURN
-		}
+	class Impl {
 		/** Evaluates the effective value of an attribute of an entity. */
 		static def double eval(Effect it, Filter filter, double previousValue) {
 			if ((filter == null) || filter.accept(it)) _eval(previousValue) else previousValue
@@ -309,31 +421,26 @@ interface Effect extends Entity {
 		static def boolean debuff(Effect it) {
 			!buff
 		}
+		/** The type of the entity */
+		static def EffectType type(Effect it) {
+			_type as EffectType
+		}
+
+		/**
+		 * Probability of activation, in percent. If the check fails,
+		 * the effect will not apply at all.
+		 */
+		static def Attribute percentActivation(Effect it) { attr("percentActivation") }
+
+		/** Probability of activation *per turn*, in percent. */
+		static def Attribute percentPerTurn(Effect it) { attr("percentPerTurn") }
+
+		/** Duration of the effect, in turns. */
+		static def Attribute duration(Effect it) { attr("duration") }
 	}
-
-	/** The category of an effect */
-	EffectCategory category
-
-	/**
-	 * Does this effect adds up to the base stat as an absolute value (false)
-	 * or instead as a percent (true)?
-	 */
-	boolean percent
 
 	/** The turn on which the effect was created. */
 	int creationTurn
-
-	/**
-	 * Probability of activation, in percent. If the check fails,
-	 * the effect will not apply at all.
-	 */
-	Attribute activationProbability
-
-	/** Probability of activation *per turn*, in percent. */
-	Attribute perTurnProbability
-
-	/** Duration of the effect, in turns. */
-	Attribute duration
 
 	/** Evaluate self, based on the previous value. */
 	def double _eval(double previousValue)
@@ -343,222 +450,172 @@ interface Effect extends Entity {
 	def boolean buff()
 }
 
+/**
+ * The type of an effect.
+ */
+@Bean(instance=true)
+interface BasicEffectType extends EffectType {
+	class Impl {
+		/** Pseudo-constructor for basic effects */
+		static def void _init_(BasicEffectType it) {
+			// We do not know yet if it's going to be a "percent" effect
+			newAttr("effect")
+		}
+		/** Creates a new BasicEffect */
+		static def BasicEffect get(BasicEffectType it) {
+			init(Meta.BASIC_EFFECT.create) as BasicEffect
+		}
+	}
+}
+
 /** A basic effect uses a standard algorithm to modify a value */
 @Bean(instance=true)
 interface BasicEffect extends Effect {
-	class Impl extends Entity.Impl {
-		/** Cached entity type for BasicEffect */
-		static var EntityType typeCache
-		/** Cached attribute type for "effect" */
-		static var AttributeType effectCache
-		/** Pseudo-constructor for basic effects */
-		static def void _init_(BasicEffect it) {
-			if (typeCache == null) {
-				val type = Meta.ENTITY_TYPE.create
-				type.name = BasicEffect.name
-
-				val effect =  attrType(type, "effect", AttributeCategory.Auxiliary)
-
-				typeCache = type.snapshot
-
-				effectCache = typeCache.attributes.get(effect.name)
-
-				Skills.SYSTEM.add(typeCache)
-			}
-			type = typeCache
-
-			effect = attr(effectCache)
-		}
+	class Impl {
 		/** {@inheritDoc} */
 		static def double _eval(BasicEffect it, double previousValue) {
 			val change = effect.eval(null)
-			if (percent) (previousValue * change) else (previousValue + change)
+			if (type.percent) (previousValue * change) else (previousValue + change)
 		}
 		/** {@inheritDoc} */
 		static def String _describe(BasicEffect it, String previousValue) {
 			val change = effect.eval(null)
-			previousValue + " + "+type.name+"("+if (percent)
+			previousValue + " + "+type.name+"("+if (type.percent)
 				(change*100.0)+"%)"
 			else
 				change+")"
 		}
 		/** Returns true if this Effect is "positive" (a buff). */
 		static def boolean buff(BasicEffect it) {
-			effect.baseValue > 0
+			if (type.percent) (effect.baseValue > 1) else (effect.baseValue > 0)
+		}
+		/** The type of the entity */
+		static def BasicEffectType type(BasicEffect it) {
+			_type as BasicEffectType
+		}
+		/** The value/strength of the "effect". */
+		static def Attribute effect(BasicEffect it) { attr("effect") }
+	}
+}
+
+/** The type of a character. */
+@Bean(instance=true)
+interface CharacterType extends EntityType {
+	class Impl {
+		/** Pseudo-constructor for basic effects */
+		static def void _init_(CharacterType it) {
+			newAttr("speed", AttributeCategory.Attack)
+			newAttr("dexterity", AttributeCategory.Attack)
+			newAttr("rage", AttributeCategory.Attack)
+			newAttr("fury", AttributeCategory.Attack)
+			newAttr("strength", AttributeCategory.Attack)
+			newAttr("anima", AttributeCategory.Attack)
+
+			newAttr("psyche", AttributeCategory.Defense)
+			newAttr("defense", AttributeCategory.Defense)
+			newAttr("reflex", AttributeCategory.Defense)
+			newAttr("block", AttributeCategory.Defense)
+			newAttr("constitution", AttributeCategory.Defense)
+			newAttr("spirit", AttributeCategory.Defense)
+			newAttr("harmony", AttributeCategory.Defense)
+
+			newAttr("mana")
+			newAttr("hp")
+			newAttr("intelligence")
+			newAttr("artistry")
+			newAttr("level")
+			newAttr("xp")
+
+//			newPercentAttr("percentPerTurn")
+		}
+		/** Creates a new Character */
+		static def Character get(CharacterType it) {
+			init(Meta.CHARACTER.create) as Character
 		}
 	}
-	/** The value/strength of the "effect". */
-	Attribute effect
 }
 
 /** Represents a Player character, so we have something to test against */
 @Bean(instance=true)
 interface Character extends Entity {
-	class Impl extends Entity.Impl {
-		/** Cached entity type for Player */
-		static var EntityType typeCache
-
-		/** Cached attribute type for "speed" */
-		static var AttributeType speedCache
-		/** Cached attribute type for "dexterity" */
-		static var AttributeType dexterityCache
-		/** Cached attribute type for "strength" */
-		static var AttributeType strengthCache
-		/** Cached attribute type for "anima" */
-		static var AttributeType animaCache
-		/** Cached attribute type for "rage" */
-		static var AttributeType rageCache
-		/** Cached attribute type for "fury" */
-		static var AttributeType furyCache
-
-		/** Cached attribute type for "psyche" */
-		static var AttributeType psycheCache
-		/** Cached attribute type for "defense" */
-		static var AttributeType defenseCache
-		/** Cached attribute type for "reflex" */
-		static var AttributeType reflexCache
-		/** Cached attribute type for "block" */
-		static var AttributeType blockCache
-		/** Cached attribute type for "constitution" */
-		static var AttributeType constitutionCache
-		/** Cached attribute type for "spirit" */
-		static var AttributeType spiritCache
-		/** Cached attribute type for "harmony" */
-		static var AttributeType harmonyCache
-
-		/** Cached attribute type for "mana" */
-		static var AttributeType manaCache
-		/** Cached attribute type for "hp" */
-		static var AttributeType hpCache
-		/** Cached attribute type for "intelligence" */
-		static var AttributeType intelligenceCache
-		/** Cached attribute type for "artistry" */
-		static var AttributeType artistryCache
-		/** Cached attribute type for "level" */
-		static var AttributeType levelCache
-
-		/** Pseudo-constructor for basic effects */
-		static def void _init_(Character it) {
-			if (typeCache == null) {
-				val type = Meta.ENTITY_TYPE.create
-				type.name = Character.name
-
-				val speed = attrType(type, "speed", AttributeCategory.Attack)
-				val dexterity = attrType(type, "dexterity", AttributeCategory.Attack)
-				val rage = attrType(type, "rage", AttributeCategory.Attack)
-				val fury = attrType(type, "fury", AttributeCategory.Attack)
-				val strength = attrType(type, "strength", AttributeCategory.Attack)
-				val anima = attrType(type, "anima", AttributeCategory.Attack)
-
-				val psyche = attrType(type, "psyche", AttributeCategory.Defense)
-				val defense = attrType(type, "defense", AttributeCategory.Defense)
-				val reflex = attrType(type, "reflex", AttributeCategory.Defense)
-				val block = attrType(type, "block", AttributeCategory.Defense)
-				val constitution = attrType(type, "constitution", AttributeCategory.Defense)
-				val spirit = attrType(type, "spirit", AttributeCategory.Defense)
-				val harmony = attrType(type, "harmony", AttributeCategory.Defense)
-
-				val mana = attrType(type, "mana", AttributeCategory.Auxiliary)
-				val hp = attrType(type, "hp", AttributeCategory.Auxiliary)
-				val intelligence = attrType(type, "intelligence", AttributeCategory.Auxiliary)
-				val artistry = attrType(type, "artistry", AttributeCategory.Auxiliary)
-				val level = attrType(type, "level", AttributeCategory.Auxiliary)
-
-				typeCache = type.snapshot
-
-				speedCache = typeCache.attributes.get(speed.name)
-				manaCache = typeCache.attributes.get(mana.name)
-				hpCache = typeCache.attributes.get(hp.name)
-				intelligenceCache = typeCache.attributes.get(intelligence.name)
-				psycheCache = typeCache.attributes.get(psyche.name)
-				artistryCache = typeCache.attributes.get(artistry.name)
-				defenseCache = typeCache.attributes.get(defense.name)
-				reflexCache = typeCache.attributes.get(reflex.name)
-				blockCache = typeCache.attributes.get(block.name)
-				dexterityCache = typeCache.attributes.get(dexterity.name)
-				rageCache = typeCache.attributes.get(rage.name)
-				furyCache = typeCache.attributes.get(fury.name)
-				constitutionCache = typeCache.attributes.get(constitution.name)
-				spiritCache = typeCache.attributes.get(spirit.name)
-				strengthCache = typeCache.attributes.get(strength.name)
-				animaCache = typeCache.attributes.get(anima.name)
-				harmonyCache = typeCache.attributes.get(harmony.name)
-				levelCache = typeCache.attributes.get(level.name)
-
-				Skills.SYSTEM.add(typeCache)
-			}
-			type = typeCache
-
-			speed = attr(speedCache)
-			mana = attr(manaCache)
-			hp = attr(hpCache)
-			intelligence = attr(intelligenceCache)
-			psyche = attr(psycheCache)
-			artistry = attr(artistryCache)
-			defense = attr(defenseCache)
-			reflex = attr(reflexCache)
-			block = attr(blockCache)
-			dexterity = attr(dexterityCache)
-			rage = attr(rageCache)
-			fury = attr(furyCache)
-			constitution = attr(constitutionCache)
-			spirit = attr(spiritCache)
-			strength = attr(strengthCache)
-			anima = attr(animaCache)
-			harmony = attr(harmonyCache)
-			level = attr(levelCache)
+	class Impl {
+		/** The type of the entity */
+		static def CharacterType type(Character it) {
+			_type as CharacterType
 		}
+		/** The attack rate. */
+		static def Attribute speed(Character it) { attr("speed") }
+		/** The spellpower. */
+		static def Attribute mana(Character it) { attr("mana") }
+		/** Hitpoints (life) */
+		static def Attribute hp(Character it) { attr("hp") }
+		/** Affects your ability to enchant items OR craft magical items such as potions or even scrolls */
+		static def Attribute intelligence(Character it) { attr("intelligence") }
+		/** Resistance to incoming magical attacks and mana growth */
+		static def Attribute psyche(Character it) { attr("psyche") }
+		/** Affects your ability to craft */
+		static def Attribute artistry(Character it) { attr("artistry") }
+		/** Resistance to incoming physical attacks and hp growth */
+		static def Attribute defense(Character it) { attr("defense") }
+		/** Chance to dodge incoming attacks */
+		static def Attribute reflex(Character it) { attr("reflex") }
+		/** Chance to block incoming attacks */
+		static def Attribute block(Character it) { attr("block") }
+		/** Chance to hit the opponent */
+		static def Attribute dexterity(Character it) { attr("dexterity") }
+		/** Chance to cause a critical hit */
+		static def Attribute rage(Character it) { attr("rage") }
+		/** % increase on critical hits. */
+		static def Attribute fury(Character it) { attr("fury") }
+		/** Resistance to poison and debuffs that affect damage taken */
+		static def Attribute constitution(Character it) { attr("constitution") }
+		/** Resistance to lifedrain and debuffs affecting your attack stats */
+		static def Attribute spirit(Character it) { attr("spirit") }
+		/** Affects the power of physical attacks */
+		static def Attribute strength(Character it) { attr("strength") }
+		/** Affects the power of magical attacks */
+		static def Attribute anima(Character it) { attr("anima") }
+		/** "the opposite of rage" : reduces chance to receive a critical hit from enemy */
+		static def Attribute harmony(Character it) { attr("harmony") }
+		/** The level (general power) of the character */
+		static def Attribute level(Character it) { attr("level") }
+		/** The earned experience points since starting the current level */
+		static def Attribute xp(Character it) { attr("xp") }
 	}
+
 	/** The player name */
 	String name
-
-	/** The attack rate. */
-	Attribute speed
-    /** The spellpower. */
-    Attribute mana
-    /** Hitpoints (life) */
-    Attribute hp
-    /** Affects your ability to enchant items OR craft magical items such as potions or even scrolls */
-	Attribute intelligence
-	/** Resistance to incoming magical attacks and mana growth */
-	Attribute psyche
-	/** Affects your ability to craft */
-	Attribute artistry
-	/** Resistance to incoming physical attacks and hp growth */
-	Attribute defense
-	/** Chance to dodge incoming attacks */
-	Attribute reflex
-	/** Chance to block incoming attacks */
-	Attribute block
-	/** Chance to hit the opponent */
-	Attribute dexterity
-	/** Chance to cause a critical hit */
-	Attribute rage
-	/** % increase on critical hits. */
-	Attribute fury
-	/** Resistance to poison and debuffs that affect damage taken */
-	Attribute constitution
-	/** Resistance to lifedrain and debuffs affecting your attack stats */
-	Attribute spirit
-	/** Affects the power of physical attacks */
-	Attribute strength
-	/** Affects the power of magical attacks */
-	Attribute anima
-	/** "the opposite of rage" : reduces chance to receive a critical hit from enemy */
-	Attribute harmony
-	/** The level (general power) of the character */
-	Attribute level
 }
 
 interface Skills {
-	/** The entity system */
-	EntitySystem SYSTEM = Meta.ENTITY_SYSTEM.create
+	/** The entity system singleton */
+	EntitySystem ENTITY_SYSTEM = Meta.ENTITY_SYSTEM.create
+
+	/** The EffectType singleton */
+	EffectType EFFECT_TYPE = ENTITY_SYSTEM.add(Meta.EFFECT_TYPE.create.snapshot) as EffectType
+
+	/** The BasicEffectType singleton */
+	BasicEffectType BASIC_EFFECT_TYPE = ENTITY_SYSTEM.add(Meta.BASIC_EFFECT_TYPE.create.snapshot) as BasicEffectType
+
+	/** The BasicEffectType singleton for "percent" effects */
+	BasicEffectType BASIC_PERCENT_EFFECT_TYPE = ENTITY_SYSTEM.add(
+		Meta.BASIC_EFFECT_TYPE.create.setPercent(true).setName("BasicEffectType%").snapshot as EntityType
+	) as BasicEffectType
+
+	/** The CharacterType singleton */
+	CharacterType CHARACTER_TYPE = ENTITY_SYSTEM.add(Meta.CHARACTER_TYPE.create.snapshot) as CharacterType
+
+	/** The default attribute value */
+	double DEFAULT_ATTRIBUTE_VALUE = 0.0
 
 	/** The default minimum attribute value */
 	double DEFAULT_MINIMUM_ATTRIBUTE_VALUE = 0.0
 
 	/** The default maximum attribute value */
 	double DEFAULT_MAXIMUM_ATTRIBUTE_VALUE = 99_999.0
+
+	/** The default maximum "percent" attribute value */
+	double DEFAULT_MAXIMUM_PERCENT_ATTRIBUTE_VALUE = 100.0
 
 	/** The default probability of activation */
 	double DEFAULT_PROBABILITY_OF_ACTIVATION = 1.0

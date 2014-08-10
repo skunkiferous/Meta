@@ -24,7 +24,7 @@ import org.junit.Test
  * @author monster
  *
  */
-class TestMovingPerson {
+class TestMovingPerson extends BaseTst {
 	val hierarchy = Meta.BUILDER.newHierarchy(com.blockwithme.meta.demo.Meta.PACKAGE, Meta.PACKAGE)
 
 	@Test

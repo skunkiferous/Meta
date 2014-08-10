@@ -28,8 +28,11 @@ import java.util.Objects;
 import java.util.Set;
 
 import com.blockwithme.meta.Type;
+import com.blockwithme.meta.beans.Bean;
 import com.blockwithme.meta.beans.ObjectObjectMapInterceptor;
+import com.blockwithme.meta.beans._Bean;
 import com.blockwithme.meta.beans._MapBean;
+import com.blockwithme.util.base.SystemUtils;
 import com.blockwithme.util.shared.MurmurHash;
 
 /**
@@ -101,33 +104,28 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
         return valueType.newArray(length);
     }
 
-    /** Increases the array size, if needed. */
-    private void ensureCapacityInternal(final int minCapacity) {
+    /** Increases the array size. */
+    private void ensureCapacityInternalAndClear(final int minCapacity) {
+        final int oldCapacity = keys.length;
+        // This detaches the current content, so it can be re-added later.
+        clear();
         // ensureSelectionCapacity() makes sure that the value of minCapacity is "reasonable"
         // We must account for the fact that each "index" holds *two* values (key and value)
         ensureSelectionCapacity(minCapacity * 2);
-        final K[] array = keys;
-        final int oldCapacity = array.length;
-        if (minCapacity > oldCapacity) {
-            int newCapacity;
-            if (minCapacity < MIN_SIZE) {
+        int newCapacity;
+        if (minCapacity < MIN_SIZE) {
+            newCapacity = MIN_SIZE;
+        } else {
+            newCapacity = oldCapacity;
+            if (newCapacity < MIN_SIZE) {
                 newCapacity = MIN_SIZE;
-            } else {
-                newCapacity = oldCapacity;
-                if (newCapacity < MIN_SIZE) {
-                    newCapacity = MIN_SIZE;
-                }
-                while (newCapacity < minCapacity) {
-                    newCapacity *= 2;
-                }
             }
-            final K[] newKeyArray = newKeysArray(newCapacity);
-            System.arraycopy(array, 0, newKeyArray, 0, oldCapacity);
-            keys = newKeyArray;
-            final V[] newValuesArray = newValuesArray(newCapacity);
-            System.arraycopy(values, 0, newValuesArray, 0, oldCapacity);
-            values = newValuesArray;
+            while (newCapacity < minCapacity) {
+                newCapacity *= 2;
+            }
         }
+        keys = newKeysArray(newCapacity);
+        values = newValuesArray(newCapacity);
     }
 
     /**
@@ -277,6 +275,20 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
         if (length > 0) {
             final ObjectObjectMapInterceptor<K, V> oomi = interceptor();
             oomi.clear(this);
+            if (SystemUtils.isAssignableFrom(Bean.class, getKeyType().type)) {
+                for (final K k : keys) {
+                    if (k instanceof _Bean) {
+                        ((_Bean) k).setParent(null);
+                    }
+                }
+            }
+            if (SystemUtils.isAssignableFrom(Bean.class, getValueType().type)) {
+                for (final V v : values) {
+                    if (v instanceof _Bean) {
+                        ((_Bean) v).setParent(null);
+                    }
+                }
+            }
             size = 0;
             keys = getKeyType().empty;
             values = getValueType().empty;
@@ -366,13 +378,14 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
             }
         }
         // We need to grow. And we assume it will only happen once, so that recursion is OK.
+        // Since both keys and values array are replaced, we do not need to clone them first.
+        final K[] oldKeyes = keys;
         final V[] oldValues = values;
-        clear();
-        ensureCapacityInternal((length == 0) ? MIN_SIZE : length * 2);
+        ensureCapacityInternalAndClear((length == 0) ? MIN_SIZE : length * 2);
         put(key, value);
         for (int i = 0; i < length; i++) {
-            if (array[i] != null) {
-                put(array[i], oldValues[i]);
+            if (oldKeyes[i] != null) {
+                put(oldKeyes[i], oldValues[i]);
             }
         }
         return null;

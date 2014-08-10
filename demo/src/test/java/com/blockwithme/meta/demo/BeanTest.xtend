@@ -32,9 +32,8 @@ import org.junit.Test
  * @author monster
  *
  */
-class BeanTest {
+class BeanTest extends BaseTst {
 	static val hierarchy = Meta.BUILDER.newHierarchy(Meta.PACKAGE)
-
 	@Test
 	def void testImmutable() {
 		val person = new PersonProvider().get

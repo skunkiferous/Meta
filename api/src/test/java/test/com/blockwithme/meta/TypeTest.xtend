@@ -64,7 +64,7 @@ class MyHierarchyListener implements HierarchyListener {
  * @author monster
  *
  */
-class TypeTest {
+class TypeTest extends BaseTst {
 	@BeforeClass
 	public static def void classSetup() {
 		// Force full init

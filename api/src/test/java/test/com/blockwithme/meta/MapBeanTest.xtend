@@ -28,7 +28,7 @@ import java.util.HashMap
  * @author monster
  *
  */
-class MapBeanTest {
+class MapBeanTest extends BaseTst {
 	@BeforeClass
 	public static def void classSetup() {
 		// Force full init

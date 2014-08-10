@@ -31,9 +31,8 @@ import static org.junit.Assert.*
  * @author monster
  *
  */
-class CollectionTest {
-	static val hierarchy = Meta.BUILDER.newHierarchy(Meta.PACKAGE, Meta.PACKAGE)
-
+class CollectionTest extends BaseTst {
+	static val hierarchy = Meta.BUILDER.newHierarchy(Meta.PACKAGE)
 	@Test
 	def void testCreation() {
 		val co = new CollectionOwnerProvider().get

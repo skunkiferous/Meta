@@ -20,31 +20,30 @@ import com.blockwithme.meta.beans._Bean
 
 import org.junit.Assert
 import org.junit.Test
+import com.blockwithme.util.server.UtilServerModule
+import com.google.inject.Guice
 
 /**
  * @author monster
  *
  */
-class SkillsTest {
-	static val hierarchy = Meta.BUILDER.newHierarchy(Meta.PACKAGE)
-
+class SkillsTest extends BaseTst {
 	@Test
 	def void testCreatePlayer() {
-		val player = Meta.PLAYER.create
+		val player = Skills.CHARACTER_TYPE.get
 		player.name = "John"
-		player.hitpoints.baseValue = 10.0
+		player.hp.baseValue = 10.0
 		player.strength.baseValue = 20.0
 		player.dexterity.baseValue = 30.0
 
-		val absStrBuf = Meta.BASIC_EFFECT.create
+		val absStrBuf = Skills.BASIC_EFFECT_TYPE.get
 		absStrBuf.effect.baseValue = 5
 
-		val relDexDebuf = Meta.BASIC_EFFECT.create
+		val relDexDebuf = Skills.BASIC_PERCENT_EFFECT_TYPE.get
 		relDexDebuf.effect.baseValue = 0.5
-		relDexDebuf.percent = true
 
-		player.strength.effects += absStrBuf
-		player.dexterity.effects += relDexDebuf
+		player.strength += absStrBuf
+		player.dexterity += relDexDebuf
 
 		Assert.assertEquals("player.strength", 25.0, player.strength.eval(null), 0.01)
 		Assert.assertEquals("player.dexterity", 15.0, player.dexterity.eval(null), 0.01)

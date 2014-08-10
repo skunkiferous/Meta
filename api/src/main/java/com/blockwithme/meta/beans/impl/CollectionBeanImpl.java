@@ -32,6 +32,7 @@ import com.blockwithme.meta.beans.ObjectCollectionInterceptor;
 import com.blockwithme.meta.beans._Bean;
 import com.blockwithme.meta.beans._ListBean;
 import com.blockwithme.meta.beans._SetBean;
+import com.blockwithme.util.base.SystemUtils;
 import com.blockwithme.util.shared.MurmurHash;
 
 /**
@@ -745,6 +746,14 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
         if (config.getFixedSize() == -1) {
             if (size > 0) {
                 interceptor().clear(this);
+                if (SystemUtils.isAssignableFrom(_Bean.class,
+                        getValueType().type)) {
+                    for (final E v : data) {
+                        if (v instanceof _Bean) {
+                            ((_Bean) v).setParent(null);
+                        }
+                    }
+                }
                 size = 0;
                 data = getValueType().empty;
                 clearSelectionArray();

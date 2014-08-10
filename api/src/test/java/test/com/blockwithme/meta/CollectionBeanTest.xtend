@@ -29,7 +29,7 @@ import java.util.Collections
  *
  * @author monster
  */
-class CollectionBeanTest {
+class CollectionBeanTest extends BaseTst {
 	@BeforeClass
 	public static def void classSetup() {
 		// Force full init
