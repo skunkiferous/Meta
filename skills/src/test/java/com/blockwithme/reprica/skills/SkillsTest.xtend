@@ -36,17 +36,13 @@ class SkillsTest extends BaseTst {
 		player.strength.baseValue = 20.0
 		player.dexterity.baseValue = 30.0
 
-		val absStrBuf = Skills.BASIC_EFFECT_TYPE.get
-		absStrBuf.effect.baseValue = 5
+		val mod = Skills.DRUNK_TYPE.get
+		mod.apply(player)
 
-		val relDexDebuf = Skills.BASIC_PERCENT_EFFECT_TYPE.get
-		relDexDebuf.effect.baseValue = 0.5
+		player.update(3)
 
-		player.strength += absStrBuf
-		player.dexterity += relDexDebuf
-
-		Assert.assertEquals("player.strength", 25.0, player.strength.eval(null), 0.01)
-		Assert.assertEquals("player.dexterity", 15.0, player.dexterity.eval(null), 0.01)
+		Assert.assertEquals("player.strength", 25.0, player.strength.eval(null, 3), 0.01)
+		Assert.assertEquals("player.dexterity", 15.0, player.dexterity.eval(null, 3), 0.01)
 
 //		Assert.assertFalse("as_Bean.immutable", as_Bean.immutable)
 //		Assert.assertTrue("as_Bean.immutable", as_Bean.immutable)

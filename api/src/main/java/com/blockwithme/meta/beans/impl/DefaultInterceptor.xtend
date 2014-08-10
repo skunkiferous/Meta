@@ -171,8 +171,9 @@ class DefaultInterceptor implements Interceptor {
 
 	def validateObjectType(Object e) {
 		if (!(e.class.enum || VALID_PROPERTY_TYPES.contains(e.class))) {
-			throw new IllegalArgumentException("Property values of type "
-				+e.class+" not (yet) supported")
+			if (!e.class.annotations.exists[it.annotationType==Data])
+				throw new IllegalArgumentException("Property values of type "
+					+e.class+" not (yet) supported")
 		}
 	}
 

@@ -34,6 +34,7 @@ import java.util.Collection
 import java.util.List
 import java.util.Set
 import java.util.Map
+import java.util.logging.Logger
 
 /** Base for all data/bean objects */
 interface Bean {
@@ -48,6 +49,9 @@ interface Bean {
 
     /** Returns a lightweight mutable copy */
     def Bean wrapper()
+    
+    /** Returns the Logger for this Bean */
+    def Logger log()
 }
 
 /**

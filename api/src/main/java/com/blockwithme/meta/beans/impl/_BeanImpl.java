@@ -22,6 +22,7 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.logging.Logger;
 
 import com.blockwithme.meta.ObjectProperty;
 import com.blockwithme.meta.Property;
@@ -228,6 +229,9 @@ public abstract class _BeanImpl implements _Bean {
 
     /** Speeds up, looking up Property indexes. */
     private transient int lastIndexedPropIndex = -1;
+
+    /** The Logger */
+    private transient Logger log;
 
     /** Resets the cached state (when something changes) */
     private void resetCachedState() {
@@ -820,5 +824,13 @@ public abstract class _BeanImpl implements _Bean {
                 throw new IllegalArgumentException(
                         "Collection/Map setters only accepts null");
         }
+    }
+
+    /** Returns the Logger for this Bean */
+    public final Logger log() {
+        if (log == null) {
+            log = Logger.getLogger(getClass().getName());
+        }
+        return log;
     }
 }
