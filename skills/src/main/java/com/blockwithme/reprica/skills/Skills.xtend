@@ -365,7 +365,8 @@ interface Entity extends Root {
 		}
 		/** Returns the attribute with the given AttributeType, if any. */
 		static def Attribute attr(Entity it, AttributeType attributeType) {
-			_attributes.get(attributeType.name)
+			val result = _attributes.get(attributeType.name)
+			if ((result != null) && (result.type == attributeType)) result else null
 		}
 		/** The type of the entity */
 		static def EntityType type(Entity it) {
@@ -393,6 +394,18 @@ interface EffectType extends EntityType {
 		static def Effect get(EffectType it) {
 			init(Meta.EFFECT.create) as Effect
 		}
+
+		/**
+		 * Probability of activation, in percent. If the check fails,
+		 * the effect will not apply at all.
+		 */
+		static def AttributeType percentActivation(EffectType it) { attr("percentActivation") }
+
+		/** Probability of activation *per turn*, in percent. */
+		static def AttributeType percentPerTurn(EffectType it) { attr("percentPerTurn") }
+
+		/** Duration of the effect, in turns. */
+		static def AttributeType duration(EffectType it) { attr("duration") }
 	}
 
 	/** The category of an effect */
@@ -465,6 +478,9 @@ interface BasicEffectType extends EffectType {
 		static def BasicEffect get(BasicEffectType it) {
 			init(Meta.BASIC_EFFECT.create) as BasicEffect
 		}
+
+		/** The value/strength of the "effect". */
+		static def AttributeType effect(BasicEffectType it) { attr("effect") }
 	}
 }
 
@@ -498,12 +514,67 @@ interface BasicEffect extends Effect {
 	}
 }
 
+/** Matches an attribute, to which an effect should be applied */
+interface AttributeMatcher {
+	/** Returns true, if the attribute matches */
+	def boolean matches(Entity entity, Attribute attribute)
+}
+
+/** A pair of attribute matcher, and effect type, to create an effect, when appropriate */
+@Data
+class EffectBuilder {
+	EffectType type
+	AttributeMatcher matcher
+}
+
+/** The type of a modifier. */
+@Bean(instance=true)
+interface ModifierType extends EntityType {
+	class Impl {
+		/** Pseudo-constructor for basic effects */
+		static def void _init_(ModifierType it) {
+		}
+		/** Creates and adds a new BasicEffect builder */
+		static def EffectBuilder newBasicEffect(ModifierType it, String name,
+			double percentActivation, double percentPerTurn, double duration,
+			boolean percent, EffectCategory category, AttributeMatcher matcher) {
+			requireNonNull(matcher, "matcher")
+			val type = Meta.BASIC_EFFECT_TYPE.create
+			type.percentActivation.defaultValue = percentActivation
+			type.percentPerTurn.defaultValue = percentPerTurn
+			type.duration.defaultValue = duration
+			type.percent = percent
+			type.category = category
+			type.name = name
+			val result = new EffectBuilder(type, matcher)
+			builders.add(result)
+			result
+		}
+		/** Creates a new Modifier */
+		static def Modifier get(ModifierType it) {
+			init(Meta.MODIFIER.create) as Modifier
+		}
+	}
+	EffectBuilder[] builders
+}
+
+/** A modifier is an effect factory, representing the effects of one attack/skill/equipment/... */
+interface Modifier extends Entity {
+	class Impl {
+		/** The type of the entity */
+		static def ModifierType type(Modifier it) {
+			_type as ModifierType
+		}
+	}
+}
+
 /** The type of a character. */
 @Bean(instance=true)
 interface CharacterType extends EntityType {
 	class Impl {
 		/** Pseudo-constructor for basic effects */
 		static def void _init_(CharacterType it) {
+			// TODO Use newPercentAttr() for percent/probability attributes
 			newAttr("speed", AttributeCategory.Attack)
 			newAttr("dexterity", AttributeCategory.Attack)
 			newAttr("rage", AttributeCategory.Attack)
@@ -525,8 +596,6 @@ interface CharacterType extends EntityType {
 			newAttr("artistry")
 			newAttr("level")
 			newAttr("xp")
-
-//			newPercentAttr("percentPerTurn")
 		}
 		/** Creates a new Character */
 		static def Character get(CharacterType it) {
@@ -593,14 +662,6 @@ interface Skills {
 
 	/** The EffectType singleton */
 	EffectType EFFECT_TYPE = ENTITY_SYSTEM.add(Meta.EFFECT_TYPE.create.snapshot) as EffectType
-
-	/** The BasicEffectType singleton */
-	BasicEffectType BASIC_EFFECT_TYPE = ENTITY_SYSTEM.add(Meta.BASIC_EFFECT_TYPE.create.snapshot) as BasicEffectType
-
-	/** The BasicEffectType singleton for "percent" effects */
-	BasicEffectType BASIC_PERCENT_EFFECT_TYPE = ENTITY_SYSTEM.add(
-		Meta.BASIC_EFFECT_TYPE.create.setPercent(true).setName("BasicEffectType%").snapshot as EntityType
-	) as BasicEffectType
 
 	/** The CharacterType singleton */
 	CharacterType CHARACTER_TYPE = ENTITY_SYSTEM.add(Meta.CHARACTER_TYPE.create.snapshot) as CharacterType
