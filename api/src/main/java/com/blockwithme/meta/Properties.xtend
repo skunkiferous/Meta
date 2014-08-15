@@ -851,11 +851,13 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
       for (parent : inheritedParents) {
         for (parentProp : parent.properties) {
           if (parentProp.simpleName.equals(name)) {
-            throw new IllegalStateException(theType
-              +" has a property "+name
-              +" which clashed with a property of "+parent
-              +" (if they are the 'same' property, refactor to represent that)"
-            )
+          	if (!prop.virtual || !parentProp.virtual) {
+	            throw new IllegalStateException(theType
+	              +" has a property "+name
+	              +" which clashed with a property of "+parent
+	              +" (if they are the 'same' property, refactor to represent that)"
+	            )
+            }
           }
         }
       }
@@ -954,10 +956,12 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
       // Property name clash is not allowed between parent either
       val other = _simpleNameToProperty.put(prop.simpleName, prop)
       if ((other !== null) && (other !== prop)) {
-        val msg = theType
-          +" inherits multiple properties with simpleName "+prop.simpleName
-          +" (at least "+prop.fullName+" and "+other.fullName+")"
-        throw new IllegalStateException(msg)
+      	if (!other.virtual) {
+	        val msg = theType
+	          +" inherits multiple properties with simpleName "+prop.simpleName
+	          +" (at least "+prop.fullName+" and "+other.fullName+")"
+	        throw new IllegalStateException(msg)
+        }
       }
     }
       propertyCount = properties.length

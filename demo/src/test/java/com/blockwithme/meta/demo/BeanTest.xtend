@@ -52,6 +52,7 @@ class BeanTest extends BaseTst {
 		}
 		Assert.assertTrue("person now immutable", exception)
 		Assert.assertEquals("person.age", 33, person.age)
+		Assert.assertEquals("person.hello", "Hello, Sir. John", person.hello)
 	}
 
 	/** Also tests toJSON(Appendable) */
@@ -92,6 +93,7 @@ class BeanTest extends BaseTst {
 		dtc.childProp = person
 		dtc.clearSelection(true, true)
 		dtc.setSelectionRecursive
+		Assert.assertEquals("dtc._secret", 42, dtc._secret)
 		Assert.assertTrue("dtc.selected1", dtc.selected)
 		Assert.assertTrue("person.selected1", person.selected)
 		Assert.assertTrue("dtc.selectedRecursive1", dtc.selectedRecursive)

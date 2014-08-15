@@ -15,13 +15,8 @@
  */
 package com.blockwithme.reprica.skills
 
-import com.blockwithme.meta.Property
-import com.blockwithme.meta.beans._Bean
-
 import org.junit.Assert
 import org.junit.Test
-import com.blockwithme.util.server.UtilServerModule
-import com.google.inject.Guice
 
 /**
  * @author monster

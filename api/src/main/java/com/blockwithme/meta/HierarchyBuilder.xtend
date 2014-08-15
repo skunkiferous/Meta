@@ -134,7 +134,7 @@ class HierarchyBuilder {
 		globalId = globalId + 1
 		result.typeId = typeId
 		typeId = typeId + 1
-		LOG.debug("Type "+theType.name+" pre-registered in Hierarchy "+name)
+		LOG.warn("Type "+theType.name+" pre-registered in Hierarchy "+name+" with typeId "+result.typeId)
 		result
 	}
 

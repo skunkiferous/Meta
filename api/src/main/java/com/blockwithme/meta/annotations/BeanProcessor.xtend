@@ -67,6 +67,7 @@ import java.util.Collections
 import org.eclipse.xtend.lib.macro.declaration.EnumerationTypeDeclaration
 import org.eclipse.xtend.lib.macro.declaration.MutableTypeDeclaration
 import org.eclipse.xtend.lib.macro.declaration.MutableEnumerationTypeDeclaration
+import org.eclipse.xtend.lib.macro.declaration.MemberDeclaration
 
 /**
  * Annotates an interface declared in a C-style-struct syntax
@@ -163,23 +164,6 @@ annotation ListProperty {
 	boolean nullAllowed = false
 }
 
-/**
- * Annotates a property field as a "virtual" property.
- * Virtual properties are mostly used in manually created base-class,
- * and in third-party classes. Here, this causes a "getter" to be defined,
- * that contains the code specified in the getterJavaCode parameter
- * (";" is added automatically), but no field is generated. If setterJavaCode
- * is not empty, a setter is generated too (parameter is always called "newValue").
- *
- * @author monster
- */
-@Target(ElementType.FIELD)
-@Retention(RetentionPolicy.CLASS)
-annotation VirtualProperty {
-	String getterJavaCode
-	String setterJavaCode = ""
-}
-
 @Data
 package class PropertyInfo {
   String name
@@ -188,10 +172,8 @@ package class PropertyInfo {
   /*CollectionPropertyType*/String colType
   int fixedSize
   boolean nullAllowed
-  /** Virtual Property getter implementation */
-  String getterJavaCode
-  /** Optional Virtual Property setter implementation */
-  String setterJavaCode
+  /** Virtual Property? Then the implementation does not get generated (as it is through "Impl methods") */
+  boolean virtualProp
 }
 
 @Data
@@ -364,6 +346,8 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
   static val BP_HIERARCHY_ROOT = "BP_HIERARCHY_ROOT"
   static val BP_NON_BEAN_TODO = "BP_NON_BEAN_TODO"
   static val INIT = "_init_()"
+  static val BEAN_FILTER = and(isInterface,withAnnotation(Bean))
+  static val PROP_INFO_FIELDS = 7
 
   /** Returns true, if the type is/should be a Bean */
   private def boolean isBean(org.eclipse.xtend.lib.macro.declaration.Type type) {
@@ -384,7 +368,7 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
   new() {
     // Step 0, make sure we have an interface, annotated with @Bean
     // Or it's an immutable type (not modified, but at least registered)
-    super(or(isEnum,withAnnotation(Data),and(isInterface,withAnnotation(Bean))))
+    super(or(isEnum,withAnnotation(Data),BEAN_FILTER))
   }
 
   /** Converts CamelCase to CAMEL_CASE */
@@ -455,28 +439,28 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
     }
   }
 
-  /**
-   * Each TypeDeclaration will be an interface, and it must be a @Bean,
-   * or "empty", inclusive their parents. Otherwise, the first name
-   * or a rejected type is returned.
-   */
-  private def String checkIsBeanOrMarker(Map<String,Object> processingContext, TypeDeclaration _interface) {
-    if (isMarker(_interface)) {
-      return null
-    }
-    if (accept(processingContext, _interface)) {
-      for (parent : findParents(_interface)) {
-      	if (parent !== _interface) {
-	        val parentResult = checkIsBeanOrMarker(processingContext, parent)
-	        if (parentResult !== null) {
-	          return parentResult
-	        }
-        }
-      }
-      return null
-    }
-    _interface.qualifiedName
-  }
+//  /**
+//   * Each TypeDeclaration will be an interface, and it must be a @Bean,
+//   * or "empty", inclusive their parents. Otherwise, the first name
+//   * or a rejected type is returned.
+//   */
+//  private def String checkIsBeanOrMarker(Map<String,Object> processingContext, TypeDeclaration _interface) {
+//    if (isMarker(_interface)) {
+//      return null
+//    }
+//    if (BEAN_FILTER.apply(processingContext, processorUtil,_interface)) {
+//      for (parent : findParents(_interface)) {
+//      	if (parent !== _interface) {
+//	        val parentResult = checkIsBeanOrMarker(processingContext, parent)
+//	        if (parentResult !== null) {
+//	          return parentResult
+//	        }
+//        }
+//      }
+//      return null
+//    }
+//    _interface.qualifiedName
+//  }
 
   /** Returns false if the given type name is not valid for a property */
   private def validPropertyType(Map<String,Object> processingContext, TypeReference typeRef, TypeDeclaration parent) {
@@ -608,6 +592,37 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
   	propInfo.type.startsWith(MapBean.name+"<")
   }
 
+  private def void extractVirtualProperties(Map<String,Object> processingContext, BeanInfo result,
+  	TypeDeclaration td, ClassDeclaration innerImplClass, PropertyInfo[] properties,
+  	int fields, HashMap<String,MethodDeclaration> xetterInnerMethods, ArrayList<String> parentFields) {
+  	val list = new ArrayList<PropertyInfo>
+  	if ((innerImplClass != null) && !xetterInnerMethods.empty) {
+	    val qualifiedName = innerImplClass.qualifiedName
+	    var index = fields
+  		for (e : xetterInnerMethods.entrySet) {
+  			val m = e.value
+  			val decl = m.simpleName
+  			if (decl.startsWith("get")) {
+  				val name = m.simpleName.substring(3).toFirstLower
+	        	val ftype = m.returnType
+				if (ftype == null) {
+					throw new NullPointerException(
+						qualifiedName+"."+m.simpleName+".type: null"
+					)
+				}
+	        	beanInfoField(processingContext, result, td, properties, index, m, ftype, name, true)
+			  // STEP 4
+//			  if (parentFields.contains(name.toLowerCase)) {
+//			    result.validity.add("Property(Getter) "+name
+//			      +" is a duplicate from a parent property")
+//			  }
+			  index = index + 1
+  			}
+  		}
+  	}
+  	list.toArray(newArrayOfSize(list.size))
+  }
+
   // STEP 1/2
   private def BeanInfo beanInfo(Map<String,Object> processingContext, TypeDeclaration td) {
     // Lazy init
@@ -627,8 +642,8 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
     var result = processingContext.get(key) as BeanInfo
     if (result === null) {
       val bean = td.findAnnotation(findTypeGlobally(Bean))
+      val isAccepted = BEAN_FILTER.apply(processingContext, processorUtil,td)
 	  val isInstance = (bean !== null) && bean.getBooleanValue("instance")
-      if (td instanceof TypeDeclaration) {
         val filePkg = (processingContext.get(Processor.PC_PACKAGE) as String)
         // OK, this type comes from a *dependency*
         if (filePkg != pkgName) {
@@ -641,9 +656,12 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
             putInCache(processingContext, key, noSameSimpleNameKey, result)
             return result
           }
-        }
        }
-      val check = checkIsBeanOrMarker(processingContext, td)
+//      val check = checkIsBeanOrMarker(processingContext, td)
+	  val check = if (td instanceof InterfaceDeclaration)
+	  	null
+  	  else
+  	    td.qualifiedName
       if (check !== null) {
         // not valid as Bean/Marker type
         var msg = "Non Bean/Marker type: "+qualifiedName
@@ -659,14 +677,41 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
 	    val String[] sortKeyes = if (bean !== null) bean.getStringArrayValue("sortKeyes") else #[]
         val parentsTD = findDirectParents(td)
         val fields = td.declaredFields
-        // Add early in cache, to prevent infinite loops
-        val parents = <BeanInfo>newArrayOfSize(parentsTD.size)
-        val properties = <PropertyInfo>newArrayOfSize(fields.size)
-
         val innerImplName = qualifiedName+".Impl"
 		val innerImpl = new InnerImpl(innerImplName)
+		val innerImplClass = td.declaredClasses.findFirst[it.qualifiedName==innerImplName]
+
+		// STEP 11
+		val ownInnerMethods = new HashMap<String,String>
+		val xetterInnerMethods = new HashMap<String,MethodDeclaration>
+		val xetterInnerProperties = new HashSet<String>
+		if (innerImplClass != null) {
+			for (m : innerImplClass.declaredMethods) {
+				val declaration = innerMethodToString(td, m);
+				if (declaration != null) {
+					ownInnerMethods.put(declaration, innerImplName)
+					if (m.simpleName.length > 3) {
+			  			if (declaration.startsWith("get")) {
+	  						if (m.parameters.tail.empty) {
+								xetterInnerMethods.put(declaration, m)
+								xetterInnerProperties.add(m.simpleName.substring(3))
+							}
+						} else if (declaration.startsWith("set")) {
+	  						if (m.parameters.tail.size == 1) {
+								xetterInnerMethods.put(declaration, m)
+							}
+						}
+					}
+				}
+			}
+		}
+
+        // Add early in cache, to prevent infinite loops
+        val parents = <BeanInfo>newArrayOfSize(parentsTD.size)
+        val properties = <PropertyInfo>newArrayOfSize(fields.size + xetterInnerProperties.size)
+
         result = new BeanInfo(qualifiedName,parents,properties,
-          newArrayList(), accept(processingContext, td), isInstance, sortKeyes, innerImpl)
+          newArrayList(), isAccepted, isInstance, sortKeyes, innerImpl)
         putInCache(processingContext, key, noSameSimpleNameKey, result)
         // Find parents
         var index = 0
@@ -684,20 +729,6 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
             parentFields.add(pp.name.toLowerCase)
           }
         }
-
-		// STEP 11
-		val innerImplClass = td.declaredClasses.findFirst[it.qualifiedName==innerImplName]
-		val ownInnerMethods = new HashMap<String,String>
-		if (innerImplClass != null) {
-			for (m : innerImplClass.declaredMethods) {
-				if (m.static && m.visibility == Visibility.PUBLIC) {
-					val declaration = innerMethodToString(td, m);
-					if (declaration != null) {
-						ownInnerMethods.put(declaration, innerImplName)
-					}
-				}
-			}
-		}
 
 		// STEP 12
 		// Type.Impl.(static,public)_init_(Type) method is used as a pseudo-constructor, if present.
@@ -740,122 +771,22 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
         // Find properties
         index = 0
         for (f : fields) {
-          val ftypeName = f.type.name
-		  val start = ftypeName.indexOf('<')
-		  val nameNoGen = if (start < 0) ftypeName else ftypeName.substring(0, start)
-		  // Collections can also be defined the old-fashioned way.
-		  val oldStyleCol = (("java.util.List" == nameNoGen) || ("java.util.Set" == nameNoGen))
-		  val isMap = ("java.util.Map" == nameNoGen)
-          val doc = if (f.docComment === null) "" else f.docComment
-      	  val unorderedSetAnnot = f.findAnnotation(findTypeGlobally(UnorderedSetProperty))
-      	  val orderedSetAnnot = f.findAnnotation(findTypeGlobally(OrderedSetProperty))
-      	  val sortedSetAnnot = f.findAnnotation(findTypeGlobally(SortedSetProperty))
-      	  val hashSetAnnot = f.findAnnotation(findTypeGlobally(HashSetProperty))
-      	  val listAnnot = f.findAnnotation(findTypeGlobally(ListProperty))
-      	  val isCollProp = (unorderedSetAnnot !== null) || (orderedSetAnnot !== null)
-      	  	|| (sortedSetAnnot !== null) || (hashSetAnnot !== null) || (listAnnot !== null)
-      	  val virtualAnnot = f.findAnnotation(findTypeGlobally(VirtualProperty))
-      	  var getterJavaCode = ""
-      	  var setterJavaCode = ""
-      	  if (virtualAnnot !== null) {
-	      	  getterJavaCode = virtualAnnot.getStringValue("getterJavaCode")
-	          requireNonNull(getterJavaCode, qualifiedName+"."+f.simpleName+".getterJavaCode")
-	      	  setterJavaCode = virtualAnnot.getStringValue("setterJavaCode")
-	          requireNonNull(setterJavaCode, qualifiedName+"."+f.simpleName+".setterJavaCode")
-          }
-          if (f.type.array || oldStyleCol) {
-          	// A collection property!
-          	val componentTypeName0 = if (oldStyleCol) {
-          		ftypeName.substring(start+1, ftypeName.length - 1)
-      		} else {
-	          	f.type.arrayComponentType.name
-          	}
-          	val componentTypeName = wrapperOrObject(componentTypeName0)
-          	var String collType = null
-          	var fixedSize = -1
-          	var nullAllowed = false
-          	if (isCollProp) {
-          		if (oldStyleCol) {
-          				throw new IllegalStateException(
-          					"'old-style' collection types do not support collection annotations on "
-          					+qualifiedName+"."+f.simpleName)
-          		}
-          		if (unorderedSetAnnot !== null) {
-          			collType = CollectionPropertyType.unorderedSet
-          		}
-          		if (orderedSetAnnot !== null) {
-          			if (collType !== null) {
-          				throw new IllegalStateException(
-          					"Multiple collection types used on "+qualifiedName+"."+f.simpleName)
-          			}
-          			collType = CollectionPropertyType.orderedSet
-          		}
-          		if (sortedSetAnnot !== null) {
-          			if (collType !== null) {
-          				throw new IllegalStateException(
-          					"Multiple collection types used on "+qualifiedName+"."+f.simpleName)
-          			}
-          			collType = CollectionPropertyType.sortedSet
-          		}
-          		if (hashSetAnnot !== null) {
-          			if (collType !== null) {
-          				throw new IllegalStateException(
-          					"Multiple collection types used on "+qualifiedName+"."+f.simpleName)
-          			}
-          			collType = CollectionPropertyType.hashSet
-          		}
-          		if (listAnnot !== null) {
-          			if (collType !== null) {
-          				throw new IllegalStateException(
-          					"Multiple collection types used on "+qualifiedName+"."+f.simpleName)
-          			}
-          			collType = CollectionPropertyType.list
-          			fixedSize = listAnnot.getIntValue("fixedSize")
-          			nullAllowed = listAnnot.getBooleanValue("nullAllowed")
-      			}
-  			} else if (oldStyleCol) {
-      			collType = if ("java.util.List" == nameNoGen)
-      				CollectionPropertyType.list
-  				else
-      				CollectionPropertyType.unorderedSet
-          	} else {
-      			collType = CollectionPropertyType.unorderedSet
-          	}
-          	val String typeName = if (CollectionPropertyType.list == collType)
-          		ListBean.name+"<"+componentTypeName+">"
-      		else
-          		SetBean.name+"<"+componentTypeName+">"
-            properties.set(index, new PropertyInfo(
-	            requireNonNull(f.simpleName, "f.simpleName"),
-	            requireNonNull(typeName, "typeName"), doc, collType, fixedSize,
-	            nullAllowed, getterJavaCode, setterJavaCode))
-          } else if (isMap) {
-          	// A Map property!
-          	val String typeName = MapBean.name+ftypeName.substring(start)
-            properties.set(index, new PropertyInfo(
-	            requireNonNull(f.simpleName, "f.simpleName"),
-	            requireNonNull(typeName, "typeName"), doc, null, -1,
-	            true, getterJavaCode, setterJavaCode))
-          } else {
-          	  if (isCollProp) {
-          		// NOT a collection property!
-                result.validity.add("Property "+f.simpleName+" is not a collection type (must be array)")
-          	  }
-	          properties.set(index, new PropertyInfo(
-	            requireNonNull(f.simpleName, "f.simpleName"),
-	            requireNonNull(ftypeName, "ftypeName"),
-	            doc, null, -1, false, getterJavaCode, setterJavaCode))
-          }
-          index = index + 1
-          if (!validPropertyType(processingContext, f.type, td)) {
-            result.validity.add("Property "+f.simpleName+" is not valid")
-          }
-          // STEP 4
-          if (parentFields.contains(f.simpleName.toLowerCase)) {
-            result.validity.add("Property "+f.simpleName
-              +" is a duplicate from a parent property")
-          }
+        	val ftype = f.type
+			if (ftype == null) {
+				throw new NullPointerException(
+					qualifiedName+"."+f.simpleName+".type: null, isAccepted: "+isAccepted+", check: "+check
+				)
+			}
+        	beanInfoField(processingContext, result, td, properties, index, f, ftype, f.simpleName, false)
+		  // STEP 4
+		  if (parentFields.contains(f.simpleName.toLowerCase)) {
+		    result.validity.add("Property(Field) "+f.simpleName
+		      +" is a duplicate from a parent property")
+		  }
+		  index = index + 1
         }
+        extractVirtualProperties(processingContext, result,
+  			td, innerImplClass, properties, index, xetterInnerMethods, parentFields)
 
         val allProps = result.allProperties.values
         for (sortKey : sortKeyes) {
@@ -878,6 +809,112 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
       result.check()
     }
     result
+  }
+
+  private def void beanInfoField(Map<String,Object> processingContext, BeanInfo result,
+  	TypeDeclaration td, PropertyInfo[] properties, int index, MemberDeclaration f,
+  	TypeReference ftype, String simpleName, boolean virtualProp) {
+  		val qualifiedName = td.qualifiedName
+	  val ftypeName = ftype.name
+	  val start = ftypeName.indexOf('<')
+	  val nameNoGen = if (start < 0) ftypeName else ftypeName.substring(0, start)
+	  // Collections can also be defined the old-fashioned way.
+	  val oldStyleCol = (("java.util.List" == nameNoGen) || ("java.util.Set" == nameNoGen))
+	  val isMap = ("java.util.Map" == nameNoGen)
+	  val doc = if (f.docComment === null) "" else f.docComment
+	  val unorderedSetAnnot = f.findAnnotation(findTypeGlobally(UnorderedSetProperty))
+	  val orderedSetAnnot = f.findAnnotation(findTypeGlobally(OrderedSetProperty))
+	  val sortedSetAnnot = f.findAnnotation(findTypeGlobally(SortedSetProperty))
+	  val hashSetAnnot = f.findAnnotation(findTypeGlobally(HashSetProperty))
+	  val listAnnot = f.findAnnotation(findTypeGlobally(ListProperty))
+	  val isCollProp = (unorderedSetAnnot !== null) || (orderedSetAnnot !== null)
+	  	|| (sortedSetAnnot !== null) || (hashSetAnnot !== null) || (listAnnot !== null)
+	  if (ftype.array || oldStyleCol) {
+	  	// A collection property!
+	  	val componentTypeName0 = if (oldStyleCol) {
+	  		ftypeName.substring(start+1, ftypeName.length - 1)
+		} else {
+	      	ftype.arrayComponentType.name
+	  	}
+	  	val componentTypeName = wrapperOrObject(componentTypeName0)
+	  	var String collType = null
+	  	var fixedSize = -1
+	  	var nullAllowed = false
+	  	if (isCollProp) {
+	  		if (oldStyleCol) {
+	  				throw new IllegalStateException(
+	  					"'old-style' collection types do not support collection annotations on "
+	  					+qualifiedName+"."+simpleName)
+	  		}
+	  		if (unorderedSetAnnot !== null) {
+	  			collType = CollectionPropertyType.unorderedSet
+	  		}
+	  		if (orderedSetAnnot !== null) {
+	  			if (collType !== null) {
+	  				throw new IllegalStateException(
+	  					"Multiple collection types used on "+qualifiedName+"."+simpleName)
+	  			}
+	  			collType = CollectionPropertyType.orderedSet
+	  		}
+	  		if (sortedSetAnnot !== null) {
+	  			if (collType !== null) {
+	  				throw new IllegalStateException(
+	  					"Multiple collection types used on "+qualifiedName+"."+simpleName)
+	  			}
+	  			collType = CollectionPropertyType.sortedSet
+	  		}
+	  		if (hashSetAnnot !== null) {
+	  			if (collType !== null) {
+	  				throw new IllegalStateException(
+	  					"Multiple collection types used on "+qualifiedName+"."+simpleName)
+	  			}
+	  			collType = CollectionPropertyType.hashSet
+	  		}
+	  		if (listAnnot !== null) {
+	  			if (collType !== null) {
+	  				throw new IllegalStateException(
+	  					"Multiple collection types used on "+qualifiedName+"."+simpleName)
+	  			}
+	  			collType = CollectionPropertyType.list
+	  			fixedSize = listAnnot.getIntValue("fixedSize")
+	  			nullAllowed = listAnnot.getBooleanValue("nullAllowed")
+			}
+		} else if (oldStyleCol) {
+			collType = if ("java.util.List" == nameNoGen)
+				CollectionPropertyType.list
+			else
+				CollectionPropertyType.unorderedSet
+	  	} else {
+			collType = CollectionPropertyType.unorderedSet
+	  	}
+	  	val String typeName = if (CollectionPropertyType.list == collType)
+	  		ListBean.name+"<"+componentTypeName+">"
+		else
+	  		SetBean.name+"<"+componentTypeName+">"
+	    properties.set(index, new PropertyInfo(
+	        requireNonNull(simpleName, "f.simpleName"),
+	        requireNonNull(typeName, "typeName"), doc, collType, fixedSize,
+	        nullAllowed, virtualProp))
+	  } else if (isMap) {
+	  	// A Map property!
+	  	val String typeName = MapBean.name+ftypeName.substring(start)
+	    properties.set(index, new PropertyInfo(
+	        requireNonNull(simpleName, "f.simpleName"),
+	        requireNonNull(typeName, "typeName"), doc, null, -1,
+	        true, virtualProp))
+	  } else {
+	  	  if (isCollProp) {
+	  		// NOT a collection property!
+	        result.validity.add("Property "+simpleName+" is not a collection type (must be array)")
+	  	  }
+	      properties.set(index, new PropertyInfo(
+	        requireNonNull(simpleName, "f.simpleName"),
+	        requireNonNull(ftypeName, "ftypeName"),
+	        doc, null, -1, false, virtualProp))
+	  }
+	  if (!validPropertyType(processingContext, ftype, td)) {
+	    result.validity.add("Property "+simpleName+" is not valid")
+	  }
   }
 
   /** Adds Getters and Setter to the Bean Interface. */
@@ -970,11 +1007,6 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
 
     /** Concerts an inner Impl method to a declaration String, if the method qualifies */
     def private String innerMethodToString(TypeDeclaration td, MethodDeclaration m) {
-    	val name = m.simpleName
-    	if ((name.length > 3) && (name.startsWith("get") || name.startsWith("set"))) {
-    		error(BeanProcessor, "transform", td, "Inner Impl Method " + m.simpleName
-    			+" of "+td.qualifiedName+" must not start with 'set' or 'get'")
-    	}
 		innerMethodToString(td.qualifiedName, m)
     }
 
@@ -1262,7 +1294,10 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
     // Add setter
     val valueType = propTypeRef
     if (accessor.findDeclaredMethod("apply", instanceType, valueType) === null) {
-      val bodyText = '''return instance.set«propertyToXetterSuffix(propInfo.name)»(newValue);'''
+      val bodyText = if (propInfo.virtualProp)
+        '''throw new UnsupportedOperationException();'''
+      else
+      	'''return instance.set«propertyToXetterSuffix(propInfo.name)»(newValue);'''
       accessor.addMethod("apply") [
         visibility = Visibility.PUBLIC
         final = true
@@ -1308,7 +1343,7 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
     val metaPkg = BooleanProperty.package.name
     val propName = propertyMethodName(propInfo)
     val name = getPropertyFieldNameInMeta(beanInfo.simpleName, propInfo)
-    val isVirtual = !propInfo.getterJavaCode.empty
+    val isVirtual = propInfo.virtualProp
     if (meta.findDeclaredField(name) === null) {
       val simpleName = beanInfo.simpleName
       val qualifiedName = beanInfo.qualifiedName
@@ -1413,7 +1448,7 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
             } else {
               error(BeanProcessor, "transform", intf, msg)
             }
-      	} else {
+      	} else if (p.isBean) {
           parents.append(parent)
           parents.append(', ')
       	}
@@ -1464,7 +1499,7 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
     if (meta.findDeclaredField(name) === null) {
       val allTypesStr = new StringBuilder
       for (t : allTypes) {
-        if (accept(processingContext, t)) {
+      	if (accept(processingContext, t)) {
           if (allTypesStr.length > 0) {
             allTypesStr.append(", ")
           }
@@ -1575,7 +1610,7 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
   private def void generatePropertyField(Map<String, Object> processingContext,
     MutableInterfaceDeclaration intf, MutableClassDeclaration impl,
     BeanInfo beanInfo, PropertyInfo propInfo) {
-	val isVirtual = !propInfo.getterJavaCode.empty
+	val isVirtual = propInfo.virtualProp
     if (!isVirtual && impl.findDeclaredField(propInfo.name) === null) {
       val propInfoType = if (propInfo.isMap) {
   	  	val start = propInfo.type.indexOf('<')
@@ -1632,18 +1667,15 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
 		MutableInterfaceDeclaration intf, MutableClassDeclaration impl, BeanInfo beanInfo, PropertyInfo propInfo) {
 		val propertyMethodName = propertyMethodName(propInfo);
 		val propertyFieldName = beanInfo.pkgName+".Meta."+getPropertyFieldNameInMeta(beanInfo.simpleName, propInfo)
-		val getterJavaCode = propInfo.getterJavaCode
-		val setterJavaCode = propInfo.setterJavaCode
-    	val isVirtual = !getterJavaCode.empty
+		val isVirtual = propInfo.virtualProp
 		val doc = propInfo.comment
 		val propTypeRef = newTypeReferenceWithGenerics(propInfo.type)
 		val colType = propInfo.colType
 		val colOrMap = ((colType !== null) || propInfo.isMap)
 		val tfu = propertyToXetterSuffix(propInfo.name)
 		val getter = if (colOrMap) "getRaw"+tfu else "get"+tfu
-		if (impl.findDeclaredMethod(getter) === null) {
-			val bodyText = if (isVirtual) getterJavaCode+";"
-				else '''return interceptor.get«propertyMethodName»(this, «propertyFieldName», «propInfo.name»);'''
+		if (!isVirtual && (impl.findDeclaredMethod(getter) === null)) {
+			val bodyText = '''return interceptor.get«propertyMethodName»(this, «propertyFieldName», «propInfo.name»);'''
 			impl.addMethod(getter) [
 				visibility = Visibility.PUBLIC
 				final = true
@@ -1664,9 +1696,8 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
 		}
 		val setter = "set"+tfu
 		val valueType = propTypeRef
-		if ((!isVirtual || !setterJavaCode.empty) && impl.findDeclaredMethod(setter, valueType) === null) {
-			val bodyText0 = if (isVirtual) setterJavaCode+";"
-				else '''«propInfo.name» = «castForColProp(propInfo)»interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», newValue);
+		if (!isVirtual && impl.findDeclaredMethod(setter, valueType) === null) {
+			val bodyText0 = '''«propInfo.name» = «castForColProp(propInfo)»interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», newValue);
 return this;'''
 			val bodyText = if (!colOrMap) bodyText0 else
 			'''checkNullOrImmutable(newValue);
@@ -1817,7 +1848,7 @@ return result;'''
 				}
 
 				if (!beanInfo.properties.empty) {
-					val props = <String>newArrayOfSize(beanInfo.properties.size*8)
+					val props = <String>newArrayOfSize(beanInfo.properties.size*PROP_INFO_FIELDS)
 					i = 0
 					for (p : beanInfo.properties) {
 						props.set(i, requireNonNull(p.name, p+": name"))
@@ -1832,9 +1863,7 @@ return result;'''
 						i = i + 1
 						props.set(i, String.valueOf(p.nullAllowed))
 						i = i + 1
-						props.set(i, requireNonNull(p.getterJavaCode, p+": getterJavaCode"))
-						i = i + 1
-						props.set(i, requireNonNull(p.setterJavaCode, p+": setterJavaCode"))
+						props.set(i, String.valueOf(p.virtualProp))
 						i = i + 1
 					}
 					set("properties", props)
@@ -1887,7 +1916,7 @@ return result;'''
 			parentList.add(beanInfo(processingContext, qname))
 		}
 
-		val properties = <PropertyInfo>newArrayOfSize(_props.size/8)
+		val properties = <PropertyInfo>newArrayOfSize(_props.size/PROP_INFO_FIELDS)
 		var i = 0
 		while (i < _props.size) {
 			val name = _props.get(i)
@@ -1897,11 +1926,10 @@ return result;'''
 			val colType = if (colTypeName.empty) null else colTypeName
 			val fixedSize = Integer.parseInt(_props.get(i+4))
 			val nullAllowed = Boolean.parseBoolean(_props.get(i+5))
-			val getterJavaCode = _props.get(i+6)
-			val setterJavaCode = _props.get(i+7)
-			properties.set(i/7, new PropertyInfo(name, type, comment, colType,
-				fixedSize, nullAllowed, getterJavaCode, setterJavaCode))
-			i = i + 8
+			val virtualProp = Boolean.parseBoolean(_props.get(i+6))
+			properties.set(i/PROP_INFO_FIELDS, new PropertyInfo(name, type, comment, colType,
+				fixedSize, nullAllowed, virtualProp))
+			i = i + PROP_INFO_FIELDS
 		}
 		val innerImplObj = new InnerImpl(innerImpl.get(0))
 		val len = Integer.parseInt(innerImpl.get(1))

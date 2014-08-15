@@ -72,6 +72,12 @@ interface DemoType extends Root {
 /** Example of a child type */
 @Bean(instance=true)
 interface DemoTypeChild extends DemoType {
+	class Impl {
+		/** Pseudo-constructor for DemoTypeChild */
+		static def void _init_(DemoTypeChild it) {
+			_secret = 42
+		}
+	}
 
   /** Internal property */
   int _secret
@@ -91,7 +97,7 @@ interface Aged extends Root {
 			age >= 18
 		}
 		/** Returns a salutation, based on the age. */
-		static def String hello(Aged it) {
+		static def String getHello(Aged it) {
 			if (adult) "Hello, Sir." else "Hi!"
 		}
 	}
@@ -105,7 +111,7 @@ interface Named extends Root {
 	/** Implementation for all Named objects. */
 	class Impl {
 		/** Returns a salutation, based on the name. */
-		static def String hello(Named it) {
+		static def String getHello(Named it) {
 			"Hello, "+name
 		}
 	}
@@ -122,7 +128,7 @@ interface Person extends Named, Aged {
 	/** Implementation for all Named objects. */
 	class Impl {
 		/** Returns a salutation, based on the name. */
-		static def String hello(Person it) {
+		static def String getHello(Person it) {
 			if (adult) "Hello, Sir. "+name else "Hi, "+name
 		}
 	}

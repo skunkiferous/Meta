@@ -17,10 +17,10 @@ package com.blockwithme.reprica.skills
 
 import com.blockwithme.meta.annotations.Bean
 import com.blockwithme.meta.beans._Bean
+import static extension com.blockwithme.util.xtend.StdExt.*
 import java.util.List
 import java.util.Set
 import java.util.Map
-import static java.util.Objects.*
 import javax.inject.Provider
 import java.util.Random
 import java.util.concurrent.atomic.AtomicInteger
@@ -80,14 +80,55 @@ enum EffectCategory {
 	Euphoria
 }
 
-/** A Category groups Attributes of the same type together. */
-enum AttributeCategory {
+/**
+ * A Category groups Attributes of the same type together.
+ *
+ * TODO This should be an enum, but Xtend enums do not support attributes.
+ */
+@Data
+class AttributeCategory {
+	/** The ID of this AttributeCategory */
+	int ordinal
+
+	/** The name of this AttributeCategory */
+	transient String name
+
+	/** Does this attribute contributes to "attack"? */
+	transient boolean attack
+
+	/** Does this attribute contributes to "defense"? */
+	transient boolean defense
+
+	/** Does this attribute contributes to "crafting"? */
+	transient boolean crafting
+
+	/** Is this a "special" attribute? */
+	transient boolean special
+
+	/** Does this attribute contributes to none of the other categories? */
+	transient boolean auxiliary
+
+	/** toString */
+	override toString() {
+		_name
+	}
+
 	/** Attributes that contribute to "attack" */
-	Attack,
+	public static val Attack = new AttributeCategory(0, "Attack", true, false, false, false, false)
 	/** Attributes that contribute to "defense" */
-	Defense,
+	public static val Defense = new AttributeCategory(1, "Defense", false, true, false, false, false)
+	/** Attributes that contribute to "crafting" */
+	public static val Crafting = new AttributeCategory(2, "Crafting", false, false, true, false, false)
+	/** Special attributes, are those that normally have a fixed value, and are therefore not displayed */
+	public static val Special = new AttributeCategory(3, "Special", false, false, false, true, false)
 	/** All other attributes */
-	Auxiliary
+	public static val Auxiliary = new AttributeCategory(4, "Auxiliary", false, false, false, false, true)
+
+	public static val AttributeCategory[] ALL_SET = #[Attack, Defense, Crafting, Special, Auxiliary]
+
+	private def Object readResolve() {
+		return ALL_SET.get(ordinal);
+	}
 }
 
 /** Base type of everything in this package */
@@ -100,9 +141,9 @@ interface Root {
 @Bean(sortKeyes=#["name"])
 interface MetaInfo extends Root {
 	class Impl {
-		// TODO This should be a virtual property
+		// TODO This should be a virtual property, and "sortKeyes" should use it too
 		/** Returns the qualified name (parent qualified name + own name) of this meta-info instance */
-		static def String qualifiedName(EntityType it) {
+		static def String qualifiedName(MetaInfo it) {
 			name
 		}
 	}
@@ -114,7 +155,6 @@ interface MetaInfo extends Root {
 @Bean(instance=true)
 interface AttributeType extends MetaInfo, Provider<Attribute> {
 	class Impl {
-		// TODO This should be a virtual property
 		/** {@inheritDoc} */
 		static def String qualifiedName(AttributeType it) {
 			val parent = (it as _Bean).parent as EntityType
@@ -133,6 +173,19 @@ interface AttributeType extends MetaInfo, Provider<Attribute> {
 			result.baseValue = defaultValue
 			result
 		}
+		/**
+		 * Is this a consumable Attribute?
+		 *
+		 * Note: We assume "consumable" attribute normally have the value of
+		 * maxValue, and *go down*, up to "min", as it is consumed, indicated
+		 * by moreIsBetter. If moreIsBetter was false, then the default value
+		 * would be "min", and it would go up until maxValue. It could be used
+		 * to represent things like engine temperature, but it seems a bit
+		 * clumsy.
+		 */
+		static def boolean consumable(AttributeType it) {
+			(maxValue !== null)
+		}
 	}
 	/** The default value of an Attribute of this type. */
 	double defaultValue
@@ -140,12 +193,16 @@ interface AttributeType extends MetaInfo, Provider<Attribute> {
 	double min
 	/** Allows explicitly clamping the value of an attribute to some maximum */
 	double max
-	/** Are bigger values better? That decided if effects are buffs or debuffs. */
+	/** Are bigger values better? That decides if effects are buffs or debuffs. */
 	boolean moreIsBetter
-	/** Is this attribute a percent/probability (between 0.0 and 1.0?), or an "integer value" */
+	/** Is this attribute a percent/probability (normally between 0.0 and 1.0?), or an "integer value" */
 	boolean percent
 	/** The category of the attribute. */
 	AttributeCategory category
+	/** If this is a "consumable" attribute, then maxValue is the name of the maximum value attribute. */
+	String maxValue
+	/** If this is a "consumable" attribute, then regen is the name of the regeneration rate attribute. */
+	String regen
 }
 
 /** An Attribute is simply a named Value. */
@@ -158,15 +215,7 @@ interface Attribute extends Root {
 			for (e : _effects) {
 				result = e.eval(filter, result, turn)
 			}
-			val min = type.min
-			val max = type.max
-			if (result < min) {
-				result = min
-			}
-			if (result > max) {
-				result = max
-			}
-			result
+			clamp(result,type.min,type.max)
 		}
 
 		/** Describes the evaluation of the effective value of an attribute of an entity. */
@@ -175,42 +224,31 @@ interface Attribute extends Root {
 			for (e : _effects) {
 				result = e.describe(filter, result, turn)
 			}
-			val min = type.min
-			val max = type.max
-			if (min != Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE) {
-				result = "min("+result+","+min+")"
-			}
-			if (max != Skills.DEFAULT_MAXIMUM_ATTRIBUTE_VALUE) {
-				result = "max("+result+","+max+")"
-			}
-			result
+			"max(min("+result+","+type.max+"),"+type.min+")"
 		}
 
 		/** Adds one more effect to this attribute. */
 		static def void operator_add(Attribute it, Effect newEffect) {
 			val type = requireNonNull(requireNonNull(newEffect, "newEffect").type, "newEffect.type")
 			val category = requireNonNull(type.category, "newEffect.type.category")
-			val iter = _effects.iterator
-			while (iter.hasNext) {
-				val next = iter.next
-				if (next.type.category == category) {
-					iter.remove
-				}
-			}
+			_effects.removeIf[type.category == category]
 			_effects.add(newEffect)
 		}
 
 		/** Update this attribute. This will delegate to the effects. */
 		static def void update(Attribute it, int turn) {
-			val iter = _effects.iterator
-			while (iter.hasNext) {
-				val next = iter.next
-				if (next.expired(turn)) {
-					iter.remove
-				} else {
-					next.update(turn)
-				}
-			}
+			_effects.removeIf[expired(turn)]
+			_effects.forEach[update(turn)]
+		}
+		/** If this is a "consumable" attribute, then maxValue is the maximum value attribute. */
+		static def Attribute maxValue(Attribute it) {
+			val maxValue = it.type.maxValue;
+			if (maxValue === null) null else ((it as _Bean).parent as Entity).attr(maxValue)
+		}
+		/** If this is a "consumable" attribute, then regen is the regeneration rate attribute. */
+		static def Attribute regen(Attribute it) {
+			val regen = it.type.regen;
+			if (regen === null) null else ((it as _Bean).parent as Entity).attr(regen)
 		}
 	}
 	/** The type of the attribute */
@@ -602,527 +640,527 @@ class EffectBuilder {
 interface ModifierType extends EntityType {
 	class Impl {
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newSimplBasicEffect(ModifierType it,
+		static def EffectBuilder newSimpleEffect(ModifierType it,
 			double duration,
 			String name, double effect,
 			String attributeName) {
-			newBasicEffect(it, 1.0, 1.0, name, duration, duration,
+			newEffect(it, 1.0, 1.0, name, duration, duration,
 				EffectCategory.Simple, effect, effect, false, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newSimplBasicEffect(ModifierType it,
+		static def EffectBuilder newSimpleEffect(ModifierType it,
 			double duration,
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
-			newBasicEffect(it, 1.0, 1.0, name, duration, duration,
+			newEffect(it, 1.0, 1.0, name, duration, duration,
 				EffectCategory.Simple, minEffect, maxEffect, false, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newSimplBasicEffect(ModifierType it,
+		static def EffectBuilder newSimpleEffect(ModifierType it,
 			double minDuration, double maxDuration,
 			String name, double effect,
 			String attributeName) {
-			newBasicEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
+			newEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
 				EffectCategory.Simple, effect, effect, false, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newSimplBasicEffect(ModifierType it,
+		static def EffectBuilder newSimpleEffect(ModifierType it,
 			double minDuration, double maxDuration,
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
-			newBasicEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
+			newEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
 				EffectCategory.Simple, minEffect, maxEffect, false, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newSimplBasicEffect2(ModifierType it, double percentActivation,
+		static def EffectBuilder newSimpleEffect2(ModifierType it, double percentActivation,
 			double duration,
 			String name, double effect,
 			String attributeName) {
-			newBasicEffect(it, percentActivation, 1.0, name, duration, duration,
+			newEffect(it, percentActivation, 1.0, name, duration, duration,
 				EffectCategory.Simple, effect, effect, false, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newSimplBasicEffect2(ModifierType it, double percentActivation,
+		static def EffectBuilder newSimpleEffect2(ModifierType it, double percentActivation,
 			double duration,
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
-			newBasicEffect(it, percentActivation, 1.0, name, duration, duration,
+			newEffect(it, percentActivation, 1.0, name, duration, duration,
 				EffectCategory.Simple, minEffect, maxEffect, false, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newSimplBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newSimpleEffect(ModifierType it, double percentActivation,
 			double minDuration, double maxDuration,
 			String name, double effect,
 			String attributeName) {
-			newBasicEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
+			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
 				EffectCategory.Simple, effect, effect, false, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newSimplBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newSimpleEffect(ModifierType it, double percentActivation,
 			double minDuration, double maxDuration,
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
-			newBasicEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
+			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
 				EffectCategory.Simple, minEffect, maxEffect, false, new SimpleAttributeMatcher(attributeName))
 		}
 
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newBasicEffect(ModifierType it,
+		static def EffectBuilder newEffect(ModifierType it,
 			EffectCategory category, double duration,
 			String name, double effect,
 			String attributeName) {
-			newBasicEffect(it, 1.0, 1.0, name, duration, duration,
+			newEffect(it, 1.0, 1.0, name, duration, duration,
 				category, effect, effect, false, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newBasicEffect(ModifierType it,
+		static def EffectBuilder newEffect(ModifierType it,
 			EffectCategory category, double duration,
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
-			newBasicEffect(it, 1.0, 1.0, name, duration, duration,
+			newEffect(it, 1.0, 1.0, name, duration, duration,
 				category, minEffect, maxEffect, false, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newBasicEffect(ModifierType it,
+		static def EffectBuilder newEffect(ModifierType it,
 			EffectCategory category, double minDuration, double maxDuration,
 			String name, double effect,
 			String attributeName) {
-			newBasicEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
+			newEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
 				category, effect, effect, false, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newBasicEffect(ModifierType it,
+		static def EffectBuilder newEffect(ModifierType it,
 			EffectCategory category, double minDuration, double maxDuration,
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
-			newBasicEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
+			newEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
 				category, minEffect, maxEffect, false, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newEffect(ModifierType it, double percentActivation,
 			EffectCategory category, double duration,
 			String name, double effect,
 			String attributeName) {
-			newBasicEffect(it, percentActivation, 1.0, name, duration, duration,
+			newEffect(it, percentActivation, 1.0, name, duration, duration,
 				category, effect, effect, false, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newEffect(ModifierType it, double percentActivation,
 			EffectCategory category, double duration,
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
-			newBasicEffect(it, percentActivation, 1.0, name, duration, duration,
+			newEffect(it, percentActivation, 1.0, name, duration, duration,
 				category, minEffect, maxEffect, false, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newEffect(ModifierType it, double percentActivation,
 			EffectCategory category, double minDuration, double maxDuration,
 			String name, double effect,
 			String attributeName) {
-			newBasicEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
+			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
 				category, effect, effect, false, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newEffect(ModifierType it, double percentActivation,
 			EffectCategory category, double minDuration, double maxDuration,
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
-			newBasicEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
+			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
 				category, minEffect, maxEffect, false, new SimpleAttributeMatcher(attributeName))
 		}
 
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newSimplBasicEffect(ModifierType it,
+		static def EffectBuilder newSimpleEffect(ModifierType it,
 			double duration,
 			String name, double effect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, 1.0, 1.0, name, duration, duration,
+			newEffect(it, 1.0, 1.0, name, duration, duration,
 				EffectCategory.Simple, effect, effect, false, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newSimplBasicEffect(ModifierType it,
+		static def EffectBuilder newSimpleEffect(ModifierType it,
 			double duration,
 			String name, double minEffect, double maxEffect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, 1.0, 1.0, name, duration, duration,
+			newEffect(it, 1.0, 1.0, name, duration, duration,
 				EffectCategory.Simple, minEffect, maxEffect, false, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newSimplBasicEffect(ModifierType it,
+		static def EffectBuilder newSimpleEffect(ModifierType it,
 			double minDuration, double maxDuration,
 			String name, double effect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
+			newEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
 				EffectCategory.Simple, effect, effect, false, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newSimplBasicEffect(ModifierType it,
+		static def EffectBuilder newSimpleEffect(ModifierType it,
 			double minDuration, double maxDuration,
 			String name, double minEffect, double maxEffect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
+			newEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
 				EffectCategory.Simple, minEffect, maxEffect, false, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newSimplBasicEffect2(ModifierType it, double percentActivation,
+		static def EffectBuilder newSimpleEffect2(ModifierType it, double percentActivation,
 			double duration,
 			String name, double effect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, percentActivation, 1.0, name, duration, duration,
+			newEffect(it, percentActivation, 1.0, name, duration, duration,
 				EffectCategory.Simple, effect, effect, false, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newSimplBasicEffect2(ModifierType it, double percentActivation,
+		static def EffectBuilder newSimpleEffect2(ModifierType it, double percentActivation,
 			double duration,
 			String name, double minEffect, double maxEffect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, percentActivation, 1.0, name, duration, duration,
+			newEffect(it, percentActivation, 1.0, name, duration, duration,
 				EffectCategory.Simple, minEffect, maxEffect, false, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newSimplBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newSimpleEffect(ModifierType it, double percentActivation,
 			double minDuration, double maxDuration,
 			String name, double effect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
+			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
 				EffectCategory.Simple, effect, effect, false, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newSimplBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newSimpleEffect(ModifierType it, double percentActivation,
 			double minDuration, double maxDuration,
 			String name, double minEffect, double maxEffect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
+			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
 				EffectCategory.Simple, minEffect, maxEffect, false, matcher)
 		}
 
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newBasicEffect(ModifierType it,
+		static def EffectBuilder newEffect(ModifierType it,
 			EffectCategory category, double duration,
 			String name, double effect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, 1.0, 1.0, name, duration, duration,
+			newEffect(it, 1.0, 1.0, name, duration, duration,
 				category, effect, effect, false, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newBasicEffect(ModifierType it,
+		static def EffectBuilder newEffect(ModifierType it,
 			EffectCategory category, double duration,
 			String name, double minEffect, double maxEffect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, 1.0, 1.0, name, duration, duration,
+			newEffect(it, 1.0, 1.0, name, duration, duration,
 				category, minEffect, maxEffect, false, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newBasicEffect(ModifierType it,
+		static def EffectBuilder newEffect(ModifierType it,
 			EffectCategory category, double minDuration, double maxDuration,
 			String name, double effect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
+			newEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
 				category, effect, effect, false, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newBasicEffect(ModifierType it,
+		static def EffectBuilder newEffect(ModifierType it,
 			EffectCategory category, double minDuration, double maxDuration,
 			String name, double minEffect, double maxEffect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
+			newEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
 				category, minEffect, maxEffect, false, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newEffect(ModifierType it, double percentActivation,
 			EffectCategory category, double duration,
 			String name, double effect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, percentActivation, 1.0, name, duration, duration,
+			newEffect(it, percentActivation, 1.0, name, duration, duration,
 				category, effect, effect, false, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newEffect(ModifierType it, double percentActivation,
 			EffectCategory category, double duration,
 			String name, double minEffect, double maxEffect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, percentActivation, 1.0, name, duration, duration,
+			newEffect(it, percentActivation, 1.0, name, duration, duration,
 				category, minEffect, maxEffect, false, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newEffect(ModifierType it, double percentActivation,
 			EffectCategory category, double minDuration, double maxDuration,
 			String name, double effect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
+			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
 				category, effect, effect, false, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newEffect(ModifierType it, double percentActivation,
 			EffectCategory category, double minDuration, double maxDuration,
 			String name, double minEffect, double maxEffect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
+			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
 				category, minEffect, maxEffect, false, matcher)
 		}
 
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentSimplBasicEffect(ModifierType it,
+		static def EffectBuilder newPercentSimpleEffect(ModifierType it,
 			double duration,
 			String name, double effect,
 			String attributeName) {
-			newBasicEffect(it, 1.0, 1.0, name, duration, duration,
+			newEffect(it, 1.0, 1.0, name, duration, duration,
 				EffectCategory.Simple, effect, effect, true, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentSimplBasicEffect(ModifierType it,
+		static def EffectBuilder newPercentSimpleEffect(ModifierType it,
 			double duration,
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
-			newBasicEffect(it, 1.0, 1.0, name, duration, duration,
+			newEffect(it, 1.0, 1.0, name, duration, duration,
 				EffectCategory.Simple, minEffect, maxEffect, true, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentSimplBasicEffect(ModifierType it,
+		static def EffectBuilder newPercentSimpleEffect(ModifierType it,
 			double minDuration, double maxDuration,
 			String name, double effect,
 			String attributeName) {
-			newBasicEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
+			newEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
 				EffectCategory.Simple, effect, effect, true, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentSimplBasicEffect(ModifierType it,
+		static def EffectBuilder newPercentSimpleEffect(ModifierType it,
 			double minDuration, double maxDuration,
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
-			newBasicEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
+			newEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
 				EffectCategory.Simple, minEffect, maxEffect, true, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentSimplBasicEffect2(ModifierType it, double percentActivation,
+		static def EffectBuilder newPercentSimpleEffect2(ModifierType it, double percentActivation,
 			double duration,
 			String name, double effect,
 			String attributeName) {
-			newBasicEffect(it, percentActivation, 1.0, name, duration, duration,
+			newEffect(it, percentActivation, 1.0, name, duration, duration,
 				EffectCategory.Simple, effect, effect, true, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentSimplBasicEffect2(ModifierType it, double percentActivation,
+		static def EffectBuilder newPercentSimpleEffect2(ModifierType it, double percentActivation,
 			double duration,
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
-			newBasicEffect(it, percentActivation, 1.0, name, duration, duration,
+			newEffect(it, percentActivation, 1.0, name, duration, duration,
 				EffectCategory.Simple, minEffect, maxEffect, true, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentSimplBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newPercentSimpleEffect(ModifierType it, double percentActivation,
 			double minDuration, double maxDuration,
 			String name, double effect,
 			String attributeName) {
-			newBasicEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
+			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
 				EffectCategory.Simple, effect, effect, true, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentSimplBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newPercentSimpleEffect(ModifierType it, double percentActivation,
 			double minDuration, double maxDuration,
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
-			newBasicEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
+			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
 				EffectCategory.Simple, minEffect, maxEffect, true, new SimpleAttributeMatcher(attributeName))
 		}
 
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentBasicEffect(ModifierType it,
+		static def EffectBuilder newPercentEffect(ModifierType it,
 			EffectCategory category, double duration,
 			String name, double effect,
 			String attributeName) {
-			newBasicEffect(it, 1.0, 1.0, name, duration, duration,
+			newEffect(it, 1.0, 1.0, name, duration, duration,
 				category, effect, effect, true, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentBasicEffect(ModifierType it,
+		static def EffectBuilder newPercentEffect(ModifierType it,
 			EffectCategory category, double duration,
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
-			newBasicEffect(it, 1.0, 1.0, name, duration, duration,
+			newEffect(it, 1.0, 1.0, name, duration, duration,
 				category, minEffect, maxEffect, true, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentBasicEffect(ModifierType it,
+		static def EffectBuilder newPercentEffect(ModifierType it,
 			EffectCategory category, double minDuration, double maxDuration,
 			String name, double effect,
 			String attributeName) {
-			newBasicEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
+			newEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
 				category, effect, effect, true, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentBasicEffect(ModifierType it,
+		static def EffectBuilder newPercentEffect(ModifierType it,
 			EffectCategory category, double minDuration, double maxDuration,
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
-			newBasicEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
+			newEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
 				category, minEffect, maxEffect, true, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newPercentEffect(ModifierType it, double percentActivation,
 			EffectCategory category, double duration,
 			String name, double effect,
 			String attributeName) {
-			newBasicEffect(it, percentActivation, 1.0, name, duration, duration,
+			newEffect(it, percentActivation, 1.0, name, duration, duration,
 				category, effect, effect, true, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newPercentEffect(ModifierType it, double percentActivation,
 			EffectCategory category, double duration,
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
-			newBasicEffect(it, percentActivation, 1.0, name, duration, duration,
+			newEffect(it, percentActivation, 1.0, name, duration, duration,
 				category, minEffect, maxEffect, true, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newPercentEffect(ModifierType it, double percentActivation,
 			EffectCategory category, double minDuration, double maxDuration,
 			String name, double effect,
 			String attributeName) {
-			newBasicEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
+			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
 				category, effect, effect, true, new SimpleAttributeMatcher(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newPercentEffect(ModifierType it, double percentActivation,
 			EffectCategory category, double minDuration, double maxDuration,
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
-			newBasicEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
+			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
 				category, minEffect, maxEffect, true, new SimpleAttributeMatcher(attributeName))
 		}
 
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentSimplBasicEffect(ModifierType it,
+		static def EffectBuilder newPercentSimpleEffect(ModifierType it,
 			double duration,
 			String name, double effect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, 1.0, 1.0, name, duration, duration,
+			newEffect(it, 1.0, 1.0, name, duration, duration,
 				EffectCategory.Simple, effect, effect, true, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentSimplBasicEffect(ModifierType it,
+		static def EffectBuilder newPercentSimpleEffect(ModifierType it,
 			double duration,
 			String name, double minEffect, double maxEffect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, 1.0, 1.0, name, duration, duration,
+			newEffect(it, 1.0, 1.0, name, duration, duration,
 				EffectCategory.Simple, minEffect, maxEffect, true, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentSimplBasicEffect(ModifierType it,
+		static def EffectBuilder newPercentSimpleEffect(ModifierType it,
 			double minDuration, double maxDuration,
 			String name, double effect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
+			newEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
 				EffectCategory.Simple, effect, effect, true, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentSimplBasicEffect(ModifierType it,
+		static def EffectBuilder newPercentSimpleEffect(ModifierType it,
 			double minDuration, double maxDuration,
 			String name, double minEffect, double maxEffect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
+			newEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
 				EffectCategory.Simple, minEffect, maxEffect, true, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentSimplBasicEffect2(ModifierType it, double percentActivation,
+		static def EffectBuilder newPercentSimpleEffect2(ModifierType it, double percentActivation,
 			double duration,
 			String name, double effect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, percentActivation, 1.0, name, duration, duration,
+			newEffect(it, percentActivation, 1.0, name, duration, duration,
 				EffectCategory.Simple, effect, effect, true, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentSimplBasicEffect2(ModifierType it, double percentActivation,
+		static def EffectBuilder newPercentSimpleEffect2(ModifierType it, double percentActivation,
 			double duration,
 			String name, double minEffect, double maxEffect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, percentActivation, 1.0, name, duration, duration,
+			newEffect(it, percentActivation, 1.0, name, duration, duration,
 				EffectCategory.Simple, minEffect, maxEffect, true, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentSimplBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newPercentSimpleEffect(ModifierType it, double percentActivation,
 			double minDuration, double maxDuration,
 			String name, double effect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
+			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
 				EffectCategory.Simple, effect, effect, true, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentSimplBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newPercentSimpleEffect(ModifierType it, double percentActivation,
 			double minDuration, double maxDuration,
 			String name, double minEffect, double maxEffect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
+			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
 				EffectCategory.Simple, minEffect, maxEffect, true, matcher)
 		}
 
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentBasicEffect(ModifierType it,
+		static def EffectBuilder newPercentEffect(ModifierType it,
 			EffectCategory category, double duration,
 			String name, double effect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, 1.0, 1.0, name, duration, duration,
+			newEffect(it, 1.0, 1.0, name, duration, duration,
 				category, effect, effect, true, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentBasicEffect(ModifierType it,
+		static def EffectBuilder newPercentEffect(ModifierType it,
 			EffectCategory category, double duration,
 			String name, double minEffect, double maxEffect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, 1.0, 1.0, name, duration, duration,
+			newEffect(it, 1.0, 1.0, name, duration, duration,
 				category, minEffect, maxEffect, true, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentBasicEffect(ModifierType it,
+		static def EffectBuilder newPercentEffect(ModifierType it,
 			EffectCategory category, double minDuration, double maxDuration,
 			String name, double effect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
+			newEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
 				category, effect, effect, true, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentBasicEffect(ModifierType it,
+		static def EffectBuilder newPercentEffect(ModifierType it,
 			EffectCategory category, double minDuration, double maxDuration,
 			String name, double minEffect, double maxEffect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
+			newEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
 				category, minEffect, maxEffect, true, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newPercentEffect(ModifierType it, double percentActivation,
 			EffectCategory category, double duration,
 			String name, double effect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, percentActivation, 1.0, name, duration, duration,
+			newEffect(it, percentActivation, 1.0, name, duration, duration,
 				category, effect, effect, true, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newPercentEffect(ModifierType it, double percentActivation,
 			EffectCategory category, double duration,
 			String name, double minEffect, double maxEffect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, percentActivation, 1.0, name, duration, duration,
+			newEffect(it, percentActivation, 1.0, name, duration, duration,
 				category, minEffect, maxEffect, true, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newPercentEffect(ModifierType it, double percentActivation,
 			EffectCategory category, double minDuration, double maxDuration,
 			String name, double effect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
+			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
 				category, effect, effect, true, matcher)
 		}
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newPercentBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newPercentEffect(ModifierType it, double percentActivation,
 			EffectCategory category, double minDuration, double maxDuration,
 			String name, double minEffect, double maxEffect,
 			AttributeMatcher matcher) {
-			newBasicEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
+			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
 				category, minEffect, maxEffect, true, matcher)
 		}
 
 		/** Creates and adds a new BasicEffect builder */
-		static def EffectBuilder newBasicEffect(ModifierType it, double percentActivation,
+		static def EffectBuilder newEffect(ModifierType it, double percentActivation,
 			double percentPerTurn, String name, double minDuration, double maxDuration,
 			EffectCategory category, double minEffect, double maxEffect,
 			boolean percent, AttributeMatcher matcher) {
@@ -1185,8 +1223,8 @@ interface DrunkType extends ModifierType {
 	class Impl {
 		/** Pseudo-constructor for modifier types */
 		static def void _init_(DrunkType it) {
-			newSimplBasicEffect(5, "strength", 5, "strength")
-			newPercentSimplBasicEffect(5, "dexterity", 0.5, "dexterity")
+			newSimpleEffect(5, "strength", 5, "strength")
+			newPercentSimpleEffect(5, "dexterity", 0.5, "dexterity")
 		}
 		/** Creates a new Drunk Modifier */
 		static def Drunk get(DrunkType it) {
@@ -1212,28 +1250,45 @@ interface CharacterType extends EntityType {
 	class Impl {
 		/** Pseudo-constructor for basic effects */
 		static def void _init_(CharacterType it) {
-			// TODO Use newPercentAttr() for percent/probability attributes
-			newAttr("speed", AttributeCategory.Attack)
-			newAttr("dexterity", AttributeCategory.Attack)
-			newAttr("rage", AttributeCategory.Attack)
-			newAttr("fury", AttributeCategory.Attack)
+			newAttr("speed", AttributeCategory.Attack).moreIsBetter = false
 			newAttr("strength", AttributeCategory.Attack)
 			newAttr("anima", AttributeCategory.Attack)
 
-			newAttr("psyche", AttributeCategory.Defense)
-			newAttr("defense", AttributeCategory.Defense)
-			newAttr("reflex", AttributeCategory.Defense)
-			newAttr("block", AttributeCategory.Defense)
-			newAttr("constitution", AttributeCategory.Defense)
-			newAttr("spirit", AttributeCategory.Defense)
-			newAttr("harmony", AttributeCategory.Defense)
+			newPercentAttr("dexterity", AttributeCategory.Attack)
+			newPercentAttr("rage", AttributeCategory.Attack)
+			newPercentAttr("fury", AttributeCategory.Attack)
 
-			newAttr("mana")
-			newAttr("hp")
-			newAttr("intelligence")
-			newAttr("artistry")
+			newPercentAttr("psyche", AttributeCategory.Defense)
+			newPercentAttr("defense", AttributeCategory.Defense)
+			newPercentAttr("reflex", AttributeCategory.Defense)
+			newPercentAttr("block", AttributeCategory.Defense)
+			newPercentAttr("constitution", AttributeCategory.Defense)
+			newPercentAttr("spirit", AttributeCategory.Defense)
+			newPercentAttr("harmony", AttributeCategory.Defense)
+
+			newAttr("intelligence", AttributeCategory.Crafting)
+			newAttr("artistry", AttributeCategory.Crafting)
+
+			newPercentAttr("visibleToFriends", AttributeCategory.Special).defaultValue = 1.0
+			newPercentAttr("visibleToFoes", AttributeCategory.Special).defaultValue = 1.0
+			newPercentAttr("confused", AttributeCategory.Special).moreIsBetter = false
+			newPercentAttr("xpGainRate", AttributeCategory.Special).defaultValue = 1.0
+			newPercentAttr("moneyGainRate", AttributeCategory.Special).defaultValue = 1.0
+			newPercentAttr("lootGainRate", AttributeCategory.Special).defaultValue = 1.0
+			newPercentAttr("hpRegeneration", AttributeCategory.Special)
+			newPercentAttr("manaRegeneration", AttributeCategory.Special)
+
+			newAttr("maxMana")
+			val mana = newAttr("mana")
+			mana.maxValue = "maxMana"
+			mana.regen = "manaRegen"
+			newAttr("maxHp")
+			val hp = newAttr("hp")
+			hp.maxValue = "maxHp"
+			hp.regen = "hpRegen"
 			newAttr("level")
 			newAttr("xp")
+			newAttr("money")
 		}
 		/** Creates a new Character */
 		static def Character get(CharacterType it) {
@@ -1252,10 +1307,14 @@ interface Character extends Entity {
 		}
 		/** The attack rate. */
 		static def Attribute speed(Character it) { attr("speed") }
-		/** The spellpower. */
+		/** The current spellpower. */
 		static def Attribute mana(Character it) { attr("mana") }
-		/** Hitpoints (life) */
+		/** The maximum spellpower. */
+		static def Attribute maxMana(Character it) { attr("maxMana") }
+		/** The current Hitpoints (life) */
 		static def Attribute hp(Character it) { attr("hp") }
+		/** The maximum Hitpoints (life) */
+		static def Attribute maxHp(Character it) { attr("maxHp") }
 		/** Affects your ability to enchant items OR craft magical items such as potions or even scrolls */
 		static def Attribute intelligence(Character it) { attr("intelligence") }
 		/** Resistance to incoming magical attacks and mana growth */
@@ -1288,6 +1347,22 @@ interface Character extends Entity {
 		static def Attribute level(Character it) { attr("level") }
 		/** The earned experience points since starting the current level */
 		static def Attribute xp(Character it) { attr("xp") }
+		/** The percentage of "visible" exposed to Friends. */
+		static def Attribute visibleToFriends(Character it) { attr("visibleToFriends") }
+		/** The percentage of "visible" exposed to Foes. */
+		static def Attribute visibleToFoes(Character it) { attr("visibleToFoes") }
+		/** The percentage/amount of confusion. */
+		static def Attribute confused(Character it) { attr("confused") }
+		/** The rate at which XPs are gained (compared to the normal rate). */
+		static def Attribute xpGainRate(Character it) { attr("xpGainRate") }
+		/** The rate at which money is looted (compared to the normal rate). */
+		static def Attribute moneyGainRate(Character it) { attr("moneyGainRate") }
+		/** The rate at which objects are looted (compared to the normal rate). */
+		static def Attribute lootGainRate(Character it) { attr("lootGainRate") }
+		/** The rate at which hit-points are regenerated (compared to the normal rate). */
+		static def Attribute hpRegeneration(Character it) { attr("hpRegeneration") }
+		/** The rate at which mana is regenerated (compared to the normal rate). */
+		static def Attribute manaRegeneration(Character it) { attr("manaRegeneration") }
 	}
 
 	/** The player name */
@@ -1369,4 +1444,10 @@ interface Skills {
 
 	/** The default duration in turn */
 	double DEFAULT_DURATION_IN_TURN = 999.0
+
+	/** Absolute maximum for "integer" attributes */
+	double MAX_DOUBLE_INT_VALUE = SystemUtils.MAX_DOUBLE_INT_VALUE
+
+	/** Absolute minimum for "integer" attributes */
+	double MIN_DOUBLE_INT_VALUE = SystemUtils.MIN_DOUBLE_INT_VALUE
 }
