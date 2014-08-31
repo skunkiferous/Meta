@@ -20,3 +20,4 @@ target
 *.db
 .idea/*
 xtend-gen
+/target

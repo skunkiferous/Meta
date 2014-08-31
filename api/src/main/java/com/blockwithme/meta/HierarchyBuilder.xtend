@@ -250,7 +250,7 @@ class HierarchyBuilder {
 		val list = <Property<?,?>>newArrayList()
 		list.addAll(allProperties)
 		val name = prop.fullName
-		if (list.exists[p|(p != null) && p.fullName.equals(name)]) {
+		if (list.exists[p|(p != null) && (p.fullName == name)]) {
 			throw new IllegalArgumentException(name+" already registered")
 		}
 		while (list.size <= prop.globalPropertyId) {

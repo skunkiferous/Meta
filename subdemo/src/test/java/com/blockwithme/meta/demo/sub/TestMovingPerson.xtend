@@ -16,9 +16,13 @@
 package com.blockwithme.meta.demo.sub
 
 import com.blockwithme.meta.beans._Bean
+import com.blockwithme.meta.Property
 import com.blockwithme.meta.demo.sub.impl.MovingPersonProvider
 import org.junit.Assert
 import org.junit.Test
+import java.util.ArrayList
+import java.util.Arrays
+import java.util.Collections
 
 /**
  * @author monster
@@ -35,10 +39,23 @@ class TestMovingPerson extends BaseTst {
 		person.setName("John")
 		person.setProfession("Teacher")
 
-		Assert.assertEquals(42, person.getAge())
-		Assert.assertEquals(99.0f, person.getLandMovingSpeed(), 0.0001f)
-		Assert.assertEquals("John", person.getName())
-		Assert.assertEquals("Teacher", person.getProfession())
+		Assert.assertEquals(42, person.age)
+		Assert.assertEquals(99.0f, person.landMovingSpeed, 0.0001f)
+		Assert.assertEquals("John", person.name)
+		Assert.assertEquals("Teacher", person.profession)
+		Assert.assertEquals("Hello, Sir. John", person.hello)
 		Assert.assertEquals(hierarchy, (person as _Bean).metaType.hierarchy)
+
+		person.landMovingSpeed = 200
+		Assert.assertEquals("No time to talk!", person.hello)
+
+		val list = new ArrayList<Property<?,?>>
+		list.addAll(Arrays.asList(Meta.MOVING_PERSON.inheritedProperties))
+		list.addAll(Arrays.asList(Meta.MOVING_PERSON.inheritedVirtualProperties))
+		Collections.sort(list)
+		Assert.assertEquals("[com.blockwithme.meta.demo.Aged.age, com.blockwithme.meta.demo.Named.name, "
+			+"com.blockwithme.meta.demo.Person.profession, com.blockwithme.meta.demo.Salutable.hello, "
+			+"com.blockwithme.meta.demo.sub.LandMoving.fast, "
+			+"com.blockwithme.meta.demo.sub.LandMoving.landMovingSpeed]", list.toString)
 	}
 }

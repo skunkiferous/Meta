@@ -74,6 +74,9 @@ import com.blockwithme.util.shared.converters.ObjectConverterBase
 import com.blockwithme.util.shared.converters.ObjectConverter
 import com.blockwithme.util.shared.converters.NOPObjectConverter
 import com.blockwithme.util.shared.converters.EnumStringConverter
+import java.util.concurrent.ConcurrentHashMap
+import com.blockwithme.util.base.SystemUtils
+import java.util.Comparator
 
 /**
  * Hierarchy represents a Type hierarchy. It is not limited to types in the
@@ -596,6 +599,18 @@ package class NoConstructor<JAVA_TYPE> implements Provider<JAVA_TYPE> {
  * @author monster
  */
 class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
+  /** Property Comparator */
+  static val Comparator<Property<?,?>> PROP_CMP = [a,b|
+      val MetaBase ma = a
+      val MetaBase mb = b
+      val sna = ma.simpleName
+      val snb = mb.simpleName
+      var result = sna.compareTo(snb)
+      if (result === 0) {
+        result = a.fullName.compareTo(b.fullName)
+      }
+      result
+    ]
 
   /** When a Type has no parents */
   public static val Type<?>[] NO_TYPE = <Type>newArrayOfSize(0)
@@ -669,19 +684,19 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
    * The Object properties of this type, and all it's parents
    * Do not modify!
    */
-  public val ObjectProperty<JAVA_TYPE,?,?,?>[] inheritedObjectProperties
+  public val ObjectProperty<?,?,?,?>[] inheritedObjectProperties
 
   /**
    * The Primitive properties of this type, and all it's parents
    * Do not modify!
    */
-  public val PrimitiveProperty<JAVA_TYPE,?,?>[] inheritedPrimitiveProperties
+  public val PrimitiveProperty<?,?,?>[] inheritedPrimitiveProperties
 
   /**
    * The virtual properties of this type, and all it's parents
    * Do not modify!
    */
-  public val Property<JAVA_TYPE,?>[] inheritedVirtualProperties
+  public val Property<?,?>[] inheritedVirtualProperties
 
   /**
    * The Properties returning the generic Types of the "components" of this Type:
@@ -695,6 +710,10 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
    * Do not modify!
    */
   public val ObjectProperty<JAVA_TYPE,Type<?>,?,?>[] componentTypes
+
+  /** Query cache, for Properties by type. */
+  private final ConcurrentHashMap<Class<?>,Property<?,?>[]> propertyTypeQueryCache
+  	= new ConcurrentHashMap<Class<?>,Property<?,?>[]>(8,0.75f,4);
 
   /** The zero-based type ID */
   public val int typeId
@@ -833,37 +852,35 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
     }
     parents = pset
 
-    val TreeSet<Property<JAVA_TYPE,?>> ownset = new TreeSet([a,b|
-      val MetaBase ma = a
-      val MetaBase mb = b
-      val sna = ma.simpleName
-      val snb = mb.simpleName
-      var result = sna.compareTo(snb)
-      if (result === 0) {
-        result = a.fullName.compareTo(b.fullName)
-      }
-      result
-    ])
+    val TreeSet<Property<JAVA_TYPE,?>> ownset = new TreeSet(PROP_CMP)
     ownset.addAll(checkArray(theProperties, "theOwnProperties"))
     val Type me = this
     for (prop : ownset) {
       val name = prop.simpleName
+      val virt = if (prop.virtual) "(virtual)" else ""
       for (parent : inheritedParents) {
         for (parentProp : parent.properties) {
           if (parentProp.simpleName.equals(name)) {
-          	if (!prop.virtual || !parentProp.virtual) {
-	            throw new IllegalStateException(theType
-	              +" has a property "+name
-	              +" which clashed with a property of "+parent
-	              +" (if they are the 'same' property, refactor to represent that)"
-	            )
-            }
+            throw new IllegalStateException(theType
+              +" has a "+virt+"property "+name
+              +" which clashed with a property of "+parent
+              +" (if they are the 'same' property, refactor to represent that)"
+            )
+          }
+        }
+        for (parentProp : parent.virtualProperties) {
+          if (parentProp.simpleName.equals(name)) {
+            throw new IllegalStateException(theType
+              +" has a "+virt+"property "+name
+              +" which clashed with a (virtual) property of "+parent
+              +" (if they are the 'same' property, refactor to represent that)"
+            )
           }
         }
       }
       prop.parent = me
     }
-    val virtualProps = new ArrayList<Property<JAVA_TYPE,?>>
+    val TreeSet<Property<JAVA_TYPE,?>> virtualProps = new TreeSet(PROP_CMP)
     val iter = ownset.iterator
     while (iter.hasNext) {
       val prop = iter.next
@@ -1063,6 +1080,20 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
     for (p : properties) {
       p.accept(visitor)
     }
+  }
+
+  /** Returns all (including the virtual) the properties of the given (or sub) type. */
+  def final Property<?,?>[] propertiesWithType(Class<?> queryType) {
+  	var result = propertyTypeQueryCache.get(queryType)
+  	if (result === null) {
+	  	val list = new ArrayList<Property<?,?>>
+	  	list.addAll(inheritedProperties.filter[SystemUtils.isAssignableFrom(contentTypeClass,queryType)])
+	  	list.addAll(inheritedVirtualProperties.filter[SystemUtils.isAssignableFrom(contentTypeClass,queryType)])
+	  	result = list.toArray(newArrayOfSize(list.size))
+	  	Arrays.sort(result)
+	  	propertyTypeQueryCache.put(queryType, result)
+  	}
+  	result
   }
 }
 

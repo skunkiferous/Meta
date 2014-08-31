@@ -21,11 +21,24 @@ import com.blockwithme.meta.demo.Root
 
 @Bean
 interface LandMoving extends Root {
+	/** Implementation for all Person objects. */
+	class Impl {
+		/** Returns true, if the LandMoving is "fast". */
+		static def boolean getFast(LandMoving it) {
+			landMovingSpeed >= 100
+		}
+	}
 	/** Speed of land movement */
 	float landMovingSpeed
 }
 
 @Bean(instance=true)
 interface MovingPerson extends Person, LandMoving {
-
+	/** Implementation for all Person objects. */
+	class Impl {
+		/** Returns a salutation, based on the name. */
+		static def String getHello(MovingPerson it) {
+			if (fast) "No time to talk!" else Person.Impl.getHello(it)
+		}
+	}
 }

@@ -87,9 +87,22 @@ interface DemoTypeChild extends DemoType {
 
 }
 
+/** Aspect of an an Object that can be saluted with an "hello". */
+@Bean
+interface Salutable extends Root {
+	/** Implementation for all Salutable objects. */
+	class Impl {
+		/** Returns a salutation. */
+		static def String getHello(Salutable it) {
+			// TODO Add support for "abstract" virtual properties.
+			throw new UnsupportedOperationException
+		}
+	}
+}
+
 /** Aspect of an an Object that has an "age". */
 @Bean
-interface Aged extends Root {
+interface Aged extends Salutable {
 	/** Implementation for all Aged objects. */
 	class Impl {
 		/** Returns true, if the age of the object is 18+ */
@@ -107,7 +120,7 @@ interface Aged extends Root {
 
 /** Aspect of an an Object that has a "Name". */
 @Bean
-interface Named extends Root {
+interface Named extends Salutable {
 	/** Implementation for all Named objects. */
 	class Impl {
 		/** Returns a salutation, based on the name. */
@@ -125,7 +138,7 @@ interface Named extends Root {
  */
 @Bean(instance=true,sortKeyes=#["name","age"])
 interface Person extends Named, Aged {
-	/** Implementation for all Named objects. */
+	/** Implementation for all Person objects. */
 	class Impl {
 		/** Returns a salutation, based on the name. */
 		static def String getHello(Person it) {
@@ -134,14 +147,6 @@ interface Person extends Named, Aged {
 	}
 	/** profession of someone */
 	String profession
-}
-
-/** Extension for all Person objects. */
-class PersonExt {
-	/** Describes a person (by returning their name) */
-	static def String desc(Person p) {
-		p.name
-	}
 }
 
 /** Example that has more then 64 properties */
