@@ -750,7 +750,7 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
                         getValueType().type)) {
                     for (final E v : data) {
                         if (v instanceof _Bean) {
-                            ((_Bean) v).setParent(null);
+                            ((_Bean) v).setParentBean(null);
                         }
                     }
                 }

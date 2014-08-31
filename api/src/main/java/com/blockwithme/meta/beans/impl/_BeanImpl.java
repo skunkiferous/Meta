@@ -201,7 +201,7 @@ public abstract class _BeanImpl implements _Bean {
      * parent field is *managed automatically*, and allows traversing the tree
      * in all directions.
      */
-    private _Bean parent;
+    private _Bean parentBean;
 
     /** 32 "selected" flags */
     private int selected;
@@ -667,33 +667,33 @@ public abstract class _BeanImpl implements _Bean {
 
     /** Returns the "parent" Bean, if any. */
     @Override
-    public final _Bean getParent() {
-        return parent;
+    public final _Bean getParentBean() {
+        return parentBean;
     }
 
     /** Sets the "parent" Bean, if any. */
     @Override
-    public final void setParent(final _Bean parent) {
+    public final void setParentBean(final _Bean parent) {
         if (this instanceof Entity) {
             if (parent != null) {
                 throw new UnsupportedOperationException(getClass().getName()
                         + ": Entities do not have parents");
             }
         }
-        this.parent = parent;
+        this.parentBean = parent;
     }
 
     /** Returns the "root" Bean, if any. */
     @Override
-    public final _Bean getRoot() {
+    public final _Bean getRootBean() {
         _Bean result = null;
         // parent is always null for Entities
-        if (parent != null) {
-            result = parent;
-            _Bean p = result.getParent();
+        if (parentBean != null) {
+            result = parentBean;
+            _Bean p = result.getParentBean();
             while (p != null) {
                 result = p;
-                p = result.getParent();
+                p = result.getParentBean();
             }
         }
         return result;
@@ -707,9 +707,9 @@ public abstract class _BeanImpl implements _Bean {
             if (this == other) {
                 result = true;
             } else {
-                final _Bean otherRoot = other.getRoot();
+                final _Bean otherRoot = other.getRootBean();
                 if (otherRoot != null) {
-                    final _Bean myRoot = getRoot();
+                    final _Bean myRoot = getRootBean();
                     result = (myRoot == otherRoot);
                 }
             }
@@ -757,7 +757,7 @@ public abstract class _BeanImpl implements _Bean {
                             p.setObject(this, newVal);
                             // Setting immutable values does not set the parent
                             // But here we created it, so we want the parent to be set.
-                            newVal.setParent(this);
+                            newVal.setParentBean(this);
                         } else {
                             p.setObject(this, value.doCopy());
                         }

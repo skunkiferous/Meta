@@ -49,7 +49,7 @@ interface Bean {
 
     /** Returns a lightweight mutable copy */
     def Bean wrapper()
-    
+
     /** Returns the Logger for this Bean */
     def Logger log()
 }
@@ -86,10 +86,10 @@ interface _Bean extends Bean {
     def void setInterceptor(Interceptor newInterceptor)
 
     /** Returns the "parent" Bean, if any. */
-    def _Bean getParent()
+    def _Bean getParentBean()
 
     /** Sets the "parent" Bean, if any. */
-    def void setParent(_Bean parent)
+    def void setParentBean(_Bean parent)
 
 	/** Returns true, if some property was selected */
     def boolean isSelected()
@@ -131,7 +131,7 @@ interface _Bean extends Bean {
     def void toJSON(Appendable appendable)
 
     /** Returns the "root" Bean, if any. */
-    def _Bean getRoot()
+    def _Bean getRootBean()
 
     /** Returns true, if this Bean has the same (non-null) root as the Bean passed as parameter */
     def boolean hasSameRoot(_Bean other)
@@ -365,16 +365,16 @@ interface Meta {
     	_Bean, "changeCounter", [changeCounter], [obj,value|obj.changeCounter = value;obj], false)
 
 	/** The parent virtual Bean property */
-    val _BEAN__PARENT = BUILDER.newObjectProperty(
-    	_Bean, "parent", _Bean, true, true, false, [parent], null, true)
+    val _BEAN__PARENT_BEAN = BUILDER.newObjectProperty(
+    	_Bean, "parentBean", _Bean, true, true, false, [parentBean], null, true)
 
 	/** The root virtual Bean property */
-    val _BEAN__ROOT = BUILDER.newObjectProperty(
-    	_Bean, "root", _Bean, true, true, false, [root], null, true)
+    val _BEAN__ROOT_BEAN = BUILDER.newObjectProperty(
+    	_Bean, "rootBean", _Bean, true, true, false, [rootBean], null, true)
 
 	/** The _Bean Type */
 	val _BEAN = BUILDER.newType(_Bean, null, Kind.Trait, #[BEAN],
-		com.blockwithme.meta.beans.Meta._BEAN__CHANGE_COUNTER, _BEAN__PARENT, _BEAN__ROOT)
+		com.blockwithme.meta.beans.Meta._BEAN__CHANGE_COUNTER, com.blockwithme.meta.beans.Meta._BEAN__PARENT_BEAN, com.blockwithme.meta.beans.Meta._BEAN__ROOT_BEAN)
 
 	/** The Entity Type */
 	val ENTITY = BUILDER.newType(Entity, null, Kind.Trait, #[BEAN])

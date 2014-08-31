@@ -60,15 +60,15 @@ abstract class AbstractFilter implements Filter {
 
 /**
  * An effect category groups Effects of the same type together.
- * The buffs debuffs are stackable if they pertain to different categories.
+ * The buffs/debuffs are stackable if they pertain to different categories.
  */
 enum EffectCategory {
-	/** Simple buff to one, multiple or all stats (or debuffs) */
+	/** Simple buff (or debuff) to one, multiple or all stats */
 	Simple,
-	/** Berserk or negative Berserk increasing or decreasing all stats besides def/res */
+	/** Berserk or negative Berserk increasing or decreasing all stats besides defense/resistance */
 	Berserk,
 	/**
-	 * Bravery or cowardice which increase or decrease att and the value
+	 * Bravery or cowardice which increase or decrease attack and the value
 	 * increases/decreases per turn until the effect timeouts
 	 */
 	Bravery,
@@ -138,12 +138,11 @@ interface Root {
 }
 
 /** Marker interface, denoting objects that represent meta-information. */
-@Bean(sortKeyes=#["name"])
+@Bean(sortKeyes=#["qualifiedName"])
 interface MetaInfo extends Root {
 	class Impl {
-		// TODO This should be a virtual property, and "sortKeyes" should use it too
 		/** Returns the qualified name (parent qualified name + own name) of this meta-info instance */
-		static def String qualifiedName(MetaInfo it) {
+		static def String getQualifiedName(MetaInfo it) {
 			name
 		}
 	}
@@ -156,8 +155,8 @@ interface MetaInfo extends Root {
 interface AttributeType extends MetaInfo, Provider<Attribute> {
 	class Impl {
 		/** {@inheritDoc} */
-		static def String qualifiedName(AttributeType it) {
-			val parent = (it as _Bean).parent as EntityType
+		static def String getQualifiedName(AttributeType it) {
+			val parent = (it as _Bean).parentBean as EntityType
 			if (parent == null) "?."+name else parent.name + "." + name
 		}
 		/** Pseudo-constructor for attribute types */
@@ -174,16 +173,16 @@ interface AttributeType extends MetaInfo, Provider<Attribute> {
 			result
 		}
 		/**
-		 * Is this a consumable Attribute?
+		 * Is this an "indicator" Attribute?
 		 *
-		 * Note: We assume "consumable" attribute normally have the value of
-		 * maxValue, and *go down*, up to "min", as it is consumed, indicated
-		 * by moreIsBetter. If moreIsBetter was false, then the default value
-		 * would be "min", and it would go up until maxValue. It could be used
-		 * to represent things like engine temperature, but it seems a bit
-		 * clumsy.
+		 * Indicator attributes vary constantly, between 0 and the value of another
+		 * attribute, pointed to by maxValue. The flag moreIsBetter determines if
+		 * it is better to be near 0 or near maxValue.
+		 *
+		 * What makes this attribute value vary over time is left undefined, as
+		 * there are too many possibilities.
 		 */
-		static def boolean consumable(AttributeType it) {
+		static def boolean getIndicator(AttributeType it) {
 			(maxValue !== null)
 		}
 	}
@@ -199,10 +198,12 @@ interface AttributeType extends MetaInfo, Provider<Attribute> {
 	boolean percent
 	/** The category of the attribute. */
 	AttributeCategory category
-	/** If this is a "consumable" attribute, then maxValue is the name of the maximum value attribute. */
+	/** If this is an "indicator" attribute, then maxValue is the name of the maximum value attribute. */
+	// TODO Replace with a MetaPath (Provider<? extends Bean> sourceOrNullForLocal, [Property#1, PropKey#1, ...])
 	String maxValue
-	/** If this is a "consumable" attribute, then regen is the name of the regeneration rate attribute. */
-	String regen
+	/** If this is an "indicator" attribute, then regenRate is the name of the regeneration rate attribute. */
+	// TODO Replace with a MetaPath
+	String regenRate
 }
 
 /** An Attribute is simply a named Value. */
@@ -231,7 +232,8 @@ interface Attribute extends Root {
 		static def void operator_add(Attribute it, Effect newEffect) {
 			val type = requireNonNull(requireNonNull(newEffect, "newEffect").type, "newEffect.type")
 			val category = requireNonNull(type.category, "newEffect.type.category")
-			_effects.removeIf[type.category == category]
+			val cat = type.category
+			_effects.removeIf[cat == category]
 			_effects.add(newEffect)
 		}
 
@@ -240,15 +242,15 @@ interface Attribute extends Root {
 			_effects.removeIf[expired(turn)]
 			_effects.forEach[update(turn)]
 		}
-		/** If this is a "consumable" attribute, then maxValue is the maximum value attribute. */
-		static def Attribute maxValue(Attribute it) {
+		/** If this is an "indicator" attribute, then maxValue is the maximum value attribute. */
+		static def Attribute getMaxValue(Attribute it) {
 			val maxValue = it.type.maxValue;
-			if (maxValue === null) null else ((it as _Bean).parent as Entity).attr(maxValue)
+			if (maxValue === null) null else ((it as _Bean).parentBean as Entity).attr(maxValue)
 		}
-		/** If this is a "consumable" attribute, then regen is the regeneration rate attribute. */
-		static def Attribute regen(Attribute it) {
-			val regen = it.type.regen;
-			if (regen === null) null else ((it as _Bean).parent as Entity).attr(regen)
+		/** If this is a "indicator" attribute, then regenRate is the regeneration rate attribute. */
+		static def Attribute getRegenRate(Attribute it) {
+			val regenRate = it.type.regenRate;
+			if (regenRate === null) null else ((it as _Bean).parentBean as Entity).attr(regenRate)
 		}
 	}
 	/** The type of the attribute */
@@ -392,7 +394,7 @@ interface Entity extends Root {
 			if ((result != null) && (result.type == attributeType)) result else null
 		}
 		/** The type of the entity */
-		static def EntityType type(Entity it) {
+		static def EntityType getType(Entity it) {
 			_type
 		}
 		/** Lists all the attributes of this entity */
@@ -442,13 +444,13 @@ interface EffectType extends EntityType {
 		 * Probability of activation, in percent. If the check fails,
 		 * the effect will not apply at all.
 		 */
-		static def AttributeType percentActivation(EffectType it) { attr("percentActivation") }
+		static def AttributeType getPercentActivation(EffectType it) { attr("percentActivation") }
 
 		/** Probability of activation *per turn*, in percent. */
-		static def AttributeType percentPerTurn(EffectType it) { attr("percentPerTurn") }
+		static def AttributeType getPercentPerTurn(EffectType it) { attr("percentPerTurn") }
 
 		/** Duration of the effect, in turns. */
-		static def AttributeType duration(EffectType it) { attr("duration") }
+		static def AttributeType getDuration(EffectType it) { attr("duration") }
 
 		/** Allows specifying a range of duration. */
 		static def EffectType durationRange(EffectType it, double min, double max) {
@@ -491,11 +493,11 @@ interface Effect extends Entity {
 			if ((filter == null) || filter.accept(it)) _describe(previousValue, turn) else previousValue
 		}
 		/** Returns true if this Effect is "negative" (a debuff). */
-		static def boolean debuff(Effect it) {
+		static def boolean getDebuff(Effect it) {
 			!buff
 		}
 		/** The type of the entity */
-		static def EffectType type(Effect it) {
+		static def EffectType getType(Effect it) {
 			_type as EffectType
 		}
 
@@ -503,13 +505,13 @@ interface Effect extends Entity {
 		 * Probability of activation, in percent. If the check fails,
 		 * the effect will not apply at all.
 		 */
-		static def Attribute percentActivation(Effect it) { attr("percentActivation") }
+		static def Attribute getPercentActivation(Effect it) { attr("percentActivation") }
 
 		/** Probability of activation *per turn*, in percent. */
-		static def Attribute percentPerTurn(Effect it) { attr("percentPerTurn") }
+		static def Attribute getPercentPerTurn(Effect it) { attr("percentPerTurn") }
 
 		/** Duration of the effect, in turns. */
-		static def Attribute duration(Effect it) { attr("duration") }
+		static def Attribute getDuration(Effect it) { attr("duration") }
 
 		/** Is this effect expired */
 		static def boolean expired(Effect it, int turn) {
@@ -530,7 +532,7 @@ interface Effect extends Entity {
 	/** Evaluate self, based on the previous description. */
 	def String _describe(String previousValue, int turn)
 	/** Returns true if this Effect is "positive" (a buff). */
-	def boolean buff()
+	def boolean getBuff()
 }
 
 /**
@@ -557,7 +559,7 @@ interface BasicEffectType extends EffectType {
 		}
 
 		/** The value/strength of the "effect". */
-		static def AttributeType effect(BasicEffectType it) { attr("effect") }
+		static def AttributeType getEffect(BasicEffectType it) { attr("effect") }
 
 		/** Sets the effect range. */
 		static def BasicEffectType effectRange(BasicEffectType it, double min, double max) {
@@ -596,15 +598,15 @@ interface BasicEffect extends Effect {
 				change+")"
 		}
 		/** Returns true if this Effect is "positive" (a buff). */
-		static def boolean buff(BasicEffect it) {
+		static def boolean getBuff(BasicEffect it) {
 			if (type.percent) (effect.baseValue > 1) else (effect.baseValue > 0)
 		}
 		/** The type of the entity */
-		static def BasicEffectType type(BasicEffect it) {
+		static def BasicEffectType getType(BasicEffect it) {
 			_type as BasicEffectType
 		}
 		/** The value/strength of the "effect". */
-		static def Attribute effect(BasicEffect it) { attr("effect") }
+		static def Attribute getEffect(BasicEffect it) { attr("effect") }
 	}
 }
 
@@ -1192,7 +1194,7 @@ interface ModifierType extends EntityType {
 interface Modifier extends Entity {
 	class Impl {
 		/** The type of the entity */
-		static def ModifierType type(Modifier it) {
+		static def ModifierType getType(Modifier it) {
 			_type as ModifierType
 		}
 		/** Applies a modifier to an entity. Returns true on success. */
@@ -1238,7 +1240,7 @@ interface DrunkType extends ModifierType {
 interface Drunk extends Modifier {
 	class Impl {
 		/** The type of the entity */
-		static def DrunkType type(Drunk it) {
+		static def DrunkType getType(Drunk it) {
 			_type as DrunkType
 		}
 	}
@@ -1281,11 +1283,11 @@ interface CharacterType extends EntityType {
 			newAttr("maxMana")
 			val mana = newAttr("mana")
 			mana.maxValue = "maxMana"
-			mana.regen = "manaRegen"
+			mana.regenRate = "manaRegeneration"
 			newAttr("maxHp")
 			val hp = newAttr("hp")
 			hp.maxValue = "maxHp"
-			hp.regen = "hpRegen"
+			hp.regenRate = "hpRegeneration"
 			newAttr("level")
 			newAttr("xp")
 			newAttr("money")
@@ -1302,7 +1304,7 @@ interface CharacterType extends EntityType {
 interface Character extends Entity {
 	class Impl {
 		/** The type of the entity */
-		static def CharacterType type(Character it) {
+		static def CharacterType getType(Character it) {
 			_type as CharacterType
 		}
 		/** The attack rate. */

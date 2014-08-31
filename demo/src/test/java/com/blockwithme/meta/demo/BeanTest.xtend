@@ -101,12 +101,12 @@ class BeanTest extends BaseTst {
 		Assert.assertFalse("dtc.selected2", dtc.selected)
 		Assert.assertTrue("person.selected2", person.selected)
 		Assert.assertTrue("dtc.selectedRecursive2", dtc.selectedRecursive)
-		Assert.assertSame("person.parent", dtc, person.parent)
-		Assert.assertSame("person.root", dtc, person.root)
-		Assert.assertEquals("dtc.root", null, dtc.root)
+		Assert.assertSame("person.parent", dtc, person.parentBean)
+		Assert.assertSame("person.root", dtc, person.rootBean)
+		Assert.assertEquals("dtc.root", null, dtc.rootBean)
 		dtc.childProp = null
-		Assert.assertSame("person.parent", null, person.parent)
-		Assert.assertSame("person.root", null, person.root)
+		Assert.assertSame("person.parent", null, person.parentBean)
+		Assert.assertSame("person.root", null, person.rootBean)
 	}
 
 	@Test

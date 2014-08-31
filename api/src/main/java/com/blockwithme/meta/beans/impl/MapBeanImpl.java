@@ -278,14 +278,14 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
             if (SystemUtils.isAssignableFrom(Bean.class, getKeyType().type)) {
                 for (final K k : keys) {
                     if (k instanceof _Bean) {
-                        ((_Bean) k).setParent(null);
+                        ((_Bean) k).setParentBean(null);
                     }
                 }
             }
             if (SystemUtils.isAssignableFrom(Bean.class, getValueType().type)) {
                 for (final V v : values) {
                     if (v instanceof _Bean) {
-                        ((_Bean) v).setParent(null);
+                        ((_Bean) v).setParentBean(null);
                     }
                 }
             }

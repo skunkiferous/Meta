@@ -146,19 +146,19 @@ class DefaultInterceptor implements Interceptor {
         if (oldValue !== newValue) {
             // Note: oldValue must be cleared *before* checking for cycles.
             if (oldValue instanceof _Bean) {
-            	oldValue.setParent(null)
+            	oldValue.setParentBean(null)
             }
             if (newValue instanceof _Bean) {
             	if (!(newValue instanceof Entity) && !newValue.immutable) {
 	            	if (instance.hasSameRoot(newValue)) {
 	            		// Undo changes
 			            if (oldValue instanceof _Bean) {
-			            	oldValue.setParent(instance)
+			            	oldValue.setParentBean(instance)
 			            }
 			            throw new IllegalStateException("Cycles not permitted on "
 			            	+propId+" of "+instance.class.name)
 	            	}
-	            	newValue.setParent(instance)
+	            	newValue.setParentBean(instance)
 	            	newValue.setSelectionRecursive()
 				}
             } else if (newValue !== null) {
