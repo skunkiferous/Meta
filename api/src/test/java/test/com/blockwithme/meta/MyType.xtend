@@ -155,7 +155,7 @@ class MyCollectionType {
 }
 
 class MyMapType {
-  /** unorderedSet CollectionBean Property*/
+  /** MapBean Property*/
   package var map = new MapBeanImpl<String,Long>(Meta.MAP_BEAN, JavaMeta.STRING, JavaMeta.LONG)
 }
 

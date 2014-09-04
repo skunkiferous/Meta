@@ -27,8 +27,11 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 
+import com.blockwithme.meta.JavaMeta;
+import com.blockwithme.meta.Property;
 import com.blockwithme.meta.Type;
 import com.blockwithme.meta.beans.Bean;
+import com.blockwithme.meta.beans.BeanPath;
 import com.blockwithme.meta.beans.ObjectObjectMapInterceptor;
 import com.blockwithme.meta.beans._Bean;
 import com.blockwithme.meta.beans._MapBean;
@@ -278,14 +281,14 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
             if (SystemUtils.isAssignableFrom(Bean.class, getKeyType().type)) {
                 for (final K k : keys) {
                     if (k instanceof _Bean) {
-                        ((_Bean) k).setParentBean(null);
+                        ((_Bean) k).setParentBeanAndKey(null, null);
                     }
                 }
             }
             if (SystemUtils.isAssignableFrom(Bean.class, getValueType().type)) {
                 for (final V v : values) {
                     if (v instanceof _Bean) {
-                        ((_Bean) v).setParentBean(null);
+                        ((_Bean) v).setParentBeanAndKey(null, null);
                     }
                 }
             }
@@ -610,5 +613,84 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
     public final MapBeanImpl<K, V> wrapper() {
         throw new UnsupportedOperationException(
                 "Wrapping doesn't work fo colledction because insert/remove changes the structure");
+    }
+
+    /** Resolve Property, and optional key, on self. */
+    @Override
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    protected final Object partResolve(final BeanPath<?, ?> path) {
+        final Property prop = path.getProperty();
+        return (prop == JavaMeta.MAP_CONTENT_PROP) ? get(path.getKey()) : prop
+                .getObject(this);
+    }
+
+    /** Allows collections to perform special copy implementations. */
+    @Override
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    protected void copyValue(final Property p, final _BeanImpl _other,
+            final boolean immutably) {
+        final MapBeanImpl<K, V> other = (MapBeanImpl<K, V>) _other;
+        if (p == JavaMeta.MAP_CONTENT_PROP) {
+            ensureCapacityInternalAndClear(other.keys.length);
+            if (immutably) {
+                if (other.keyType.bean && other.valueType.bean) {
+                    for (final Entry<K, V> e : other.entrySet()) {
+                        final _BeanImpl k = (_BeanImpl) e.getKey();
+                        final _BeanImpl kCopy = (k == null) ? null : k
+                                .doSnapshot();
+                        final _BeanImpl v = (_BeanImpl) e.getValue();
+                        final _BeanImpl vCopy = (v == null) ? null : v
+                                .doSnapshot();
+                        put((K) kCopy, (V) vCopy);
+                    }
+                } else if (other.keyType.bean) {
+                    for (final Entry<K, V> e : other.entrySet()) {
+                        final _BeanImpl k = (_BeanImpl) e.getKey();
+                        final _BeanImpl kCopy = (k == null) ? null : k
+                                .doSnapshot();
+                        put((K) kCopy, e.getValue());
+                    }
+                } else if (other.valueType.bean) {
+                    for (final Entry<K, V> e : other.entrySet()) {
+                        final _BeanImpl v = (_BeanImpl) e.getValue();
+                        final _BeanImpl vCopy = (v == null) ? null : v
+                                .doSnapshot();
+                        put(e.getKey(), (V) vCopy);
+                    }
+                } else {
+                    for (final Entry<K, V> e : other.entrySet()) {
+                        put(e.getKey(), e.getValue());
+                    }
+                }
+            } else {
+                if (other.keyType.bean && other.valueType.bean) {
+                    for (final Entry<K, V> e : other.entrySet()) {
+                        final _BeanImpl k = (_BeanImpl) e.getKey();
+                        final _BeanImpl kCopy = (k == null) ? null : k.doCopy();
+                        final _BeanImpl v = (_BeanImpl) e.getValue();
+                        final _BeanImpl vCopy = (v == null) ? null : v.doCopy();
+                        put((K) kCopy, (V) vCopy);
+                    }
+                } else if (other.keyType.bean) {
+                    for (final Entry<K, V> e : other.entrySet()) {
+                        final _BeanImpl k = (_BeanImpl) e.getKey();
+                        final _BeanImpl kCopy = (k == null) ? null : k.doCopy();
+                        put((K) kCopy, e.getValue());
+                    }
+                } else if (other.valueType.bean) {
+                    for (final Entry<K, V> e : other.entrySet()) {
+                        final _BeanImpl v = (_BeanImpl) e.getValue();
+                        final _BeanImpl vCopy = (v == null) ? null : v.doCopy();
+                        put(e.getKey(), (V) vCopy);
+                    }
+                } else {
+                    for (final Entry<K, V> e : other.entrySet()) {
+                        put(e.getKey(), e.getValue());
+                    }
+                }
+            }
+        } else {
+            p.copyValue(_other, this);
+        }
     }
 }

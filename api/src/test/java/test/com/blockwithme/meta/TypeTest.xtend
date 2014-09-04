@@ -771,10 +771,9 @@ class TypeTest extends BaseTst {
     	assertTrue(TestMeta.MY_TYPE.isParentOf(TestMeta.MY_SUB_TYPE))
     }
 
-	// TODO Fails due to Xtend bug
-//    @Test
-//    public def void testCreate() {
-//    	val obj = TestMeta.MY_TYPE.create
-//    	assertEquals(MyType, obj.class)
-//    }
+    @Test
+    public def void testCreate() {
+    	val obj = TestMeta.MY_TYPE.create
+    	assertEquals(MyType, obj.class)
+    }
 }

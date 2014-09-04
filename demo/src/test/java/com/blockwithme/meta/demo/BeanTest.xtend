@@ -104,9 +104,11 @@ class BeanTest extends BaseTst {
 		Assert.assertSame("person.parent", dtc, person.parentBean)
 		Assert.assertSame("person.root", dtc, person.rootBean)
 		Assert.assertEquals("dtc.root", null, dtc.rootBean)
+		Assert.assertEquals("person.parentKey", "com.blockwithme.meta.demo.DemoTypeChild.childProp", person.parentKey)
 		dtc.childProp = null
 		Assert.assertSame("person.parent", null, person.parentBean)
 		Assert.assertSame("person.root", null, person.rootBean)
+		Assert.assertEquals("person.parentKey", null, person.parentKey)
 	}
 
 	@Test

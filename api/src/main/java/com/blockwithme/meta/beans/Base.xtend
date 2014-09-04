@@ -35,6 +35,7 @@ import java.util.List
 import java.util.Set
 import java.util.Map
 import java.util.logging.Logger
+import java.util.Objects
 
 /** Base for all data/bean objects */
 interface Bean {
@@ -88,8 +89,11 @@ interface _Bean extends Bean {
     /** Returns the "parent" Bean, if any. */
     def _Bean getParentBean()
 
-    /** Sets the "parent" Bean, if any. */
-    def void setParentBean(_Bean parent)
+    /** Returns the key/index in the "parent", if any. */
+    def Object getParentKey()
+
+    /** Sets the "parent" Bean and optional key/index, if any. */
+    def void setParentBeanAndKey(_Bean parent, Object key)
 
 	/** Returns true, if some property was selected */
     def boolean isSelected()
@@ -138,6 +142,68 @@ interface _Bean extends Bean {
 
     /** Returns the index to use for this property. */
     def int indexOfProperty(Property<?, ?> prop)
+
+    /**
+     * Resolves a BeanPath to a value (including null, if the value, or any link, is null),
+     * or fails, if failOnIncompatbileProperty is true, and an "incompatible" Property
+     * is encountered along the way.
+     *
+     * TODO Test! (Including collections and maps)
+     */
+    def Object resolvePath(BeanPath<?,?> path, boolean failOnIncompatbileProperty)
+}
+
+/**
+ * Represents a "path", within a tree of Beans.
+ *
+ * Remember that paths can also "go up" by using the "parent" Property.
+ */
+@Data
+class BeanPath<OWNER_TYPE, PROPERTY_TYPE> {
+	/** A Property, that points to the next BeanPath owner, if any, otherwise to the desired value. */
+	com.blockwithme.meta.Property<OWNER_TYPE, PROPERTY_TYPE> property
+	/** The optional key/index, within the Property object, pointing to next, if Property is a Map/Collection */
+	Object key
+	/** The next link in the path, unless we are at the value, in which case it is null. */
+	BeanPath<?,?> next
+
+  new(Property<OWNER_TYPE, PROPERTY_TYPE> property, Object key, BeanPath<?, ?> next) {
+    this._property = Objects.requireNonNull(property, "property");
+    this._key = key;
+    this._next = next;
+  }
+
+  new(Property<OWNER_TYPE, PROPERTY_TYPE> property, BeanPath<?, ?> next) {
+    this._property = Objects.requireNonNull(property, "property");
+    this._key = null;
+    this._next = next;
+  }
+
+  new(Property<OWNER_TYPE, PROPERTY_TYPE> property) {
+    this._property = Objects.requireNonNull(property, "property");
+    this._key = null;
+    this._next = null;
+  }
+
+  override String toString() {
+    return "BeanPath("+property.fullName+","+key+","+next+")";
+  }
+
+  /** Builds a full Bean path, from a list of Properties */
+  def static BeanPath[] from(Property ... props) {
+  	val len = props.length
+  	val result = <BeanPath>newArrayOfSize(len)
+  	var i = len-1
+  	var BeanPath last = null
+  	while (i > 0) {
+  		val p = props.get(i) as Property
+  		var next = new BeanPath(p, last)
+  		result.set(i,next)
+  		next = last
+  		i--
+  	}
+  	result
+  }
 }
 
 
@@ -368,13 +434,20 @@ interface Meta {
     val _BEAN__PARENT_BEAN = BUILDER.newObjectProperty(
     	_Bean, "parentBean", _Bean, true, true, false, [parentBean], null, true)
 
+	/** The parent "key" virtual Bean property */
+    val _BEAN__PARENT_KEY = BUILDER.newObjectProperty(
+    	_Bean, "parentKey", Object, true, true, false, [parentKey], null, true)
+
 	/** The root virtual Bean property */
     val _BEAN__ROOT_BEAN = BUILDER.newObjectProperty(
     	_Bean, "rootBean", _Bean, true, true, false, [rootBean], null, true)
 
 	/** The _Bean Type */
 	val _BEAN = BUILDER.newType(_Bean, null, Kind.Trait, #[BEAN],
-		com.blockwithme.meta.beans.Meta._BEAN__CHANGE_COUNTER, com.blockwithme.meta.beans.Meta._BEAN__PARENT_BEAN, com.blockwithme.meta.beans.Meta._BEAN__ROOT_BEAN)
+		com.blockwithme.meta.beans.Meta._BEAN__CHANGE_COUNTER,
+		com.blockwithme.meta.beans.Meta._BEAN__PARENT_BEAN,
+		com.blockwithme.meta.beans.Meta._BEAN__PARENT_KEY,
+		com.blockwithme.meta.beans.Meta._BEAN__ROOT_BEAN)
 
 	/** The Entity Type */
 	val ENTITY = BUILDER.newType(Entity, null, Kind.Trait, #[BEAN])

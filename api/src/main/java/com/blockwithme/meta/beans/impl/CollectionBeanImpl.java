@@ -26,7 +26,10 @@ import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
+import com.blockwithme.meta.JavaMeta;
+import com.blockwithme.meta.Property;
 import com.blockwithme.meta.Type;
+import com.blockwithme.meta.beans.BeanPath;
 import com.blockwithme.meta.beans.CollectionBeanConfig;
 import com.blockwithme.meta.beans.ObjectCollectionInterceptor;
 import com.blockwithme.meta.beans._Bean;
@@ -750,7 +753,7 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
                         getValueType().type)) {
                     for (final E v : data) {
                         if (v instanceof _Bean) {
-                            ((_Bean) v).setParentBean(null);
+                            ((_Bean) v).setParentBeanAndKey(null, null);
                         }
                     }
                 }
@@ -983,5 +986,62 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
     @Override
     public final CollectionBeanImpl<E> getDelegate() {
         return (CollectionBeanImpl<E>) super.getDelegate();
+    }
+
+    /** Resolve Property, and optional key, on self. */
+    @Override
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    protected final Object partResolve(final BeanPath<?, ?> path) {
+        final Property prop = path.getProperty();
+        return (prop == JavaMeta.COLLECTION_CONTENT_PROP) ? get((Integer) path
+                .getKey()) : prop.getObject(this);
+    }
+
+    /** Allows collections to perform special copy implementations. */
+    @Override
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    protected void copyValue(final Property p, final _BeanImpl _other,
+            final boolean immutably) {
+        final CollectionBeanImpl<E> other = (CollectionBeanImpl<E>) _other;
+        if (p == JavaMeta.COLLECTION_CONTENT_PROP) {
+            ensureCapacityInternal(other.size);
+            if (other.valueType.bean) {
+                if (other.config.getFixedSize() < 0) {
+                    if (immutably) {
+                        for (final E v : other) {
+                            final _BeanImpl b = (_BeanImpl) v;
+                            add((E) (b == null ? null : b.doSnapshot()));
+                        }
+                    } else {
+                        for (final E v : other) {
+                            final _BeanImpl b = (_BeanImpl) v;
+                            add((E) (b == null ? null : b.doCopy()));
+                        }
+                    }
+                } else {
+                    if (immutably) {
+                        for (int i = 0; i < other.size; i++) {
+                            final _BeanImpl b = (_BeanImpl) other.get(i);
+                            set(i, (E) (b == null ? null : b.doSnapshot()));
+                        }
+                    } else {
+                        for (int i = 0; i < other.size; i++) {
+                            final _BeanImpl b = (_BeanImpl) other.get(i);
+                            set(i, (E) (b == null ? null : b.doCopy()));
+                        }
+                    }
+                }
+            } else {
+                if (other.config.getFixedSize() < 0) {
+                    addAll(other);
+                } else {
+                    for (int i = 0; i < other.size; i++) {
+                        set(i, other.get(i));
+                    }
+                }
+            }
+        } else {
+            p.copyValue(_other, this);
+        }
     }
 }

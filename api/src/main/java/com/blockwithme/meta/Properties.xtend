@@ -638,6 +638,9 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
   /** Does this type represents a primitive/primitive-wrapper type? */
   public val boolean primitive
 
+  /** Is this object a "Bean"? */
+  public val boolean bean
+
   /**
    * The direct parent Types of this Type
    * Do not modify!
@@ -805,6 +808,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
         +theType+" not supported; use the Wrapper instead")
     }
     primitive = primTypes.contains(theType)
+    bean = Bean.isAssignableFrom(theType)
     type = theType
     empty = Array.newInstance(type, 0) as JAVA_TYPE[]
     constructor = if (theConstructor == null) asProvider(theType) else theConstructor

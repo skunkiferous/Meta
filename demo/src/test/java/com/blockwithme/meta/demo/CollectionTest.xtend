@@ -16,6 +16,7 @@
 package com.blockwithme.meta.demo
 
 import com.blockwithme.meta.beans.CollectionBeanConfig
+import com.blockwithme.meta.beans._Bean
 import com.blockwithme.meta.beans._ListBean
 import com.blockwithme.meta.beans._SetBean
 import com.blockwithme.meta.beans._MapBean
@@ -23,6 +24,7 @@ import com.blockwithme.meta.demo.impl.CollectionOwnerProvider
 import org.junit.Test
 
 import static org.junit.Assert.*
+import com.blockwithme.meta.demo.impl.PersonProvider
 
 /**
  * Tests the generation of Collection properties.
@@ -316,5 +318,59 @@ class CollectionTest extends BaseTst {
 		assertNotNull("co.rawRealSet", co.rawRealSet)
 		assertNotNull("co.rawIntegerSet", co.rawIntegerSet)
 		assertNotNull("co.rawMap", co.rawMap)
+	}
+
+	@Test
+	def void testParentsAndKeys() {
+		val co = new CollectionOwnerProvider().get
+
+		val pp = new PersonProvider()
+
+		val p1 = pp.get
+		val p2 = pp.get
+
+		co.everyone.add(p1)
+		co.everyone.add(p2)
+
+		assertSame("p1.parentBean", co.everyone, (p1 as _Bean).parentBean)
+		assertEquals("p1.parentKey", 0, (p1 as _Bean).parentKey)
+		assertSame("p2.parentBean", co.everyone, (p2 as _Bean).parentBean)
+		assertEquals("p2.parentKey", 1, (p2 as _Bean).parentKey)
+
+		val pk = pp.get
+		val pv = pp.get
+
+		co.socialGraph.put(pk, pv)
+
+		assertSame("pk.parentBean", co.socialGraph, (pk as _Bean).parentBean)
+		// This is a hash map; it could be anything
+//		assertEquals("pk.parentKey", 0, (pk as _Bean).parentKey)
+		assertSame("pv.parentBean", co.socialGraph, (pv as _Bean).parentBean)
+		assertSame("pv.parentKey", pk, (pv as _Bean).parentKey)
+
+		val copy_co = co.copy
+		val copy_p1 = copy_co.everyone.get(0)
+		val copy_p2 = copy_co.everyone.get(1)
+
+		assertNotSame("copy_co", co, copy_co)
+		assertNotSame("copy_co.everyone", co.everyone, copy_co.everyone)
+		assertNotSame("copy_p1", p1, copy_p1)
+		assertNotSame("copy_p2", p2, copy_p2)
+
+		assertSame("copy_p1.parentBean", copy_co.everyone, (copy_p1 as _Bean).parentBean)
+		assertEquals("copy_p1.parentKey", 0, (copy_p1 as _Bean).parentKey)
+		assertSame("copy_p2.parentBean", copy_co.everyone, (copy_p2 as _Bean).parentBean)
+		assertEquals("copy_p2.parentKey", 1, (copy_p2 as _Bean).parentKey)
+
+		val copy_pk = copy_co.socialGraph.keySet.iterator.next
+		val copy_pv = copy_co.socialGraph.get(copy_pk)
+
+		assertNotSame("copy_pk", pk, copy_pk)
+		assertNotSame("copy_pv", pv, copy_pv)
+		assertSame("copy_pk.parentBean", copy_co.socialGraph, (copy_pk as _Bean).parentBean)
+		// This is a hash map; it could be anything
+//		assertEquals("copy_pk.parentKey", 0, (copy_pk as _Bean).parentKey)
+		assertSame("copy_pv.parentBean", copy_co.socialGraph, (copy_pv as _Bean).parentBean)
+		assertSame("copy_pv.parentKey", copy_pk, (copy_pv as _Bean).parentKey)
 	}
 }

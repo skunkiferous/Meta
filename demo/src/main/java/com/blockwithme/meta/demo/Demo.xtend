@@ -251,6 +251,10 @@ interface CollectionOwner extends Root {
   int[] integerSet
 
   Map<String,Integer> map
+
+  List<Person> everyone
+
+  Map<Person,Person> socialGraph
 }
 
 ///** Example of the Trace annotation */

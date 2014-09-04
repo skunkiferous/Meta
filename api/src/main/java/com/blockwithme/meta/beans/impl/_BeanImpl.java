@@ -27,6 +27,7 @@ import java.util.logging.Logger;
 import com.blockwithme.meta.ObjectProperty;
 import com.blockwithme.meta.Property;
 import com.blockwithme.meta.Type;
+import com.blockwithme.meta.beans.BeanPath;
 import com.blockwithme.meta.beans.Entity;
 import com.blockwithme.meta.beans.Interceptor;
 import com.blockwithme.meta.beans._Bean;
@@ -203,6 +204,12 @@ public abstract class _BeanImpl implements _Bean {
      */
     private _Bean parentBean;
 
+    /**
+     * The key/index in the "parent", if any.
+     * It is by convention the property full name, unless the parent is a _CollectionBean or a _MapBean.
+     */
+    private Object parentKey;
+
     /** 32 "selected" flags */
     private int selected;
 
@@ -232,6 +239,9 @@ public abstract class _BeanImpl implements _Bean {
 
     /** The Logger */
     private transient Logger log;
+
+    /** The "under construction" flag */
+    private transient boolean underConstruction;
 
     /** Resets the cached state (when something changes) */
     private void resetCachedState() {
@@ -671,16 +681,32 @@ public abstract class _BeanImpl implements _Bean {
         return parentBean;
     }
 
-    /** Sets the "parent" Bean, if any. */
+    /** Sets the "parent" Bean and optional key/index, if any. */
     @Override
-    public final void setParentBean(final _Bean parent) {
+    public final void setParentBeanAndKey(final _Bean parent,
+            final Object parentKey) {
         if (this instanceof Entity) {
             if (parent != null) {
                 throw new UnsupportedOperationException(getClass().getName()
                         + ": Entities do not have parents");
             }
+            if (parentKey != null) {
+                throw new UnsupportedOperationException(getClass().getName()
+                        + ": Entities do not have parent keys");
+            }
+        }
+        if ((parentKey != null) && (parent == null)) {
+            throw new IllegalArgumentException(
+                    "parentKey can only be set if parent is not null");
         }
         this.parentBean = parent;
+        this.parentKey = parentKey;
+    }
+
+    /** Returns the key/index in the "parent", if any. */
+    @Override
+    public final Object getParentKey() {
+        return parentKey;
     }
 
     /** Returns the "root" Bean, if any. */
@@ -749,25 +775,40 @@ public abstract class _BeanImpl implements _Bean {
         }
         for (final Property p : metaType.inheritedProperties) {
             if (!p.isImmutable()) {
-                if ((p instanceof ObjectProperty) && ((ObjectProperty) p).bean) {
-                    final _BeanImpl value = (_BeanImpl) p.getObject(other);
-                    if (value != null) {
-                        if (immutably) {
-                            final _BeanImpl newVal = value.doSnapshot();
-                            p.setObject(this, newVal);
-                            // Setting immutable values does not set the parent
-                            // But here we created it, so we want the parent to be set.
-                            newVal.setParentBean(this);
-                        } else {
-                            p.setObject(this, value.doCopy());
+                if (p instanceof ObjectProperty) {
+                    if (((ObjectProperty) p).bean) {
+                        final _BeanImpl value = (_BeanImpl) p.getObject(other);
+                        if (value != null) {
+                            if (immutably) {
+                                final _BeanImpl newVal = value.doSnapshot();
+                                p.setObject(this, newVal);
+                                // Setting immutable values does not set the parent
+                                // But here we created it, so we want the parent to be set.
+                                // Collection and Map content are copied as one big Property,
+                                // such that parent and key/index should be correctly set.
+                                // Therefore we assume a "normal" Property, and use the
+                                // property name as key.
+                                newVal.setParentBeanAndKey(this, p.fullName);
+                            } else {
+                                p.setObject(this, value.doCopy());
+                            }
                         }
+                        // else nothing to do
+                    } else {
+                        copyValue(p, other, immutably);
                     }
-                    // else nothing to do
                 } else {
                     p.copyValue(other, this);
                 }
             } // else we assume it was somehow already set in the constructor...
         }
+    }
+
+    /** Allows collections to perform special copy implementations. */
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    protected void copyValue(final Property p, final _BeanImpl other,
+            final boolean immutably) {
+        p.copyValue(other, this);
     }
 
     /** Make a new instance of the same type as self. */
@@ -781,7 +822,9 @@ public abstract class _BeanImpl implements _Bean {
     /** Returns a full mutable copy */
     protected final _BeanImpl doCopy() {
         final _BeanImpl result = newInstance();
+        result.underConstruction = true;
         result.copyFrom(this, false);
+        result.underConstruction = false;
         return result;
     }
 
@@ -791,7 +834,9 @@ public abstract class _BeanImpl implements _Bean {
             return this;
         }
         final _BeanImpl result = newInstance();
+        result.underConstruction = true;
         result.copyFrom(this, true);
+        result.underConstruction = false;
         result.makeImmutable();
         return result;
     }
@@ -815,22 +860,55 @@ public abstract class _BeanImpl implements _Bean {
 
     /** Checks that the new value is either null or immutable. */
     protected final void checkNullOrImmutable(final Object newValue) {
-        if (newValue != null) {
+        if ((newValue != null) && !underConstruction) {
             // TODO This is a work-around for creating immutable snapshots of beans that
             // contain collections. We should not simply assume that immutable values
             // are only set for collection properties during snapshots
             if (!(newValue instanceof _Bean)
-                    || !((_Bean) newValue).isImmutable())
+                    || !((_Bean) newValue).isImmutable()) {
                 throw new IllegalArgumentException(
                         "Collection/Map setters only accepts null");
+            }
         }
     }
 
     /** Returns the Logger for this Bean */
+    @Override
     public final Logger log() {
         if (log == null) {
             log = Logger.getLogger(getClass().getName());
         }
         return log;
+    }
+
+    @Override
+    public final Object resolvePath(final BeanPath<?, ?> path,
+            final boolean failOnIncompatbileProperty) {
+        Objects.requireNonNull(path, "path");
+        Object current = null;
+        if (failOnIncompatbileProperty) {
+            current = partResolve(path);
+        } else {
+            try {
+                current = partResolve(path);
+            } catch (final RuntimeException e) {
+                // NOP
+            }
+        }
+        final BeanPath<?, ?> next = path.getNext();
+        if ((current == null) || (next == null)) {
+            return current;
+        }
+        if (failOnIncompatbileProperty || (current instanceof _Bean)) {
+            return ((_Bean) current).resolvePath(next,
+                    failOnIncompatbileProperty);
+        }
+        return null;
+    }
+
+    /** Resolve Property, and optional key, on self. */
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    protected Object partResolve(final BeanPath<?, ?> path) {
+        return ((Property) path.getProperty()).getObject(this);
     }
 }
