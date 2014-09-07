@@ -36,6 +36,8 @@ import java.util.Set
 import java.util.Map
 import java.util.logging.Logger
 import java.util.Objects
+import com.blockwithme.meta.PropertyVisitor
+import com.blockwithme.meta.beans.impl.AbstractBeanVisitor
 
 /** Base for all data/bean objects */
 interface Bean {
@@ -60,7 +62,7 @@ interface Bean {
  *
  * The "selected" state is usually used to keep track of the "dirty" state.
  */
-interface _Bean extends Bean {
+interface _Bean extends Bean, BeanVisitable {
 	/** Returns the Type of the instance */
     def Type<?> getMetaType()
 
@@ -152,6 +154,63 @@ interface _Bean extends Bean {
      */
     def Object resolvePath(BeanPath<?,?> path, boolean failOnIncompatbileProperty)
 }
+
+
+/**
+ * The Bean visitor
+ */
+interface BeanVisitor extends PropertyVisitor {
+  /** Visits a _Bean */
+  def void visit(_Bean bean)
+
+  /**
+   * Defines the start of the visit of a non-Bean.
+   *
+   * If it returns true, then the non-Bean should also write it's properties.
+   * In all case, it should then call endVisitNonBean()
+   */
+  def boolean startVisitNonBean(Object nonBean)
+
+  /**
+   * Defines the end of the visit of a non-Bean.
+   */
+  def void endVisitNonBean(Object nonBean)
+
+	/** Visit non-Bean boolean properties with their value */
+	def void visitNonBeanProperty(String propName, boolean value)
+
+	/** Visit non-Bean byte properties with their value */
+	def void visitNonBeanProperty(String propName, byte value)
+
+	/** Visit non-Bean char properties with their value */
+	def void visitNonBeanProperty(String propName, char value)
+
+	/** Visit non-Bean short properties with their value */
+	def void visitNonBeanProperty(String propName, short value)
+
+	/** Visit non-Bean int properties with their value */
+	def void visitNonBeanProperty(String propName, int value)
+
+	/** Visit non-Bean long properties with their value */
+	def void visitNonBeanProperty(String propName, long value)
+
+	/** Visit non-Bean float properties with their value */
+	def void visitNonBeanProperty(String propName, float value)
+
+	/** Visit non-Bean double properties with their value */
+	def void visitNonBeanProperty(String propName, double value)
+
+	/** Visit non-Bean Object properties with their value */
+	def void visitNonBeanProperty(String propName, Object obj)
+}
+
+
+/** Interface for Objects that support the BeanVisitor explicitly. */
+interface BeanVisitable {
+  /** Accepts the visitor */
+	def void accept(BeanVisitor visitor)
+}
+
 
 /**
  * Represents a "path", within a tree of Beans.

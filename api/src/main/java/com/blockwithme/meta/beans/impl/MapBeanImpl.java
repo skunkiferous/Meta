@@ -32,11 +32,54 @@ import com.blockwithme.meta.Property;
 import com.blockwithme.meta.Type;
 import com.blockwithme.meta.beans.Bean;
 import com.blockwithme.meta.beans.BeanPath;
+import com.blockwithme.meta.beans.BeanVisitable;
+import com.blockwithme.meta.beans.BeanVisitor;
 import com.blockwithme.meta.beans.ObjectObjectMapInterceptor;
 import com.blockwithme.meta.beans._Bean;
 import com.blockwithme.meta.beans._MapBean;
 import com.blockwithme.util.base.SystemUtils;
 import com.blockwithme.util.shared.MurmurHash;
+
+class MapBeanEntry<K, V> implements Map.Entry<K, V>, BeanVisitable {
+    private final K key;
+    private final V value;
+    private final MapBeanImpl<K, V> map;
+
+    public MapBeanEntry(final K key, final V value, final MapBeanImpl<K, V> map) {
+        this.key = key;
+        this.value = value;
+        this.map = map;
+    }
+
+    @Override
+    public K getKey() {
+        return key;
+    }
+
+    @Override
+    public V getValue() {
+        return value;
+    }
+
+    @Override
+    public V setValue(final V newValue) {
+        return map.put(key, newValue);
+    }
+
+    @Override
+    public String toString() {
+        return "{\"key\":" + key + ",\"value\":" + value + "}";
+    }
+
+    @Override
+    public void accept(final BeanVisitor visitor) {
+        if (visitor.startVisitNonBean(this)) {
+            visitor.visitNonBeanProperty("key", key);
+            visitor.visitNonBeanProperty("value", value);
+        }
+        visitor.endVisitNonBean(this);
+    }
+}
 
 /**
  * The implementation of _MapBean<K, V>.
@@ -90,6 +133,9 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
 
     /** Lazy created entry set. */
     private Set<Map.Entry<K, V>> entrySet;
+
+    /** Helper field for immutable maps. */
+    private transient int lastPutIndex;
 
     /** Returns the Map interceptor. */
     @SuppressWarnings("unchecked")
@@ -328,6 +374,7 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
         // We don't bother checking if it's "off by 1", and the real index is free.
         final V result = oomi.getValueAtIndex(this, index, values[index]);
         values[index] = oomi.setValueAtIndex(this, key, index, result, value);
+        lastPutIndex = index;
         return result;
     }
 
@@ -385,12 +432,12 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
         final K[] oldKeyes = keys;
         final V[] oldValues = values;
         ensureCapacityInternalAndClear((length == 0) ? MIN_SIZE : length * 2);
-        put(key, value);
         for (int i = 0; i < length; i++) {
             if (oldKeyes[i] != null) {
                 put(oldKeyes[i], oldValues[i]);
             }
         }
+        put(key, value);
         return null;
     }
 
@@ -537,6 +584,7 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
                 @Override
                 public Iterator<Map.Entry<K, V>> iterator() {
                     return new Iterator<Map.Entry<K, V>>() {
+                        private JacksonSerializer js;
                         final Iterator<K> keyIter = keySet().iterator();
 
                         @Override
@@ -548,22 +596,8 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
                         public Map.Entry<K, V> next() {
                             final K key = keyIter.next();
                             final V value = get(key);
-                            return new Map.Entry<K, V>() {
-                                @Override
-                                public K getKey() {
-                                    return key;
-                                }
-
-                                @Override
-                                public V getValue() {
-                                    return value;
-                                }
-
-                                @Override
-                                public V setValue(final V newValue) {
-                                    return put(key, newValue);
-                                }
-                            };
+                            return new MapBeanEntry<K, V>(key, value,
+                                    MapBeanImpl.this);
                         }
 
                         @Override
@@ -642,6 +676,12 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
                         final _BeanImpl vCopy = (v == null) ? null : v
                                 .doSnapshot();
                         put((K) kCopy, (V) vCopy);
+                        if (kCopy != null) {
+                            kCopy.setParentBeanAndKey(this, lastPutIndex);
+                        }
+                        if (vCopy != null) {
+                            vCopy.setParentBeanAndKey(this, kCopy);
+                        }
                     }
                 } else if (other.keyType.bean) {
                     for (final Entry<K, V> e : other.entrySet()) {
@@ -649,13 +689,20 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
                         final _BeanImpl kCopy = (k == null) ? null : k
                                 .doSnapshot();
                         put((K) kCopy, e.getValue());
+                        if (kCopy != null) {
+                            kCopy.setParentBeanAndKey(this, lastPutIndex);
+                        }
                     }
                 } else if (other.valueType.bean) {
                     for (final Entry<K, V> e : other.entrySet()) {
+                        final K k = e.getKey();
                         final _BeanImpl v = (_BeanImpl) e.getValue();
                         final _BeanImpl vCopy = (v == null) ? null : v
                                 .doSnapshot();
-                        put(e.getKey(), (V) vCopy);
+                        put(k, (V) vCopy);
+                        if (vCopy != null) {
+                            vCopy.setParentBeanAndKey(this, k);
+                        }
                     }
                 } else {
                     for (final Entry<K, V> e : other.entrySet()) {

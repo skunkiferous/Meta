@@ -68,6 +68,25 @@ class CollectionBeanConfig {
 	/** Are we a list? */
 	boolean list
 
+	override toString() {
+		if (this === LIST) {
+			"LIST"
+		} else if (this === NULL_LIST) {
+			"NULL_LIST"
+		} else if (this === SORTED_SET) {
+			"SORTED_SET"
+		} else if (this === ORDERED_SET) {
+			"ORDERED_SET"
+		} else if (this === UNORDERED_SET) {
+			"UNORDERED_SET"
+		} else if (this === HASH_SET) {
+			"HASH_SET"
+		} else if (onlyExactType) {
+			"FIXED("+fixedSize+",true)"
+		} else {
+			"FIXED("+fixedSize+",false)"
+		}
+	}
 	/** Are we some kind of unordered set? */
 	def boolean pseudoUnorderedSet() {
 		unorderedSet || hashSet
@@ -112,7 +131,7 @@ class CollectionBeanConfig {
 		if (fixedSize < 0) {
 			throw new IllegalArgumentException("Fixed size cannot be negative: "+fixedSize)
 		}
-		val Integer key = fixedSize
+		val Integer key = if (onlyExactType) fixedSize else (-1 - fixedSize)
 		var result = FIXED_SIZE_CACHE.get(key)
 		if (result === null) {
 			result = new CollectionBeanConfig(fixedSize, true, onlyExactType, false, false, false, false, false, true)

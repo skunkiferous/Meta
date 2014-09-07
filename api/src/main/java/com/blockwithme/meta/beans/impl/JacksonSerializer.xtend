@@ -16,29 +16,30 @@
 package com.blockwithme.meta.beans.impl
 
 import com.blockwithme.meta.BooleanProperty
+import com.blockwithme.meta.IIntegralPrimitiveProperty
+import com.blockwithme.meta.IRealPrimitiveProperty
 import com.blockwithme.meta.ObjectProperty
-import com.blockwithme.meta.PrimitiveProperty
 import com.blockwithme.meta.Property
 import com.blockwithme.meta.beans._Bean
 import com.blockwithme.meta.beans._Entity
+import com.fasterxml.jackson.core.JsonEncoding
 import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.core.JsonGenerator
+import com.google.common.io.CharStreams
+import java.io.File
+import java.io.OutputStream
+import java.io.Writer
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.util.IdentityHashMap
 import java.util.Objects
-import java.io.Writer
-import java.io.OutputStream
-import java.io.File
-import com.fasterxml.jackson.core.JsonEncoding
-import com.google.common.io.CharStreams
 
 /**
  * A PropertyVisitor that produces a Jackson (normally JSON) output for beans.
  *
  * @author monster
  */
-class JacksonSerializer extends AbstractPropertyVisitor {
+class JacksonSerializer extends AbstractBeanVisitor {
 
 	/** JsonFactory */
 	public static val FACTORY = new JsonFactory()
@@ -75,7 +76,13 @@ class JacksonSerializer extends AbstractPropertyVisitor {
 			key = cache.size
 			cache.put(obj, key)
 			generator.writeNumberField(POSITION, key)
-			generator.writeStringField(CLASS, obj.class.name)
+			if (!(obj instanceof Class)) {
+				generator.writeFieldName(CLASS)
+				// We have no special serialization for class, as the default is OK,
+				// And if we actually have a class as a field value, then it still
+				// all works consistently.
+				writeUnknownObject(obj.class)
+			}
 			true
 		} else {
 			generator.writeNumberField(POSITION, key)
@@ -89,29 +96,41 @@ class JacksonSerializer extends AbstractPropertyVisitor {
 	}
 
 	/** Called for beans */
-	public override void visit(_Bean bean) {
+	override void visit(_Bean bean) {
 		if (bean !== null) {
 			if (appendObjectStart(bean)) {
 				super.visit(bean)
-				appendObjectEnd()
 			}
+			appendObjectEnd()
 		} else {
 			generator.writeNull
 		}
 	}
 
-	/** Called for all properties */
-	protected override void visit(Property prop) {
-		generator.writeFieldName(prop.simpleName)
-	}
+  /**
+   * Defines the start of the visit of a non-Bean.
+   *
+   * If it returns true, then the non-Bean should also write it's properties.
+   * In all case, it should then call endVisitNonBean()
+   */
+  override boolean startVisitNonBean(Object nonBean) {
+  	appendObjectStart(nonBean)
+  }
 
-	/** Visit ObjectProperty with null value */
-	protected override void visitNull(ObjectProperty prop) {
-		generator.writeNull
+  /**
+   * Defines the end of the visit of a non-Bean.
+   */
+  override void endVisitNonBean(Object nonBean) {
+  	appendObjectEnd()
+  }
+
+	/** Called for all properties */
+	protected override void visitProperty(String propName) {
+		generator.writeFieldName(propName)
 	}
 
 	/** Visit boolean properties */
-	protected override void visit(BooleanProperty prop, boolean value) {
+	protected override void visitValue(BooleanProperty prop, boolean value) {
 		generator.writeBoolean(value)
 	}
 
@@ -119,21 +138,15 @@ class JacksonSerializer extends AbstractPropertyVisitor {
 	 * All integral primitive properties end up delegating here,
 	 * Including boolean.
 	 */
-	protected override void visitNumber(PrimitiveProperty prop, long value) {
+	protected override void visitNumberValue(IIntegralPrimitiveProperty prop, long value) {
 		generator.writeNumber(value)
 	}
 
 	/**
 	 * All floating-point primitive properties end up delegating here,
 	 */
-	protected override void visitNumber(PrimitiveProperty prop, double value) {
+	protected override void visitNumberValue(IRealPrimitiveProperty prop, double value) {
 		generator.writeNumber(value)
-	}
-
-	/** Visit ObjectProperty with Entity value */
-	protected override void visitEntity(ObjectProperty prop, _Entity value) {
-		// TODO Probably not the best solution...
-		generator.writeString(value.getEntityContext().getIDAsString(value))
 	}
 
 	/**
@@ -141,14 +154,13 @@ class JacksonSerializer extends AbstractPropertyVisitor {
 	 *
 	 * All Object properties end up delegating here.
 	 */
-	protected override void visitObject(ObjectProperty prop, Object value) {
-		// Cannot be null!
-		if (value instanceof String) {
+	protected override void visitNonBeanValue(ObjectProperty prop, Object value) {
+		if (value === null) {
+			generator.writeNull
+		} else if (value instanceof String) {
 			generator.writeString(value)
 		} else if (value instanceof CharSequence) {
 			generator.writeString(value.toString)
-		} else if (value instanceof Class<?>) {
-			generator.writeString(value.name)
 		} else if (value instanceof Enum<?>) {
 			generator.writeString(value.name)
 		} else if (value instanceof Boolean) {
@@ -168,94 +180,116 @@ class JacksonSerializer extends AbstractPropertyVisitor {
 			} else if (value instanceof BigDecimal) {
 				generator.writeNumber(value)
 			} else {
-				// What is that?
+				// What kind of Number is that?
 				writeUnknownObject(value)
 			}
 		} else if (value.class.array) {
 			writeArrayObject(value)
 		} else {
+			// "Class" comes here by Design.
 			writeUnknownObject(value)
 		}
 	}
 
 	protected def void writeArrayObject(Object value) {
 		if (appendObjectStart(value)) {
-			generator.writeFieldName(CONTENT)
 			val compomentType = value.class.componentType
-			val buf = new StringBuilder
-			var sep = ""
-			buf.append("[")
 			if (compomentType.primitive) {
 				if (compomentType == Boolean.TYPE) {
-					for (v : value as boolean[]) {
-						buf.append(sep)
-						sep = ","
-						buf.append(v)
+					val array = value as boolean[]
+					if (array.length > 0) {
+						generator.writeArrayFieldStart(CONTENT)
+						for (v : array) {
+							generator.writeBoolean(v)
+						}
+						generator.writeEndArray
 					}
 				} else if (compomentType == Byte.TYPE) {
-					for (v : value as byte[]) {
-						buf.append(sep)
-						sep = ","
-						buf.append(v as int)
+					val array = value as byte[]
+					if (array.length > 0) {
+						generator.writeArrayFieldStart(CONTENT)
+						for (v : array) {
+							generator.writeNumber(v)
+						}
+						generator.writeEndArray
 					}
 				} else if (compomentType == Character.TYPE) {
-					for (v : value as char[]) {
-						buf.append(sep)
-						sep = ","
-						buf.append(v)
+					val array = value as char[]
+					if (array.length > 0) {
+						generator.writeArrayFieldStart(CONTENT)
+						for (v : array) {
+							generator.writeNumber(v)
+						}
+						generator.writeEndArray
 					}
 				} else if (compomentType == Short.TYPE) {
-					for (v : value as short[]) {
-						buf.append(sep)
-						sep = ","
-						buf.append(v as int)
+					val array = value as short[]
+					if (array.length > 0) {
+						generator.writeArrayFieldStart(CONTENT)
+						for (v : array) {
+							generator.writeNumber(v)
+						}
+						generator.writeEndArray
 					}
 				} else if (compomentType == Integer.TYPE) {
-					for (v : value as int[]) {
-						buf.append(sep)
-						sep = ","
-						buf.append(v)
+					val array = value as int[]
+					if (array.length > 0) {
+						generator.writeArrayFieldStart(CONTENT)
+						for (v : array) {
+							generator.writeNumber(v)
+						}
+						generator.writeEndArray
 					}
 				} else if (compomentType == Long.TYPE) {
-					for (v : value as long[]) {
-						buf.append(sep)
-						sep = ","
-						buf.append(v)
+					val array = value as long[]
+					if (array.length > 0) {
+						generator.writeArrayFieldStart(CONTENT)
+						for (v : array) {
+							generator.writeNumber(v)
+						}
+						generator.writeEndArray
 					}
 				} else if (compomentType == Float.TYPE) {
-					for (v : value as float[]) {
-						buf.append(sep)
-						sep = ","
-						buf.append(v)
+					val array = value as float[]
+					if (array.length > 0) {
+						generator.writeArrayFieldStart(CONTENT)
+						for (v : array) {
+							generator.writeNumber(v)
+						}
+						generator.writeEndArray
 					}
 				} else if (compomentType == Double.TYPE) {
-					for (v : value as double[]) {
-						buf.append(sep)
-						sep = ","
-						buf.append(v)
+					val array = value as double[]
+					if (array.length > 0) {
+						generator.writeArrayFieldStart(CONTENT)
+						for (v : array) {
+							generator.writeNumber(v)
+						}
+						generator.writeEndArray
 					}
 				} else {
 					throw new IllegalStateException("Unknown primitive type: "+compomentType)
 				}
 			} else {
-				for (v : value as Object[]) {
-					buf.append(sep)
-					sep = ","
-					buf.append(v)
+				val array = value as Object[]
+				if (array.length > 0) {
+					generator.writeArrayFieldStart(CONTENT)
+					for (v : array) {
+						visitValue(null as ObjectProperty, v)
+					}
+					generator.writeEndArray
 				}
 			}
-			buf.append("]")
-			generator.writeString(buf.toString())
-			appendObjectEnd()
 		}
+		appendObjectEnd()
 	}
 
 	protected def void writeUnknownObject(Object value) {
 		if (appendObjectStart(value)) {
 			generator.writeFieldName(CONTENT)
 			generator.writeString(value.toString())
-			appendObjectEnd()
 		}
+		appendObjectEnd()
 	}
 
 	/** Creates a new serializer from a Writer */

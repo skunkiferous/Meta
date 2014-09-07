@@ -131,6 +131,12 @@ class AttributeCategory {
 	}
 }
 
+/** A Reference to a configuration object. */
+@Data
+class Ref<E> {
+	E value
+}
+
 /** Base type of everything in this package */
 @Bean
 interface Root {
@@ -168,7 +174,7 @@ interface AttributeType extends MetaInfo, Provider<Attribute> {
 		/** Creates a new Attribute */
 		static def Attribute get(AttributeType it) {
 			val result = Meta.ATTRIBUTE.create
-			result.type = it
+			result.type = new Ref(it)
 			result.baseValue = defaultValue
 			result
 		}
@@ -216,7 +222,7 @@ interface Attribute extends Root {
 			for (e : _effects) {
 				result = e.eval(filter, result, turn)
 			}
-			clamp(result,type.min,type.max)
+			clamp(result,type.value.min,type.value.max)
 		}
 
 		/** Describes the evaluation of the effective value of an attribute of an entity. */
@@ -225,7 +231,7 @@ interface Attribute extends Root {
 			for (e : _effects) {
 				result = e.describe(filter, result, turn)
 			}
-			"max(min("+result+","+type.max+"),"+type.min+")"
+			"max(min("+result+","+type.value.max+"),"+type.value.min+")"
 		}
 
 		/** Adds one more effect to this attribute. */
@@ -244,17 +250,17 @@ interface Attribute extends Root {
 		}
 		/** If this is an "indicator" attribute, then maxValue is the maximum value attribute. */
 		static def Attribute getMaxValue(Attribute it) {
-			val maxValue = it.type.maxValue;
+			val maxValue = it.type.value.maxValue;
 			if (maxValue === null) null else ((it as _Bean).parentBean as Entity).attr(maxValue)
 		}
 		/** If this is a "indicator" attribute, then regenRate is the regeneration rate attribute. */
 		static def Attribute getRegenRate(Attribute it) {
-			val regenRate = it.type.regenRate;
+			val regenRate = it.type.value.regenRate;
 			if (regenRate === null) null else ((it as _Bean).parentBean as Entity).attr(regenRate)
 		}
 	}
 	/** The type of the attribute */
-	AttributeType type
+	Ref<AttributeType> type
 	/** The base value of the attribute */
 	double baseValue
 	/** All the effects that apply to the base value */
@@ -357,7 +363,7 @@ interface EntityType extends MetaInfo, Provider<Entity> {
 		}
 		/** Creates a new Entity */
 		static def Entity init(EntityType it, Entity entity) {
-			entity._type = it
+			entity._type = new Ref(it)
 			for (at : _attributes.values) {
 				entity._attributes.put(at.name, at.get)
 			}
@@ -395,7 +401,7 @@ interface Entity extends Root {
 		}
 		/** The type of the entity */
 		static def EntityType getType(Entity it) {
-			_type
+			_type.value
 		}
 		/** Lists all the attributes of this entity */
 		static def Iterable<Attribute> attrs(Entity it) {
@@ -409,7 +415,7 @@ interface Entity extends Root {
 		}
 	}
 	/** The type of the entity */
-	EntityType _type
+	Ref<EntityType> _type
 	/** The attributes of the entity */
 	Map<String,Attribute> _attributes
 }
@@ -498,7 +504,7 @@ interface Effect extends Entity {
 		}
 		/** The type of the entity */
 		static def EffectType getType(Effect it) {
-			_type as EffectType
+			_type.value as EffectType
 		}
 
 		/**
@@ -603,7 +609,7 @@ interface BasicEffect extends Effect {
 		}
 		/** The type of the entity */
 		static def BasicEffectType getType(BasicEffect it) {
-			_type as BasicEffectType
+			_type.value as BasicEffectType
 		}
 		/** The value/strength of the "effect". */
 		static def Attribute getEffect(BasicEffect it) { attr("effect") }
@@ -626,7 +632,7 @@ class SimpleAttributeMatcher implements AttributeMatcher {
 	}
 	/** Returns true, if the attribute matches */
 	override boolean matches(Entity entity, Attribute attribute) {
-		attribute.type.name == name
+		attribute.type.value.name == name
 	}
 }
 
@@ -1195,7 +1201,7 @@ interface Modifier extends Entity {
 	class Impl {
 		/** The type of the entity */
 		static def ModifierType getType(Modifier it) {
-			_type as ModifierType
+			_type.value as ModifierType
 		}
 		/** Applies a modifier to an entity. Returns true on success. */
 		static def boolean apply(Modifier it, Entity entity) {
@@ -1241,7 +1247,7 @@ interface Drunk extends Modifier {
 	class Impl {
 		/** The type of the entity */
 		static def DrunkType getType(Drunk it) {
-			_type as DrunkType
+			_type.value as DrunkType
 		}
 	}
 }
@@ -1305,7 +1311,7 @@ interface Character extends Entity {
 	class Impl {
 		/** The type of the entity */
 		static def CharacterType getType(Character it) {
-			_type as CharacterType
+			_type.value as CharacterType
 		}
 		/** The attack rate. */
 		static def Attribute speed(Character it) { attr("speed") }

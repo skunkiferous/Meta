@@ -570,6 +570,10 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
   	propInfo.type.startsWith(MapBean.name+"<")
   }
 
+  private static def isCol(PropertyInfo propInfo) {
+  	propInfo.type.startsWith(ListBean.name+"<") || propInfo.type.startsWith(SetBean.name+"<")
+  }
+
   /** Extract virtual properties from the optional Impl class */
   private def void extractVirtualProperties(Map<String,Object> processingContext, BeanInfo result,
   	TypeDeclaration td, ClassDeclaration innerImplClass, ArrayList<PropertyInfo> properties,
@@ -1624,7 +1628,7 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
   	  		""
   		else if (propInfo.isMap)
 	  		"("+MapBeanImpl.name+propInfo.type.substring(start)+") "
-  		else
+  		else if (propInfo.isCol)
 	  		"("+CollectionBeanImpl.name+propInfo.type.substring(start)+") "
     }
 

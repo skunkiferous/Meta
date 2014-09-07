@@ -235,12 +235,12 @@ class TestMeta {
         com.blockwithme.meta.Meta.TYPE, "persistent", Boolean, Boolean.FALSE, false))
 
   public static val Type<MyType> MY_TYPE = BUILDER.newType(MyType,
-    null/*[new MyType]*/, Kind.Implementation, BOOL_PROP, BYTE_PROP,
+    [|new MyType], Kind.Implementation, BOOL_PROP, BYTE_PROP,
       CHAR_PROP, SHORT_PROP, INT_PROP, LONG_PROP, FLOAT_PROP,
       DOUBLE_PROP, OBJECT_PROP, ENUM_PROP, VIRTUAL_BOOL_PROP)
 
   public static val Type<MySubType> MY_SUB_TYPE
-    = BUILDER.newType(MySubType, null /*[new MySubType]*/,
+    = BUILDER.newType(MySubType, [|new MySubType],
       Kind.Implementation, #[MY_TYPE], INT_PROP2)
 
   public static val UNORDERED_SET_PROP = BUILDER.newObjectProperty(
@@ -269,7 +269,7 @@ class TestMeta {
     [fixedSizeList], [obj,value|obj.fixedSizeList = value;obj], false)
 
   public static val Type<MyCollectionType> MY_COLLECTION_TYPE
-    = BUILDER.newType(MyCollectionType, null /*[new MyCollectionType]*/,
+    = BUILDER.newType(MyCollectionType, [|new MyCollectionType],
       Kind.Implementation, UNORDERED_SET_PROP, ORDERED_SET_PROP,
       	SORTED_SET_PROP, LIST_PROP, FIXED_SIZE_LIST_PROP)
 

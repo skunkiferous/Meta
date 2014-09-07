@@ -1008,9 +1008,15 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
             if (other.valueType.bean) {
                 if (other.config.getFixedSize() < 0) {
                     if (immutably) {
+                        int i = 0;
                         for (final E v : other) {
-                            final _BeanImpl b = (_BeanImpl) v;
-                            add((E) (b == null ? null : b.doSnapshot()));
+                            if (v == null) {
+                                add(null);
+                            } else {
+                                final E b = (E) ((_BeanImpl) v).doSnapshot();
+                                add(b);
+                                ((_BeanImpl) b).setParentBeanAndKey(this, i++);
+                            }
                         }
                     } else {
                         for (final E v : other) {
@@ -1021,8 +1027,14 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
                 } else {
                     if (immutably) {
                         for (int i = 0; i < other.size; i++) {
-                            final _BeanImpl b = (_BeanImpl) other.get(i);
-                            set(i, (E) (b == null ? null : b.doSnapshot()));
+                            final _BeanImpl v = (_BeanImpl) other.get(i);
+                            if (v == null) {
+                                add(null);
+                            } else {
+                                final E b = (E) v.doSnapshot();
+                                add(b);
+                                ((_BeanImpl) b).setParentBeanAndKey(this, i);
+                            }
                         }
                     } else {
                         for (int i = 0; i < other.size; i++) {

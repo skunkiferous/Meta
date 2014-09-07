@@ -28,6 +28,7 @@ import com.blockwithme.meta.ObjectProperty;
 import com.blockwithme.meta.Property;
 import com.blockwithme.meta.Type;
 import com.blockwithme.meta.beans.BeanPath;
+import com.blockwithme.meta.beans.BeanVisitor;
 import com.blockwithme.meta.beans.Entity;
 import com.blockwithme.meta.beans.Interceptor;
 import com.blockwithme.meta.beans._Bean;
@@ -685,6 +686,12 @@ public abstract class _BeanImpl implements _Bean {
     @Override
     public final void setParentBeanAndKey(final _Bean parent,
             final Object parentKey) {
+        if ((parent != null) && (parentBean != null)) {
+            throw new IllegalStateException(
+                    "parent cannot be set when current parent is not null ("
+                            + parentBean.getClass().getName() + ":"
+                            + parentBean + ")");
+        }
         if (this instanceof Entity) {
             if (parent != null) {
                 throw new UnsupportedOperationException(getClass().getName()
@@ -910,5 +917,10 @@ public abstract class _BeanImpl implements _Bean {
     @SuppressWarnings({ "unchecked", "rawtypes" })
     protected Object partResolve(final BeanPath<?, ?> path) {
         return ((Property) path.getProperty()).getObject(this);
+    }
+
+    @Override
+    public void accept(final BeanVisitor visitor) {
+        visitor.visit(this);
     }
 }

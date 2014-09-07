@@ -327,26 +327,52 @@ class CollectionTest extends BaseTst {
 		val pp = new PersonProvider()
 
 		val p1 = pp.get
+		p1.name = "John"
 		val p2 = pp.get
+		p2.name = "Mary"
 
 		co.everyone.add(p1)
 		co.everyone.add(p2)
+
+		val pk = pp.get
+		pk.name = "Dave"
+		val pv = pp.get
+		pv.name = "Susy"
+
+		co.socialGraph.put(pk, pv)
 
 		assertSame("p1.parentBean", co.everyone, (p1 as _Bean).parentBean)
 		assertEquals("p1.parentKey", 0, (p1 as _Bean).parentKey)
 		assertSame("p2.parentBean", co.everyone, (p2 as _Bean).parentBean)
 		assertEquals("p2.parentKey", 1, (p2 as _Bean).parentKey)
 
-		val pk = pp.get
-		val pv = pp.get
-
-		co.socialGraph.put(pk, pv)
-
 		assertSame("pk.parentBean", co.socialGraph, (pk as _Bean).parentBean)
 		// This is a hash map; it could be anything
 //		assertEquals("pk.parentKey", 0, (pk as _Bean).parentKey)
 		assertSame("pv.parentBean", co.socialGraph, (pv as _Bean).parentBean)
 		assertSame("pv.parentKey", pk, (pv as _Bean).parentKey)
+	}
+
+	@Test
+	def void testCopy() {
+		val co = new CollectionOwnerProvider().get
+
+		val pp = new PersonProvider()
+
+		val p1 = pp.get
+		p1.name = "John"
+		val p2 = pp.get
+		p2.name = "Mary"
+
+		co.everyone.add(p1)
+		co.everyone.add(p2)
+
+		val pk = pp.get
+		pk.name = "Dave"
+		val pv = pp.get
+		pv.name = "Susy"
+
+		co.socialGraph.put(pk, pv)
 
 		val copy_co = co.copy
 		val copy_p1 = copy_co.everyone.get(0)
@@ -372,5 +398,92 @@ class CollectionTest extends BaseTst {
 //		assertEquals("copy_pk.parentKey", 0, (copy_pk as _Bean).parentKey)
 		assertSame("copy_pv.parentBean", copy_co.socialGraph, (copy_pv as _Bean).parentBean)
 		assertSame("copy_pv.parentKey", copy_pk, (copy_pv as _Bean).parentKey)
+
+		assertEquals("copy_p1", p1, copy_p1)
+		assertEquals("copy_p2", p2, copy_p2)
+		assertEquals("copy_pk", pk, copy_pk)
+		assertEquals("copy_pv", pv, copy_pv)
+
+		assertEquals("co.defaultSet", co.defaultSet, copy_co.defaultSet)
+		assertEquals("co.unorderedSet", co.unorderedSet, copy_co.unorderedSet)
+		assertEquals("co.orderedSet", co.orderedSet, copy_co.orderedSet)
+		assertEquals("co.sortedSet", co.sortedSet, copy_co.sortedSet)
+		assertEquals("co.hashSet", co.hashSet, copy_co.hashSet)
+		assertEquals("co.list", co.list, copy_co.list)
+		assertEquals("co.fixedSizeList", co.fixedSizeList, copy_co.fixedSizeList)
+		assertEquals("co.nullList", co.nullList, copy_co.nullList)
+		assertEquals("co.realList", co.realList, copy_co.realList)
+		assertEquals("co.realSet", co.realSet, copy_co.realSet)
+		assertEquals("co.integerSet", co.integerSet, copy_co.integerSet)
+		assertEquals("co.map", co.map, copy_co.map)
+		assertEquals("copy_co.everyone", co.everyone, copy_co.everyone)
+		assertEquals("copy_co", co, copy_co)
+	}
+
+	@Test
+	def void testSnapshot() {
+		val co = new CollectionOwnerProvider().get
+
+		val pp = new PersonProvider()
+
+		val p1 = pp.get
+		p1.name = "John"
+		val p2 = pp.get
+		p2.name = "Mary"
+
+		co.everyone.add(p1)
+		co.everyone.add(p2)
+
+		val pk = pp.get
+		pk.name = "Dave"
+		val pv = pp.get
+		pv.name = "Susy"
+
+		co.socialGraph.put(pk, pv)
+
+		val copy_co = co.snapshot
+		val copy_p1 = copy_co.everyone.get(0)
+		val copy_p2 = copy_co.everyone.get(1)
+
+		assertNotSame("copy_co", co, copy_co)
+		assertNotSame("copy_co.everyone", co.everyone, copy_co.everyone)
+		assertNotSame("copy_p1", p1, copy_p1)
+		assertNotSame("copy_p2", p2, copy_p2)
+
+		assertSame("copy_p1.parentBean", copy_co.everyone, (copy_p1 as _Bean).parentBean)
+		assertEquals("copy_p1.parentKey", 0, (copy_p1 as _Bean).parentKey)
+		assertSame("copy_p2.parentBean", copy_co.everyone, (copy_p2 as _Bean).parentBean)
+		assertEquals("copy_p2.parentKey", 1, (copy_p2 as _Bean).parentKey)
+
+		val copy_pk = copy_co.socialGraph.keySet.iterator.next
+		val copy_pv = copy_co.socialGraph.get(copy_pk)
+
+		assertNotSame("copy_pk", pk, copy_pk)
+		assertNotSame("copy_pv", pv, copy_pv)
+		assertSame("copy_pk.parentBean", copy_co.socialGraph, (copy_pk as _Bean).parentBean)
+		// This is a hash map; it could be anything
+//		assertEquals("copy_pk.parentKey", 0, (copy_pk as _Bean).parentKey)
+		assertSame("copy_pv.parentBean", copy_co.socialGraph, (copy_pv as _Bean).parentBean)
+		assertSame("copy_pv.parentKey", copy_pk, (copy_pv as _Bean).parentKey)
+
+		assertEquals("copy_p1", p1, copy_p1)
+		assertEquals("copy_p2", p2, copy_p2)
+		assertEquals("copy_pk", pk, copy_pk)
+		assertEquals("copy_pv", pv, copy_pv)
+
+		assertEquals("co.defaultSet", co.defaultSet, copy_co.defaultSet)
+		assertEquals("co.unorderedSet", co.unorderedSet, copy_co.unorderedSet)
+		assertEquals("co.orderedSet", co.orderedSet, copy_co.orderedSet)
+		assertEquals("co.sortedSet", co.sortedSet, copy_co.sortedSet)
+		assertEquals("co.hashSet", co.hashSet, copy_co.hashSet)
+		assertEquals("co.list", co.list, copy_co.list)
+		assertEquals("co.fixedSizeList", co.fixedSizeList, copy_co.fixedSizeList)
+		assertEquals("co.nullList", co.nullList, copy_co.nullList)
+		assertEquals("co.realList", co.realList, copy_co.realList)
+		assertEquals("co.realSet", co.realSet, copy_co.realSet)
+		assertEquals("co.integerSet", co.integerSet, copy_co.integerSet)
+		assertEquals("co.map", co.map, copy_co.map)
+		assertEquals("copy_co.everyone", co.everyone, copy_co.everyone)
+		assertEquals("copy_co", co, copy_co)
 	}
 }

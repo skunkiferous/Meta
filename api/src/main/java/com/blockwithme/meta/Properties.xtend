@@ -1733,6 +1733,38 @@ extends IPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 
 
 /**
+ * Represents a "real"/floating-point Primitive (non-Object) Property.
+ * Those properties can all be expressed as a double.
+ *
+ * @author monster
+ */
+interface IRealPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<?,PROPERTY_TYPE>>
+extends IPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
+  /** Returns the value of this property, as a double */
+  def double toDouble(OWNER_TYPE object)
+
+  /** Sets the value of this property, as a double */
+  def OWNER_TYPE fromDouble(OWNER_TYPE object, double value)
+}
+
+
+/**
+ * Represents an integral Primitive (non-Object) Property.
+ * Those properties can all be expressed as a long, and include booleans.
+ *
+ * @author monster
+ */
+interface IIntegralPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<?,PROPERTY_TYPE>>
+extends IPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
+  /** Returns the value of this property, as a long */
+  def long toLong(OWNER_TYPE object)
+
+  /** Sets the value of this property, as a long */
+  def OWNER_TYPE fromLong(OWNER_TYPE object, long value)
+}
+
+
+/**
  * Represents an Primitive (non-Object) Property.
  *
  * The purpose of the Converter, is that we need to be able to represent every
@@ -1895,7 +1927,8 @@ extends PrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 class BooleanProperty
 <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends BooleanConverter<OWNER_TYPE, PROPERTY_TYPE>>
 extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>
-implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
+implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>,
+IIntegralPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
   /** The zero-based Boolean property ID, within the owner type */
   public val int booleanPropertyId
 
@@ -1994,6 +2027,17 @@ implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
     setter.apply(object, value != 0.0)
     object
   }
+
+  /** Returns the value of this property, as a long */
+  override final long toLong(OWNER_TYPE object) {
+    if (getter.apply(object)) 1 else 0
+  }
+
+  /** Sets the value of this property, as a long */
+  override final OWNER_TYPE fromLong(OWNER_TYPE object, long value) {
+    setter.apply(object, value != 0)
+    object
+  }
 }
 
 
@@ -2023,7 +2067,8 @@ extends BooleanProperty<OWNER_TYPE, Boolean, BooleanConverter<OWNER_TYPE, Boolea
  */
 class ByteProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends ByteConverter<OWNER_TYPE, PROPERTY_TYPE>>
 extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>
-implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
+implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>,
+IIntegralPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
   /** The zero-based Byte property ID, within the owner type */
   public val int bytePropertyId
 
@@ -2122,6 +2167,17 @@ implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
     setter.apply(object, value as byte)
     object
   }
+
+  /** Returns the value of this property, as a long */
+  override final long toLong(OWNER_TYPE object) {
+    getter.apply(object)
+  }
+
+  /** Sets the value of this property, as a long */
+  override final OWNER_TYPE fromLong(OWNER_TYPE object, long value) {
+    setter.apply(object, value as byte)
+    object
+  }
 }
 
 
@@ -2191,7 +2247,8 @@ implements IEnumProperty<OWNER_TYPE, PROPERTY_TYPE, EnumStringConverter<OWNER_TY
  */
 class CharacterProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends CharConverter<OWNER_TYPE, PROPERTY_TYPE>>
 extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>
-implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
+implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>,
+IIntegralPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
   /** The zero-based Character property ID, within the owner type */
   public val int characterPropertyId
 
@@ -2290,6 +2347,17 @@ implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
     setter.apply(object, value as char)
     object
   }
+
+  /** Returns the value of this property, as a long */
+  override final long toLong(OWNER_TYPE object) {
+    getter.apply(object)
+  }
+
+  /** Sets the value of this property, as a long */
+  override final OWNER_TYPE fromLong(OWNER_TYPE object, long value) {
+    setter.apply(object, value as char)
+    object
+  }
 }
 
 
@@ -2320,7 +2388,8 @@ extends CharacterProperty<OWNER_TYPE, Character, CharConverter<OWNER_TYPE, Chara
 class ShortProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER
 extends ShortConverter<OWNER_TYPE, PROPERTY_TYPE>>
 extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>
-implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
+implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>,
+IIntegralPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
   /** The zero-based Short property ID, within the owner type */
   public val int shortPropertyId
 
@@ -2419,6 +2488,17 @@ implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
     setter.apply(object, value as short)
     object
   }
+
+  /** Returns the value of this property, as a long */
+  override final long toLong(OWNER_TYPE object) {
+    getter.apply(object)
+  }
+
+  /** Sets the value of this property, as a long */
+  override final OWNER_TYPE fromLong(OWNER_TYPE object, long value) {
+    setter.apply(object, value as short)
+    object
+  }
 }
 
 
@@ -2448,7 +2528,8 @@ extends ShortProperty<OWNER_TYPE, Short, ShortConverter<OWNER_TYPE, Short>> {
  */
 class IntegerProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends IntConverter<OWNER_TYPE, PROPERTY_TYPE>>
 extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>
-implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
+implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>,
+IIntegralPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
   /** The zero-based Integer property ID, within the owner type */
   public val int integerPropertyId
 
@@ -2547,6 +2628,17 @@ implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
     setter.apply(object, value as int)
     object
   }
+
+  /** Returns the value of this property, as a long */
+  override final long toLong(OWNER_TYPE object) {
+    getter.apply(object)
+  }
+
+  /** Sets the value of this property, as a long */
+  override final OWNER_TYPE fromLong(OWNER_TYPE object, long value) {
+    setter.apply(object, value as int)
+    object
+  }
 }
 
 
@@ -2576,7 +2668,8 @@ extends IntegerProperty<OWNER_TYPE, Integer, IntConverter<OWNER_TYPE, Integer>> 
  */
 class FloatProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends FloatConverter<OWNER_TYPE, PROPERTY_TYPE>>
 extends NonSixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>
-implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
+implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>,
+IRealPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
   /** The zero-based Float property ID, within the owner type */
   public val int floatPropertyId
 
@@ -2703,7 +2796,8 @@ extends FloatProperty<OWNER_TYPE, Float, FloatConverter<OWNER_TYPE, Float>> {
  * @author monster
  */
 class LongProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends LongConverter<OWNER_TYPE, PROPERTY_TYPE>>
-extends SixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
+extends SixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>
+implements IIntegralPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
   /** The zero-based Long property ID, within the owner type */
   public val int longPropertyId
 
@@ -2791,6 +2885,17 @@ extends SixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
     setter.apply(object, anyArray.getLong(index))
     object
   }
+
+  /** Returns the value of this property, as a long */
+  override final long toLong(OWNER_TYPE object) {
+    getter.apply(object)
+  }
+
+  /** Sets the value of this property, as a long */
+  override final OWNER_TYPE fromLong(OWNER_TYPE object, long value) {
+    setter.apply(object, value)
+    object
+  }
 }
 
 
@@ -2821,7 +2926,8 @@ extends LongProperty<OWNER_TYPE, Long, LongConverter<OWNER_TYPE, Long>> {
 class DoubleProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER
 extends DoubleConverter<OWNER_TYPE, PROPERTY_TYPE>>
 extends SixtyFourBitPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>
-implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
+implements INonLongPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>,
+IRealPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
   /** The zero-based Double property ID, within the owner type */
   public val int doublePropertyId
 

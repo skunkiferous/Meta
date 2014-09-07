@@ -63,7 +63,7 @@ class BeanTest extends BaseTst {
 		person.name = "John"
 		person.profession = "Admin"
 		Assert.assertEquals("person.toString",
-		'{"#":0,"class":"com.blockwithme.meta.demo.impl.PersonImpl","age":33,"name":"John","profession":"Admin"}',
+		'{"#":0,"class":{"#":1,"*":"class com.blockwithme.meta.demo.impl.PersonImpl"},"age":33,"name":"John","profession":"Admin"}',
 		person.toString)
 	}
 
@@ -136,7 +136,7 @@ class BeanTest extends BaseTst {
 		Assert.assertFalse("person2.isSelected(Meta.PERSON_PROFESSION)", person2.isSelected(Meta.PERSON__PROFESSION))
 
 		Assert.assertEquals("person2.toString",
-		'{"#":0,"class":"com.blockwithme.meta.demo.impl.PersonImpl","age":16,"name":"Susy","profession":"Admin"}',
+		'{"#":0,"class":{"#":1,"*":"class com.blockwithme.meta.demo.impl.PersonImpl"},"age":16,"name":"Susy","profession":"Admin"}',
 		person2.toString)
 	}
 
