@@ -473,6 +473,7 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
     		// Enum == Immutable!
     		return true
     	}
+    	// TODO Stop using @Data because *we cannot persist it*. Once done, update BeanVisitable and BeanVisitor.
 	    val dataAnnot = findTypeGlobally(Data)
     	if (type.findAnnotation(dataAnnot) !== null) {
     		// @Data == Immutable!

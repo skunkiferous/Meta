@@ -335,3 +335,24 @@ We could define "path" within the object "tree" as an array/list of Property ins
 The Beans API of Meta should allow copying to/from *non-Meta* implementations of the Bean interfaces, in case we are forced to generate implementations with other technologies, like GWT auto-beans.
 
 Add Interfaces for all the meta-types
+
+Allow "real" constants within the Bean interface, by using a @Ignore annotation.
+
+If we want to catch errors by validating properties directly when they are set, as this tells us the code-path that led to the error, we should just validate every setter, but use no-op validators for non-validated properties (I assume that most properties, in fact, should be validated).
+
+Validators are pre-set listeners. Post-set listeners could be used to signal other objects about changes, possibly using requests. We could have such post-set listeners that add a ViewUpdatePushBuilder to a set (so that if multiple changes in the same transaction cause the same update, it is done only once), and have those builders executed at the end of a transaction. OTOH, maybe what we want is intead a *per cycle* set of builders, to reduce the number of request being created and sent. As Views (defined as a TODO in Entity, atm) are by design outdated, one update per cycle is probably enough, and we might even be able to send the same (immutable) view to multiple receivers. We might be able to reduce the number of generated Views further, by merging requests for "parent" Views with requests for children views. This works best if the listeners all use the same Provider instance for the View. But listeners comes at the cost of sometimes preventing required GC for the listeners, so this must be tackled too.
+
+Could we combine Property Validators and ValueMappers, so we can for example implement fuzzy logic with bytes internally?
+
+Try to auto-import all of our extensions.
+
+coreSt should be tested and benchmarked inside the JVM too.
+
+Create a CollectionExtension, and define, for arrays, the methods: min, max, avg, hasNull, sorted?(forward,backward)
+
+We should define an "hash" mini-map. It would be useful for optional Bean properties, for example.
+
+New "Exception" extensions: IllegalArgumentException, IllegalStateException, UnsupportedOperationException.
+
+We need to flag the requests in repeatable and non-repeatable.
+

@@ -409,6 +409,13 @@ interface HierarchyListener {
  * additional "properties" to instances to Type of Property, which
  * were defined and initialized in a third-party jar/module.
  *
+ * TODO We should eliminate lazy initialization of some fields, by having
+ * a postInit() method that returns a boolean, and it's called after the
+ * standard init, and it returns true until it could fully initialize itself.
+ * We would then start with all Meta objects, and call the method, and remove
+ * every object that returns false. Then we would loop again, until the set was
+ * empty, or we looped once without removing anything (infinite loop!).
+ *
  * @author monster
  */
 abstract class MetaBase<PARENT> implements Comparable<MetaBase<?>> {
@@ -677,6 +684,8 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
    */
   public val Property<JAVA_TYPE,?>[] virtualProperties
 
+  // TODO Add an allProperties, containing both properties and virtualProperties
+
   /**
    * The properties of this type, and all it's parents (*without* the virtual properties)
    * Do not modify!
@@ -700,6 +709,8 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
    * Do not modify!
    */
   public val Property<?,?>[] inheritedVirtualProperties
+
+  // TODO Add an allInheritedProperties, containing both inheritedProperties and inheritedVirtualProperties
 
   /**
    * The Properties returning the generic Types of the "components" of this Type:
@@ -788,7 +799,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
     public val Kind kind
 
     /** The default builder instance */
-    public val Provider<JAVA_TYPE> constructor
+    private volatile var Provider<JAVA_TYPE> constructor
 
   /** Creates and returns a "fake Provider" for abstract types. */
   private static def <JAVA_TYPE> Provider<JAVA_TYPE> asProvider(Class<JAVA_TYPE> theType) {
@@ -1099,6 +1110,11 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
   	}
   	result
   }
+
+  /** Updates the default builder instance */
+  def final void setConstructor(Provider<JAVA_TYPE> theConstructor) {
+    constructor = if (theConstructor == null) asProvider(type) else theConstructor
+  }
 }
 
 
@@ -1258,6 +1274,15 @@ interface IProperty<OWNER_TYPE, PROPERTY_TYPE> {
  * a domain object. Each such Class instance requires a few hundred bytes, but
  * the cost is once-per-property, and so independent of the number of
  * *instances*.
+ *
+ * TODO Define an helper type, with possible sub-type per property type,
+ * which contains all the "type-specific" data about a property. Then
+ * define one (immutable with AtomicRef?) map per Type, that maps the Property
+ * Object to the helper object. The create getters in Properties that delegate to it.
+ *
+ * TODO We should support optional properties, with an @Opt annotation. This means code-gen in Beans.
+ *
+ * TODO New annotations to specify extended Property information: @Min(value), @Max(value), @Check(code), @NN(not-null/not-negative)
  *
  * @author monster
  */
@@ -1612,6 +1637,9 @@ implements ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> {
  * To simplify the user code, in the case of meta-properties that would ideally
  * be primitive properties, we provide a "default value", to eliminate the
  * possibility of getting "null" as value.
+ *
+ * TODO If we use an *array* to store the meta-property values, then we really must have a specific
+ * meta-property-ID, rather then use the global ID, as that makes the array much too big!
  *
  * @author monster
  */

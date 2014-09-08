@@ -39,6 +39,12 @@ import com.blockwithme.meta.beans._Bean;
  * This class is written in Java, due to the inability of Xtend to
  * use bitwise operators!
  *
+ * TODO Since the "root" of the tree changes rarely, it could be cheaper to
+ * actually store it in all children objects, instead of iterating up the
+ * tree every time. But we would have to pass it down on changes, so that
+ * it is always current. We can't really tell without a benchmark, but it
+ * would definitely make the code more complicated.
+ *
  * @author monster
  */
 public abstract class _BeanImpl implements _Bean {
@@ -820,7 +826,7 @@ public abstract class _BeanImpl implements _Bean {
 
     /** Make a new instance of the same type as self. */
     protected _BeanImpl newInstance() {
-        final _BeanImpl result = (_BeanImpl) metaType.constructor.get();
+        final _BeanImpl result = (_BeanImpl) metaType.create();
         result.toStringHashCode = toStringHashCode;
         result.toString = toString;
         return result;

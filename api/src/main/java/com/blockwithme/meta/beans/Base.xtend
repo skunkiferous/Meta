@@ -153,6 +153,8 @@ interface _Bean extends Bean, BeanVisitable {
      * TODO Test! (Including collections and maps)
      */
     def Object resolvePath(BeanPath<?,?> path, boolean failOnIncompatbileProperty)
+
+    // TODO Create standard Immutable-Static-Reference @Data object, with working serialization.
 }
 
 
@@ -227,21 +229,21 @@ class BeanPath<OWNER_TYPE, PROPERTY_TYPE> {
 	BeanPath<?,?> next
 
   new(Property<OWNER_TYPE, PROPERTY_TYPE> property, Object key, BeanPath<?, ?> next) {
-    this._property = Objects.requireNonNull(property, "property");
-    this._key = key;
-    this._next = next;
+    this._property = Objects.requireNonNull(property, "property")
+    if (key instanceof Bean) {
+    	throw new IllegalArgumentException(
+    		"Beans are not supported as keys (keys must be immutable). Got: "+key.class)
+    }
+    this._key = key
+    this._next = next
   }
 
   new(Property<OWNER_TYPE, PROPERTY_TYPE> property, BeanPath<?, ?> next) {
-    this._property = Objects.requireNonNull(property, "property");
-    this._key = null;
-    this._next = next;
+    this(property, null, next)
   }
 
   new(Property<OWNER_TYPE, PROPERTY_TYPE> property) {
-    this._property = Objects.requireNonNull(property, "property");
-    this._key = null;
-    this._next = null;
+    this(property, null, null)
   }
 
   override String toString() {
@@ -288,6 +290,29 @@ interface EntityContext {
  * Entities are beans that have a "independent lifecycle".
  * If an Entity is the root of a Bean tree, it "owns" that tree.
  * Otherwise, it is just "referenced" by the tree.
+ *
+ * TODO An Entity should support a standard request, where it receives
+ * a Provider for a View (a new interface that must extend Bean, and define
+ * an initView(? extends Entity) method), create the View, call it's initView()
+ * with this as parameter, and then return the View as a reply. This should
+ * even work across JVMs, if the Provider can be resolved, and the serialization
+ * of Beans is automatic.
+ *
+ * TODO If we implement transactional Beans (the control over the transaction must
+ * run over the Entity), then we must also be able to change things like the "parent"
+ * transactionally, and this must still work, with multiple changes to the same field
+ * within the same transaction. And object/tree-global validation must come right
+ * before the commit.
+ *
+ * TODO If an error comes *during* the commit, as opposed to before the commit,
+ * which is when the validation runs, then there is no saying what the state of
+ * the objects are, and so I have to reload the whole tree.
+ *
+ * TODO With transactions, property change events can only ever be fired, if at all,
+ * after a successful commit, because otherwise, nothing changed and so there is
+ * no change to fire. And this means we could bundle all the changes in one single
+ * fire event (request). But to fire, one has to clearly identify the source of
+ * the event, and that might not be easy, in particular across the network.
  */
 interface Entity extends Bean {
 	// NOP

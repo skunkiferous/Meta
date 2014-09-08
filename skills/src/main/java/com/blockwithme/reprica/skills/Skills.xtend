@@ -27,6 +27,9 @@ import java.util.concurrent.atomic.AtomicInteger
 import com.blockwithme.util.base.SystemUtils
 import java.util.Collections
 
+// TODO Percent modifier on Percent Attribute should add itself, instead of multiplying by itself. But then non-Percent modifier on Percent Attribute should be illegal.
+
+
 /** A Filter specifies if an Effect is going to be taken into account when evaluating a Value. */
 interface Filter {
 	/** Returns true, if this Effect is going to be taken into account when evaluating a Value. */
@@ -387,7 +390,9 @@ interface EntityType extends MetaInfo, Provider<Entity> {
 	Map<String,AttributeType> _attributes
 }
 
-/** A Entity can have zero or more properties. */
+/**
+ * A Entity can have zero or more properties.
+ */
 interface Entity extends Root {
 	class Impl {
 		/** Returns the attribute with the given name, if any. */
@@ -1252,7 +1257,12 @@ interface Drunk extends Modifier {
 	}
 }
 
-/** The type of a character. */
+/**
+ * The type of a character.
+ *
+ * Growth rate on gaining level that is more then 100% means that the growth is:
+ *     growth/100 + current*rnd(growth%100)
+ */
 @Bean(instance=true)
 interface CharacterType extends EntityType {
 	class Impl {
