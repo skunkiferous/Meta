@@ -159,7 +159,10 @@ interface _Bean extends Bean, BeanVisitable {
 
 
 /**
- * The Bean visitor
+ * The Bean visitor.
+ *
+ * TODO We must have not only JSON serialization, but also TSV, XML, "Properties" and "binary".
+ * We need all those serializations, so we know our Visitor API is "complete".
  */
 interface BeanVisitor extends PropertyVisitor {
   /** Visits a _Bean */
@@ -313,6 +316,14 @@ interface EntityContext {
  * no change to fire. And this means we could bundle all the changes in one single
  * fire event (request). But to fire, one has to clearly identify the source of
  * the event, and that might not be easy, in particular across the network.
+ *
+ * TODO If we define an interface representing an object that records changes for
+ * transactions, we could have two implementations, one that is NO-OP, such that
+ * the generated code is always the same, and we just swap the transaction manager
+ * to choose transactions or not. Maybe we just need multiple Interceptors, to take
+ * care of that, but this only really works if we store changes in a separate "map"
+ * (Property, [Key/Index], OldValue), because it would be stupid to double all the
+ * fields to allow transaction, but then no use them.
  */
 interface Entity extends Bean {
 	// NOP
@@ -496,6 +507,18 @@ interface _MapBean<K,V> extends MapBean<K,V>, _Bean {
     override _MapBean<K,V> getDelegate()
 }
 
+/** An immutable Reference to an immutable Bean. */
+@Data
+class Ref<E extends Bean> {
+	E value
+	new(E e) {
+		if ((e != null) && !e.immutable) {
+			throw new IllegalArgumentException("Reference must be immutable: "+e)
+		}
+		_value = e
+	}
+}
+
 /**
  * The "Meta" constant-holding interface for the meta-types themselves.
  *
@@ -598,10 +621,14 @@ interface Meta {
 		#[MAP_BEAN, _BEAN], Property.NO_PROPERTIES, MAP_BEAN__KEY_TYPE as ObjectProperty,
 		MAP_BEAN__VALUE_TYPE as ObjectProperty)
 
+	/** The Ref Type */
+	val REF = BUILDER.newType(Ref, null, Kind.Data)
+
 	/** The Beans package */
 	val COM_BLOCKWITHME_META_BEANS_PACKAGE = BUILDER.newTypePackage(
 		BEAN, _BEAN, ENTITY, _ENTITY, COLLECTION_BEAN_CONFIG, COLLECTION_BEAN,
-		_COLLECTION_BEAN, LIST_BEAN, SET_BEAN, _LIST_BEAN, _SET_BEAN, MAP_BEAN, _MAP_BEAN)
+		_COLLECTION_BEAN, LIST_BEAN, SET_BEAN, _LIST_BEAN, _SET_BEAN, MAP_BEAN,
+		_MAP_BEAN, REF)
 
 	/** The Hierarchy of Meta Types */
 	val HIERARCHY = BUILDER.newHierarchy(COM_BLOCKWITHME_META_BEANS_PACKAGE)

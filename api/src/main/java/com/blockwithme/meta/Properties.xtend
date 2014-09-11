@@ -1284,6 +1284,8 @@ interface IProperty<OWNER_TYPE, PROPERTY_TYPE> {
  *
  * TODO New annotations to specify extended Property information: @Min(value), @Max(value), @Check(code), @NN(not-null/not-negative)
  *
+ * TODO We must be able to specify "exact type" for a Property, as this has an effect on serialization. It could be verified by the Validator.
+ *
  * @author monster
  */
 abstract class Property<OWNER_TYPE, PROPERTY_TYPE>

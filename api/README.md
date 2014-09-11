@@ -344,6 +344,8 @@ Validators are pre-set listeners. Post-set listeners could be used to signal oth
 
 Could we combine Property Validators and ValueMappers, so we can for example implement fuzzy logic with bytes internally?
 
+If we validate all values set for their "range", we could extend the Validators to be able to also "clamp" some value to the "nearest" valid value. This could help make the code more robust when either importing external data, or "migrating" data.
+
 Try to auto-import all of our extensions.
 
 coreSt should be tested and benchmarked inside the JVM too.
@@ -356,3 +358,8 @@ New "Exception" extensions: IllegalArgumentException, IllegalStateException, Uns
 
 We need to flag the requests in repeatable and non-repeatable.
 
+Entities made of a tree of beans have more or less a fixed size. It is the collections/maps that can cause one entity to become much bigger then the others. So if we would need to "split" very large entities, it would be there. So the collection/map would become an independent (set of?) entity, with it's own transactions. This cannot really be "hidden", as a separate entity could even live on a separate server, and would need to be accessed in an async way. The exception are fixed-size lists, which should be safe to use.
+
+A "union" of simple Properties could be defined as a hidden property (double/object), a selector property, and a set of virtual properties (all either primitive, or object).
+
+To cheaply handle queries of configuration data, or cloning of remote entities, we need to add support for "partial" trees. That is, we mark some properties as unavailable, and any access to then should cause an exception.

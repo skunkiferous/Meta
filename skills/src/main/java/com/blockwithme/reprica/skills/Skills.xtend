@@ -26,6 +26,7 @@ import java.util.Random
 import java.util.concurrent.atomic.AtomicInteger
 import com.blockwithme.util.base.SystemUtils
 import java.util.Collections
+import com.blockwithme.meta.beans.Ref
 
 // TODO Percent modifier on Percent Attribute should add itself, instead of multiplying by itself. But then non-Percent modifier on Percent Attribute should be illegal.
 
@@ -134,10 +135,11 @@ class AttributeCategory {
 	}
 }
 
-/** A Reference to a configuration object. */
-@Data
-class Ref<E> {
-	E value
+/** Specifies what (technical) kind of data the attribute contains. */
+enum AttributeDataType {
+	Number,
+	Percent,
+	Boolean
 }
 
 /** Base type of everything in this package */
@@ -203,8 +205,8 @@ interface AttributeType extends MetaInfo, Provider<Attribute> {
 	double max
 	/** Are bigger values better? That decides if effects are buffs or debuffs. */
 	boolean moreIsBetter
-	/** Is this attribute a percent/probability (normally between 0.0 and 1.0?), or an "integer value" */
-	boolean percent
+	/** Is this attribute a percent/probability (normally between 0.0 and 1.0?), or an "integer value" or a flag/boolean */
+	AttributeDataType dataType
 	/** The category of the attribute. */
 	AttributeCategory category
 	/** If this is an "indicator" attribute, then maxValue is the name of the maximum value attribute. */
@@ -279,74 +281,79 @@ interface EntityType extends MetaInfo, Provider<Entity> {
 			String name, AttributeCategory category) {
 			newAttr(it, name, category, Skills.DEFAULT_ATTRIBUTE_VALUE,
 				Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE,
-				Skills.DEFAULT_MAXIMUM_ATTRIBUTE_VALUE, false)
+				Skills.DEFAULT_MAXIMUM_ATTRIBUTE_VALUE, AttributeDataType.Number)
 		}
 		/** Creates and adds a new non-percent attribute type */
 		static def AttributeType newAttr(EntityType it,
 			String name, AttributeCategory category, double defaultValue, double min, double max) {
-			newAttr(it, name, category, defaultValue, min, max, false)
+			newAttr(it, name, category, defaultValue, min, max, AttributeDataType.Number)
 		}
 		/** Creates and adds a new attribute type, with default min, and non-percent */
 		static def AttributeType newAttr(EntityType it,
 			String name, AttributeCategory category, double defaultValue, double max) {
-			newAttr(it, name, category, defaultValue, Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE, max, false)
+			newAttr(it, name, category, defaultValue, Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE, max, AttributeDataType.Number)
 		}
 		/** Creates and adds a new attribute type, with default value, min, and non-percent */
 		static def AttributeType newAttr(EntityType it,
 			String name, AttributeCategory category, double max) {
-			newAttr(it, name, category, Skills.DEFAULT_ATTRIBUTE_VALUE, Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE, max, false)
+			newAttr(it, name, category, Skills.DEFAULT_ATTRIBUTE_VALUE, Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE, max, AttributeDataType.Number)
 		}
 		/** Creates and adds a new auxiliary attribute type, with default value, min, max, and non-percent */
 		static def AttributeType newAttr(EntityType it, String name) {
 			newAttr(it, name, AttributeCategory.Auxiliary, Skills.DEFAULT_ATTRIBUTE_VALUE,
 				Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE,
-				Skills.DEFAULT_MAXIMUM_ATTRIBUTE_VALUE, false)
+				Skills.DEFAULT_MAXIMUM_ATTRIBUTE_VALUE, AttributeDataType.Number)
 		}
 		/** Creates and adds a new auxiliary non-percent attribute type */
 		static def AttributeType newAttr(EntityType it, String name, double defaultValue, double min, double max) {
-			newAttr(it, name, AttributeCategory.Auxiliary, defaultValue, min, max, false)
+			newAttr(it, name, AttributeCategory.Auxiliary, defaultValue, min, max, AttributeDataType.Number)
 		}
 		/** Creates and adds a new auxiliary attribute type, with default min, and non-percent */
 		static def AttributeType newAttr(EntityType it, String name, double defaultValue, double max) {
-			newAttr(it, name, AttributeCategory.Auxiliary, defaultValue, Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE, max, false)
+			newAttr(it, name, AttributeCategory.Auxiliary, defaultValue, Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE, max, AttributeDataType.Number)
 		}
 		/** Creates and adds a new auxiliary attribute type, with default value, min, and non-percent */
 		static def AttributeType newAttr(EntityType it, String name, double max) {
-			newAttr(it, name, AttributeCategory.Auxiliary, Skills.DEFAULT_ATTRIBUTE_VALUE, Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE, max, false)
+			newAttr(it, name, AttributeCategory.Auxiliary, Skills.DEFAULT_ATTRIBUTE_VALUE, Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE, max, AttributeDataType.Number)
 		}
 		/** Creates and adds a new auxiliary attribute type */
 		static def AttributeType newAttr(EntityType it, String name, double defaultValue, double min, double max, boolean percent) {
-			newAttr(it, name, AttributeCategory.Auxiliary, defaultValue, Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE, max, false)
+			newAttr(it, name, AttributeCategory.Auxiliary, defaultValue, Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE, max, AttributeDataType.Number)
 		}
 		/** Creates and adds a new attribute type, with default value, min, max, and percent */
 		static def AttributeType newPercentAttr(EntityType it,
 			String name, AttributeCategory category) {
 			newAttr(it, name, category, Skills.DEFAULT_ATTRIBUTE_VALUE,
 				Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE,
-				Skills.DEFAULT_MAXIMUM_PERCENT_ATTRIBUTE_VALUE, true)
+				Skills.DEFAULT_MAXIMUM_PERCENT_ATTRIBUTE_VALUE, AttributeDataType.Percent)
 		}
 		/** Creates and adds a new auxiliary attribute type, with default value, min, max, and percent */
 		static def AttributeType newPercentAttr(EntityType it, String name) {
 			newAttr(it, name, AttributeCategory.Auxiliary, Skills.DEFAULT_ATTRIBUTE_VALUE,
 				Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE,
-				Skills.DEFAULT_MAXIMUM_PERCENT_ATTRIBUTE_VALUE, true)
+				Skills.DEFAULT_MAXIMUM_PERCENT_ATTRIBUTE_VALUE, AttributeDataType.Percent)
 		}
 		/** Creates and adds a new attribute type, with default value, min, max, and percent */
 		static def AttributeType newPercentAttr(EntityType it,
 			String name, AttributeCategory category, double defaultValue) {
 			newAttr(it, name, category, defaultValue,
 				Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE,
-				Skills.DEFAULT_MAXIMUM_PERCENT_ATTRIBUTE_VALUE, true)
+				Skills.DEFAULT_MAXIMUM_PERCENT_ATTRIBUTE_VALUE, AttributeDataType.Percent)
 		}
 		/** Creates and adds a new auxiliary attribute type, with default value, min, max, and percent */
 		static def AttributeType newPercentAttr(EntityType it, String name, double defaultValue) {
 			newAttr(it, name, AttributeCategory.Auxiliary, defaultValue,
 				Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE,
-				Skills.DEFAULT_MAXIMUM_PERCENT_ATTRIBUTE_VALUE, true)
+				Skills.DEFAULT_MAXIMUM_PERCENT_ATTRIBUTE_VALUE, AttributeDataType.Percent)
+		}
+		/** Creates and adds a new boolean attribute type */
+		static def AttributeType newBooleanAttr(EntityType it, String name, AttributeCategory category) {
+			newAttr(it, name, category, 0.0, 0.0, 1.0, AttributeDataType.Boolean)
 		}
 		/** Creates and adds a new attribute type */
 		static def AttributeType newAttr(EntityType it, String name,
-			AttributeCategory category, double defaultValue, double min, double max, boolean percent) {
+			AttributeCategory category, double defaultValue, double min, double max,
+			AttributeDataType dataType) {
 			if (_attributes.containsKey(name)) {
 				throw new IllegalArgumentException("AttributeType "+name+" already exists in "+it.name)
 			}
@@ -356,6 +363,7 @@ interface EntityType extends MetaInfo, Provider<Entity> {
 			result.defaultValue = defaultValue
 			result.min = min
 			result.max = max
+			result.dataType = dataType
 			_attributes.put(result.name, result)
 			result
 		}
@@ -624,7 +632,7 @@ interface BasicEffect extends Effect {
 /** Matches an attribute, to which an effect should be applied */
 interface AttributeMatcher {
 	/** Returns true, if the attribute matches */
-	def boolean matches(Entity entity, Attribute attribute)
+	def boolean matches(ModifierTarget target, Attribute attribute)
 }
 
 /** Simply matches an attribute name */
@@ -636,7 +644,7 @@ class SimpleAttributeMatcher implements AttributeMatcher {
 		this.name = requireNonNull(name, "name")
 	}
 	/** Returns true, if the attribute matches */
-	override boolean matches(Entity entity, Attribute attribute) {
+	override boolean matches(ModifierTarget target, Attribute attribute) {
 		attribute.type.value.name == name
 	}
 }
@@ -646,6 +654,13 @@ class SimpleAttributeMatcher implements AttributeMatcher {
 class EffectBuilder {
 	EffectType type
 	AttributeMatcher matcher
+	new(EffectType type, AttributeMatcher matcher) {
+		_type = requireNonNull(type, "type")
+		if (!type.immutable) {
+			throw new IllegalStateException("type must be immutable!")
+		}
+		_matcher = matcher
+	}
 }
 
 /** The type of a modifier. */
@@ -1186,7 +1201,7 @@ interface ModifierType extends EntityType {
 			type.percent = percent
 			type.category = category
 			type.name = name
-			val result = new EffectBuilder(type, matcher)
+			val result = new EffectBuilder(type.snapshot, matcher)
 			_builders.add(result)
 			result
 		}
@@ -1199,6 +1214,8 @@ interface ModifierType extends EntityType {
 	EffectBuilder[] _builders
 	/** The type of entity to which this modifier can apply */
 	Class _targetEntity
+	/** Is this Modifier a "skill"? */
+	boolean skill
 }
 
 /** A modifier is an effect factory, representing the effects of one attack/skill/equipment/... */
@@ -1209,18 +1226,23 @@ interface Modifier extends Entity {
 			_type.value as ModifierType
 		}
 		/** Applies a modifier to an entity. Returns true on success. */
-		static def boolean apply(Modifier it, Entity entity) {
+		static def boolean apply(Modifier it, ModifierTarget target, int turn) {
 			var result = false
 			val targetEntity = type._targetEntity
-			if ((targetEntity == null) || SystemUtils.isAssignableFrom(targetEntity, entity.class)) {
-				val attrs = entity.attrs
+			if ((targetEntity == null) || SystemUtils.isAssignableFrom(targetEntity, target.class)) {
+				val attrs = target.attrs
 				val rnd = Skills.RANDOM
-				for (b : type._builders) {
-					for (a : attrs) {
-						if (b.matcher.matches(entity, a)
-							&& (rnd.nextDouble < b.type.percentActivation.defaultValue)) {
-							a += b.type.get
-							result = true
+				if (cause.canApply(it, turn, rnd)) {
+					for (b : type._builders) {
+						for (a : attrs) {
+							if (b.matcher.matches(target, a)
+								&& (rnd.nextDouble < b.type.percentActivation.defaultValue)) {
+								val effect = b.type.get
+								if (cause.canApply(effect, turn, rnd)) {
+									a += effect
+									result = true
+								}
+							}
 						}
 					}
 				}
@@ -1228,6 +1250,9 @@ interface Modifier extends Entity {
 			result
 		}
 	}
+
+	/** The cause of a Modifier */
+	ModifierCause cause
 }
 
 /** The type of a Drunk modifier. */
@@ -1240,8 +1265,10 @@ interface DrunkType extends ModifierType {
 			newPercentSimpleEffect(5, "dexterity", 0.5, "dexterity")
 		}
 		/** Creates a new Drunk Modifier */
-		static def Drunk get(DrunkType it) {
-			init(Meta.DRUNK.create) as Drunk
+		static def Drunk get(DrunkType it, ModifierCause drinker) {
+			val result = init(Meta.DRUNK.create) as Drunk
+			result.cause = drinker
+			result
 		}
 	}
 }
@@ -1307,6 +1334,9 @@ interface CharacterType extends EntityType {
 			newAttr("level")
 			newAttr("xp")
 			newAttr("money")
+
+			newPercentAttr("skilled", AttributeCategory.Special).defaultValue = 1.0
+			newPercentAttr("paralyzed", AttributeCategory.Special).moreIsBetter = false
 		}
 		/** Creates a new Character */
 		static def Character get(CharacterType it) {
@@ -1315,14 +1345,71 @@ interface CharacterType extends EntityType {
 	}
 }
 
+/**
+ * The "cause" of a Modifier.
+ *
+ * All modifiers need to have a cause.
+ */
+interface ModifierCause extends Entity {
+	class Impl {
+		/** Returns true, if this Modifier cause is currently able to apply the given Modifier */
+		static def boolean canApply(ModifierCause it, Modifier mod, int turn, Random rnd) {
+			true
+		}
+		/** Returns true, if this Modifier cause is currently able to apply the given Effect */
+		static def boolean canApply(ModifierCause it, Effect effect, int turn, Random rnd) {
+			true
+		}
+	}
+}
+
+/**
+ * The "target" of a Modifier.
+ */
+interface ModifierTarget extends Entity {
+	class Impl {
+		/** Returns true, if this Modifier target is currently able to receive the given Modifier */
+		static def boolean canReceive(ModifierTarget it, Modifier mod, int turn, Random rnd) {
+			!modifierImmunities.exists[value == mod.type]
+		}
+		/** Returns true, if this Modifier target is currently able to receive the given Effect */
+		static def boolean canReceive(ModifierTarget it, Effect effect, int turn, Random rnd) {
+			!effectImmunities.exists[value == effect.type]
+		}
+	}
+
+	/** List of immunities to Modifiers */
+	Ref<ModifierType>[] modifierImmunities
+
+	/** List of immunities to Effects */
+	Ref<EffectType>[] effectImmunities
+}
+
+
 /** Represents a Player character, so we have something to test against */
 @Bean(instance=true)
-interface Character extends Entity {
+interface Character extends ModifierCause, ModifierTarget {
 	class Impl {
 		/** The type of the entity */
 		static def CharacterType getType(Character it) {
 			_type.value as CharacterType
 		}
+		/** Returns true, if this Modifier cause is currently able to apply the given Modifier */
+		static def boolean canApply(Character it, Modifier mod, int turn, Random rnd) {
+			var result = true
+			if (mod.type.skill) {
+				val skilled = skilled.eval(null, turn)
+				if ((skilled != 1) && (rnd.nextDouble > skilled)) {
+					result = false
+				}
+			}
+			val paralyzed = paralyzed.eval(null, turn)
+			if ((paralyzed > 0) && (rnd.nextDouble < paralyzed)) {
+				result = false
+			}
+			result
+		}
+
 		/** The attack rate. */
 		static def Attribute speed(Character it) { attr("speed") }
 		/** The current spellpower. */
@@ -1381,6 +1468,10 @@ interface Character extends Entity {
 		static def Attribute hpRegeneration(Character it) { attr("hpRegeneration") }
 		/** The rate at which mana is regenerated (compared to the normal rate). */
 		static def Attribute manaRegeneration(Character it) { attr("manaRegeneration") }
+		/** Is this Character able to use skills, as a probability? */
+		static def Attribute skilled(Character it) { attr("skilled") }
+		/** Is this Character paralyzed (unable to do anything), as a probability? */
+		static def Attribute paralyzed(Character it) { attr("paralyzed") }
 	}
 
 	/** The player name */

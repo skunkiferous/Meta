@@ -525,14 +525,19 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
   }
 
   private def BeanInfo beanInfo(Map<String,Object> processingContext, String qualifiedName) {
-    val td = findTypeGlobally(qualifiedName)
+  	var plainQualifiedName = qualifiedName
+  	val index = plainQualifiedName.indexOf('<')
+  	if (index > 0) {
+  		plainQualifiedName = plainQualifiedName.substring(0,index)
+  	}
+    val td = findTypeGlobally(plainQualifiedName)
     if (td === null) {
       // Unknown/undefined type (too early to query?)
-      val result = new BeanInfo(qualifiedName,NO_PARENTS,NO_PROPERTIES,
-        newArrayList("Undefined: "+qualifiedName), false, false, #[], null)
+      val result = new BeanInfo(plainQualifiedName,NO_PARENTS,NO_PROPERTIES,
+        newArrayList("Undefined: "+plainQualifiedName), false, false, #[], null)
       result.check()
-      val key = cacheKey(qualifiedName)
-      val simpleName = qualifiedName.substring(qualifiedName.lastIndexOf(DOT)+1)
+      val key = cacheKey(plainQualifiedName)
+      val simpleName = plainQualifiedName.substring(plainQualifiedName.lastIndexOf(DOT)+1)
       val noSameSimpleNameKey = noSameSimpleNameKey(simpleName)
       putInCache(processingContext, key, noSameSimpleNameKey, result)
       return result
@@ -541,11 +546,11 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
     	return beanInfo(processingContext, td)
 	}
 	  // Primitive type!
-	  val result = new BeanInfo(qualifiedName,NO_PARENTS,NO_PROPERTIES,
+	  val result = new BeanInfo(plainQualifiedName,NO_PARENTS,NO_PROPERTIES,
 	    newArrayList(), false, false, #[], null)
 	  result.check()
-	  val key = cacheKey(qualifiedName)
-	  val simpleName = qualifiedName.substring(qualifiedName.lastIndexOf(DOT)+1)
+	  val key = cacheKey(plainQualifiedName)
+	  val simpleName = plainQualifiedName.substring(plainQualifiedName.lastIndexOf(DOT)+1)
 	  val noSameSimpleNameKey = noSameSimpleNameKey(simpleName)
 	  putInCache(processingContext, key, noSameSimpleNameKey, result)
 	  return result
@@ -1408,7 +1413,12 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
       if (java !== null) {
         JavaMeta.name+"."+cameCaseToSnakeCase(java.simpleName)
 	  } else {
-      	null
+	      val meta = com.blockwithme.meta.beans.Meta.HIERARCHY.findType(beanInfo.qualifiedName)
+	      if (meta !== null) {
+	        com.blockwithme.meta.beans.Meta.name+"."+cameCaseToSnakeCase(meta.simpleName)
+		  } else {
+	      	null
+	      }
       }
     }
   }
@@ -1634,14 +1644,21 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
     }
 
 	private def checkComponentType(MutableClassDeclaration impl, BeanInfo beanInfo,
-			PropertyInfo propInfo, String componentType, String alternativeName) {
+			PropertyInfo propInfo, String componentType, String alternativeName,
+			BeanInfo componentTypeBeanInfo) {
 		if (componentType === null) {
 			error(BeanProcessor, "transform", impl, "Could not find Type for "+alternativeName
-				+" in "+beanInfo.qualifiedName+"."+propInfo.name
-			)
+				+" in "+beanInfo.qualifiedName+"."+propInfo.name)
 			"?"
 		} else {
-			componentType
+			val index = alternativeName.indexOf('<')
+			if (index < 0)
+				componentType
+			else {
+				// The "Type constant", as defined in some Meta, never has specified generic parameters.
+				// But the collection/map expects them, so we need that ugly cast.
+				"(com.blockwithme.meta.Type<"+alternativeName+">) (com.blockwithme.meta.Type) "+componentType
+			}
 		}
 	}
 
@@ -1745,8 +1762,10 @@ return this;'''
 						throw new IllegalStateException(""+colType)
 					}
 				}
-      			val componentTypeType = beanInfoToTypeCode(beanInfo(processingContext, componentType), beanInfo.pkgName)
-      			val componentTypeType2 = checkComponentType(impl, beanInfo, propInfo, componentTypeType, componentType)
+				val componentTypeBeanInfo = beanInfo(processingContext, componentType)
+      			val componentTypeType = beanInfoToTypeCode(componentTypeBeanInfo, beanInfo.pkgName)
+      			val componentTypeType2 = checkComponentType(impl, beanInfo, propInfo,
+      				componentTypeType, componentType, componentTypeBeanInfo)
       			val bodyText = '''«propTypeRef» result = «getter»();
 if (result == null) {
 	«propInfo.name» = «castForColProp(propInfo)»interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», new «CollectionBeanImpl.name»<«componentType»>(«Meta.name».COLLECTION_BEAN, «componentTypeType2»,«config»));
@@ -1788,10 +1807,12 @@ return result;'''
 	          	}
 	          	val keyTypeName = componentTypeNames.substring(0, coma).trim
 	          	val valueTypeName = componentTypeNames.substring(coma+1).trim
-      			val keyTypeType = beanInfoToTypeCode(beanInfo(processingContext, keyTypeName), beanInfo.pkgName)
-      			val keyTypeType2 = checkComponentType(impl, beanInfo, propInfo, keyTypeType, keyTypeName)
-      			val valueTypeType = beanInfoToTypeCode(beanInfo(processingContext, valueTypeName), beanInfo.pkgName)
-      			val valueTypeType2 = checkComponentType(impl, beanInfo, propInfo, valueTypeType, valueTypeName)
+	          	val keyTypeBeanInfo = beanInfo(processingContext, keyTypeName)
+      			val keyTypeType = beanInfoToTypeCode(keyTypeBeanInfo, beanInfo.pkgName)
+      			val keyTypeType2 = checkComponentType(impl, beanInfo, propInfo, keyTypeType, keyTypeName, keyTypeBeanInfo)
+      			val valueTypeBeanInfo = beanInfo(processingContext, valueTypeName)
+      			val valueTypeType = beanInfoToTypeCode(valueTypeBeanInfo, beanInfo.pkgName)
+      			val valueTypeType2 = checkComponentType(impl, beanInfo, propInfo, valueTypeType, valueTypeName, valueTypeBeanInfo)
       			val bodyText = '''«propTypeRef» result = «getter»();
 if (result == null) {
 	«propInfo.name» = «castForColProp(propInfo)»interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», new «MapBeanImpl.name»<«keyTypeName»,«valueTypeName»>(«Meta.name».MAP_BEAN, «keyTypeType2»,«valueTypeType2»));

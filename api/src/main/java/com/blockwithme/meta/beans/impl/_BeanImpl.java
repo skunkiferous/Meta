@@ -688,7 +688,13 @@ public abstract class _BeanImpl implements _Bean {
         return parentBean;
     }
 
-    /** Sets the "parent" Bean and optional key/index, if any. */
+    /**
+     * Sets the "parent" Bean and optional key/index, if any.
+     *
+     * TODO Also record directly the "root" and set it after setting the parent, recursively. And clear it when parent is null.
+     *
+     * TODO Post-Set-Parent Hook method
+     */
     @Override
     public final void setParentBeanAndKey(final _Bean parent,
             final Object parentKey) {

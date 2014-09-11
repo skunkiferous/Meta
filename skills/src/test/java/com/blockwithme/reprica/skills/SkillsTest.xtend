@@ -31,8 +31,9 @@ class SkillsTest extends BaseTst {
 		player.strength.baseValue = 20.0
 		player.dexterity.baseValue = 30.0
 
-		val mod = Skills.DRUNK_TYPE.get
-		mod.apply(player)
+		Assert.assertTrue("Skills.DRUNK_TYPE.immutable", Skills.DRUNK_TYPE.immutable)
+		val mod = Skills.DRUNK_TYPE.get(player)
+		mod.apply(player, 0)
 
 		player.update(3)
 

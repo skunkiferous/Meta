@@ -40,6 +40,7 @@ import com.blockwithme.meta.JavaMeta
 import com.blockwithme.meta.MetaHierarchyBuilder
 import com.blockwithme.meta.beans.Meta
 import java.util.HashSet
+import com.blockwithme.meta.beans.Ref
 
 class MyHierarchyListener implements HierarchyListener {
 	public val List<Hierarchy> hierarchies = newArrayList()
@@ -775,5 +776,11 @@ class TypeTest extends BaseTst {
     public def void testCreate() {
     	val obj = TestMeta.MY_TYPE.create
     	assertEquals(MyType, obj.class)
+    }
+
+    @Test
+    public def void testRef() {
+    	assertEquals(Meta.REF, Meta.HIERARCHY.findType(Ref))
+    	assertEquals(Meta.REF, Meta.HIERARCHY.findType(Ref.name))
     }
 }
