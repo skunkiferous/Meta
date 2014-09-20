@@ -43,6 +43,7 @@ implements ObjectObjectMapInterceptor<K,V> {
 
 	override setKeyAtIndex(_MapBean<K, V> instance, int index, K oldKey, K newKey) {
         if (oldKey != newKey) {
+			// TODO Somehow support the Property Validators and Listeners
 			objectPropertyChanged(instance, index, index*2, oldKey, newKey)
         }
 		newKey
@@ -50,6 +51,7 @@ implements ObjectObjectMapInterceptor<K,V> {
 
 	override setValueAtIndex(_MapBean<K, V> instance, K key, int index, V oldValue, V newValue) {
         if (oldValue != newValue) {
+			// TODO Somehow support the Property Validators and Listeners
 			objectPropertyChanged(instance, key, index*2+1, oldValue, newValue)
         }
 		newValue

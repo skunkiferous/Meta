@@ -115,7 +115,7 @@ class TestMyBeanMeta {
   /** Test Hierarchy Builder */
   public static val BUILDER = HierarchyBuilderFactory.getHierarchyBuilder(MyBean.name)
 
-  public static val MY_BEAN_TYPE = BUILDER.newType(MyBean, null, Kind::Implementation)
+  public static val MY_BEAN_TYPE = BUILDER.newType(MyBean, null, Kind::Implementation, null, null)
 
   /** The test.com.blockwithme.meta package */
   public static val MY_PACKAGE = BUILDER.newTypePackage(MY_BEAN_TYPE)
@@ -163,7 +163,7 @@ class TestMeta {
   /** Test Hierarchy Builder */
   public static val BUILDER = HierarchyBuilderFactory.getHierarchyBuilder(MyType.name)
 
-  public static val ENUM_TYPE = BUILDER.newType(MyEnum, null, Kind::Data)
+  public static val ENUM_TYPE = BUILDER.newType(MyEnum, null, Kind::Data, null, null)
 
 
   public static val BOOL_PROP = BUILDER.newBooleanProperty(
@@ -235,13 +235,13 @@ class TestMeta {
         com.blockwithme.meta.Meta.TYPE, "persistent", Boolean, Boolean.FALSE, false))
 
   public static val Type<MyType> MY_TYPE = BUILDER.newType(MyType,
-    [|new MyType], Kind.Implementation, BOOL_PROP, BYTE_PROP,
+    [|new MyType], Kind.Implementation, null, null, BOOL_PROP, BYTE_PROP,
       CHAR_PROP, SHORT_PROP, INT_PROP, LONG_PROP, FLOAT_PROP,
       DOUBLE_PROP, OBJECT_PROP, ENUM_PROP, VIRTUAL_BOOL_PROP)
 
   public static val Type<MySubType> MY_SUB_TYPE
     = BUILDER.newType(MySubType, [|new MySubType],
-      Kind.Implementation, #[MY_TYPE], INT_PROP2)
+      Kind.Implementation, null, null, #[MY_TYPE], INT_PROP2)
 
   public static val UNORDERED_SET_PROP = BUILDER.newObjectProperty(
     MyCollectionType, "unorderedSet",
@@ -270,14 +270,14 @@ class TestMeta {
 
   public static val Type<MyCollectionType> MY_COLLECTION_TYPE
     = BUILDER.newType(MyCollectionType, [|new MyCollectionType],
-      Kind.Implementation, UNORDERED_SET_PROP, ORDERED_SET_PROP,
+      Kind.Implementation, null, null, UNORDERED_SET_PROP, ORDERED_SET_PROP,
       	SORTED_SET_PROP, LIST_PROP, FIXED_SIZE_LIST_PROP)
 
   /** The test.com.blockwithme.meta package */
   public static val MY_PACKAGE = BUILDER.newTypePackage(
     MY_TYPE, ENUM_TYPE, MY_SUB_TYPE, MY_COLLECTION_TYPE)
 
-  public static val Type<Object> OBJECT2 = BUILDER.newType(Object, null, Kind.Data)
+  public static val Type<Object> OBJECT2 = BUILDER.newType(Object, null, Kind.Data, null, null)
 
   /** The java.lang "other" package */
   public static val MY_JAVA_LANG = BUILDER.newTypePackage(

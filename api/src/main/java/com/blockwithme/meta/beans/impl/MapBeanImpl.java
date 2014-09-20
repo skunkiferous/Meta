@@ -22,16 +22,17 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.ConcurrentModificationException;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 
+import com.blockwithme.meta.IProperty;
 import com.blockwithme.meta.JavaMeta;
 import com.blockwithme.meta.Property;
 import com.blockwithme.meta.Type;
 import com.blockwithme.meta.beans.Bean;
-import com.blockwithme.meta.beans.BeanPath;
 import com.blockwithme.meta.beans.BeanVisitable;
 import com.blockwithme.meta.beans.BeanVisitor;
 import com.blockwithme.meta.beans.ObjectObjectMapInterceptor;
@@ -87,6 +88,81 @@ class MapBeanEntry<K, V> implements Map.Entry<K, V>, BeanVisitable {
  * @author monster
  */
 public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
+
+    /** Iterator over both key and values, but returns only the ones that are _Beans. */
+    private final class BeanMapIterator implements Iterator<_Bean> {
+
+        /** Entry-Set iterator. */
+        private final Iterator<java.util.Map.Entry<K, V>> iter = entrySet()
+                .iterator();
+
+        /** Next key, if it's a Bean. */
+        private _Bean nextKey;
+
+        /** Next value, if it's a Bean. */
+        private _Bean nextValue;
+
+        /** Tries to find some _Beans to return. */
+        private void findNext() {
+            while (!hasNext() && iter.hasNext()) {
+                final java.util.Map.Entry<K, V> e = iter.next();
+                final K key = e.getKey();
+                if (key instanceof _Bean) {
+                    nextKey = (_Bean) key;
+                } else {
+                    nextKey = null;
+                }
+                final V value = e.getValue();
+                if (value instanceof _Bean) {
+                    nextValue = (_Bean) value;
+                } else {
+                    nextValue = null;
+                }
+            }
+        }
+
+        public BeanMapIterator() {
+            findNext();
+        }
+
+        /* (non-Javadoc)
+         * @see java.util.Iterator#hasNext()
+         */
+        @Override
+        public boolean hasNext() {
+            return (nextKey != null) || (nextValue != null);
+        }
+
+        /* (non-Javadoc)
+         * @see java.util.Iterator#next()
+         */
+        @Override
+        public _Bean next() {
+            if (nextKey != null) {
+                final _Bean result = nextKey;
+                nextKey = null;
+                if (nextValue == null) {
+                    findNext();
+                }
+                return result;
+            }
+            if (nextValue != null) {
+                final _Bean result = nextValue;
+                nextValue = null;
+                findNext();
+                return result;
+            }
+            return null;
+        }
+
+        /* (non-Javadoc)
+         * @see java.util.Iterator#remove()
+         */
+        @Override
+        public void remove() {
+            throw new UnsupportedOperationException();
+        }
+    }
 
     /** Comparable Entry Comparator. */
     @SuppressWarnings("rawtypes")
@@ -649,13 +725,21 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
                 "Wrapping doesn't work fo colledction because insert/remove changes the structure");
     }
 
-    /** Resolve Property, and optional key, on self. */
+    /** Reads the value(s) of this Property, and add them to values, if they match. */
     @Override
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-    protected final Object partResolve(final BeanPath<?, ?> path) {
-        final Property prop = path.getProperty();
-        return (prop == JavaMeta.MAP_CONTENT_PROP) ? get(path.getKey()) : prop
-                .getObject(this);
+    public void readProperty(final IProperty<?, ?> prop,
+            final Object[] keyMatcher, final List<Object> values) {
+        if (prop == JavaMeta.MAP_CONTENT_PROP) {
+            if (keyMatcher == null) {
+                values.addAll(values());
+            } else {
+                for (final Object key : keyMatcher) {
+                    values.add(get(key));
+                }
+            }
+        } else {
+            super.readProperty(prop, keyMatcher, values);
+        }
     }
 
     /** Allows collections to perform special copy implementations. */
@@ -739,5 +823,14 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
         } else {
             p.copyValue(_other, this);
         }
+    }
+
+    /** Returns an Iterable<_Bean>, over the property values */
+    @Override
+    protected final Iterable<_Bean> getBeanIterator() {
+        if (keyType.bean || valueType.bean) {
+            return new SubBeanIterator(new BeanMapIterator());
+        }
+        return super.getBeanIterator();
     }
 }

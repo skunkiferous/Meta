@@ -36,6 +36,7 @@ implements ObjectCollectionInterceptor<E> {
 
 	override setObjectAtIndex(_CollectionBean<E> instance, int index, E oldValue, E newValue) {
         if (oldValue != newValue) {
+			// TODO Somehow support the Property Validators and Listeners
         	// We generate an Integer Object here; no easy way around it.
 			objectPropertyChanged(instance, index, index, oldValue, newValue)
         }
@@ -43,6 +44,7 @@ implements ObjectCollectionInterceptor<E> {
 	}
 
 	override addObjectAtIndex(_CollectionBean<E> instance, int index, E newValue, boolean followingElementsChanged) {
+		// TODO Somehow support the Property Validators and Listeners
     	// We generate an Integer Object here; no easy way around it.
 		objectPropertyChanged(instance, index, index, null, newValue)
 		if (followingElementsChanged) {
@@ -52,6 +54,7 @@ implements ObjectCollectionInterceptor<E> {
 	}
 
 	override removeObjectAtIndex(_CollectionBean<E> instance, int index, E oldValue, boolean followingElementsChanged) {
+		// TODO Somehow support the Property Validators and Listeners
     	// We generate an Integer Object here; no easy way around it.
 		objectPropertyChanged(instance, index, index, oldValue, null)
 		if (followingElementsChanged) {

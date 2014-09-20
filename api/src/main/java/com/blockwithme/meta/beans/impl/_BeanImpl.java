@@ -17,13 +17,17 @@ package com.blockwithme.meta.beans.impl;
 
 import java.io.IOException;
 import java.lang.reflect.UndeclaredThrowableException;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.logging.Logger;
 
+import com.blockwithme.meta.IProperty;
 import com.blockwithme.meta.ObjectProperty;
 import com.blockwithme.meta.Property;
 import com.blockwithme.meta.Type;
@@ -38,12 +42,6 @@ import com.blockwithme.meta.beans._Bean;
  *
  * This class is written in Java, due to the inability of Xtend to
  * use bitwise operators!
- *
- * TODO Since the "root" of the tree changes rarely, it could be cheaper to
- * actually store it in all children objects, instead of iterating up the
- * tree every time. But we would have to pass it down on changes, so that
- * it is always current. We can't really tell without a benchmark, but it
- * would definitely make the code more complicated.
  *
  * @author monster
  */
@@ -105,7 +103,7 @@ public abstract class _BeanImpl implements _Bean {
     };
 
     /** An Iterable<_Bean>, over the property values */
-    private class SubBeanIterator implements Iterable<_Bean>, Iterator<_Bean> {
+    protected class SubBeanIterator implements Iterable<_Bean>, Iterator<_Bean> {
 
         /** The properties */
         @SuppressWarnings("rawtypes")
@@ -116,6 +114,9 @@ public abstract class _BeanImpl implements _Bean {
 
         /** Next property index to check. */
         private int nextIndex;
+
+        /** Optional other iterator. */
+        private final Iterator<_Bean> other;
 
         @SuppressWarnings({ "rawtypes", "unchecked" })
         private void findNext() {
@@ -133,8 +134,10 @@ public abstract class _BeanImpl implements _Bean {
         }
 
         /** Constructor */
-        public SubBeanIterator() {
+        public SubBeanIterator(final Iterator<_Bean> other) {
             findNext();
+            final Iterator<_Bean> tmp = Collections.emptyIterator();
+            this.other = (other != null) ? other : tmp;
         }
 
         /* (non-Javadoc)
@@ -158,7 +161,7 @@ public abstract class _BeanImpl implements _Bean {
          */
         @Override
         public final boolean hasNext() {
-            return next != null;
+            return (next != null) || other.hasNext();
         }
 
         /* (non-Javadoc)
@@ -166,11 +169,14 @@ public abstract class _BeanImpl implements _Bean {
          */
         @Override
         public final _Bean next() {
-            if (hasNext()) {
+            if (next != null) {
                 final _Bean result = next;
                 nextIndex++;
                 findNext();
                 return result;
+            }
+            if (other.hasNext()) {
+                return other.next();
             }
             throw new NoSuchElementException();
         }
@@ -210,6 +216,11 @@ public abstract class _BeanImpl implements _Bean {
      * in all directions.
      */
     private _Bean parentBean;
+
+    /**
+     * The "root" Bean, if any. This root field is *managed automatically*.
+     */
+    private _Bean rootBean;
 
     /**
      * The key/index in the "parent", if any.
@@ -691,8 +702,6 @@ public abstract class _BeanImpl implements _Bean {
     /**
      * Sets the "parent" Bean and optional key/index, if any.
      *
-     * TODO Also record directly the "root" and set it after setting the parent, recursively. And clear it when parent is null.
-     *
      * TODO Post-Set-Parent Hook method
      */
     @Override
@@ -720,6 +729,28 @@ public abstract class _BeanImpl implements _Bean {
         }
         this.parentBean = parent;
         this.parentKey = parentKey;
+        updateRootBean();
+    }
+
+    /** Updates the "root" Bean */
+    @Override
+    public final void updateRootBean() {
+        final _Bean before = rootBean;
+        if (parentBean == null) {
+            rootBean = null;
+        } else {
+            final _Bean parentRoot = parentBean.getRootBean();
+            if (parentRoot == null) {
+                rootBean = parentBean;
+            } else {
+                rootBean = parentRoot;
+            }
+        }
+        if (before != rootBean) {
+            for (final _Bean b : getBeanIterator()) {
+                b.updateRootBean();
+            }
+        }
     }
 
     /** Returns the key/index in the "parent", if any. */
@@ -731,17 +762,7 @@ public abstract class _BeanImpl implements _Bean {
     /** Returns the "root" Bean, if any. */
     @Override
     public final _Bean getRootBean() {
-        _Bean result = null;
-        // parent is always null for Entities
-        if (parentBean != null) {
-            result = parentBean;
-            _Bean p = result.getParentBean();
-            while (p != null) {
-                result = p;
-                p = result.getParentBean();
-            }
-        }
-        return result;
+        return rootBean;
     }
 
     /** Returns true, if this Bean has the same (non-null) root as the Bean passed as parameter */
@@ -869,7 +890,7 @@ public abstract class _BeanImpl implements _Bean {
 
     /** Returns an Iterable<_Bean>, over the property values */
     protected Iterable<_Bean> getBeanIterator() {
-        return new SubBeanIterator();
+        return new SubBeanIterator(null);
     }
 
     /** Returns the number of possible selections. */
@@ -901,34 +922,67 @@ public abstract class _BeanImpl implements _Bean {
     }
 
     @Override
-    public final Object resolvePath(final BeanPath<?, ?> path,
+    public final Iterable<Object> resolvePath(final BeanPath path,
             final boolean failOnIncompatbileProperty) {
         Objects.requireNonNull(path, "path");
-        Object current = null;
-        if (failOnIncompatbileProperty) {
-            current = partResolve(path);
-        } else {
-            try {
-                current = partResolve(path);
-            } catch (final RuntimeException e) {
-                // NOP
+        final List<Object> values = new ArrayList<>();
+        values.add(this);
+        BeanPath curPath = path;
+        while (true) {
+            final Object[] keyMatcher = curPath.getKeyMatcher();
+            final BeanPath next = curPath.getNext();
+            final Object[] objects = values.toArray();
+            values.clear();
+            for (final Object obj : objects) {
+                if (obj instanceof _Bean) {
+                    final _Bean bean = (_Bean) obj;
+                    for (final IProperty<?, ?> p : curPath.getPropertyMatcher()
+                            .listProperty(bean)) {
+                        if (failOnIncompatbileProperty) {
+                            bean.readProperty(p, keyMatcher, values);
+                        } else {
+                            try {
+                                bean.readProperty(p, keyMatcher, values);
+                            } catch (final RuntimeException e) {
+                                // NOP
+                            }
+                        }
+                    }
+                }
             }
+            if (values.isEmpty() || (next == null)) {
+                return values;
+            }
+            curPath = next;
         }
-        final BeanPath<?, ?> next = path.getNext();
-        if ((current == null) || (next == null)) {
-            return current;
-        }
-        if (failOnIncompatbileProperty || (current instanceof _Bean)) {
-            return ((_Bean) current).resolvePath(next,
-                    failOnIncompatbileProperty);
-        }
-        return null;
     }
 
-    /** Resolve Property, and optional key, on self. */
+    /** Reads the value(s) of this Property, and add them to values, if they match. */
     @SuppressWarnings({ "unchecked", "rawtypes" })
-    protected Object partResolve(final BeanPath<?, ?> path) {
-        return ((Property) path.getProperty()).getObject(this);
+    @Override
+    public void readProperty(final IProperty<?, ?> p,
+            final Object[] keyMatcher, final List<Object> values) {
+        final Object current = ((Property) p).getObject(this);
+        // Normal properties don't have a key/index, so any matcher would cause a "fail"
+        // This condition cannot be "moved up", because this method will be overwritten
+        if (keyMatcher == null) {
+            values.add(current);
+        }
+    }
+
+    /** Resolves a "simple" path to a value (including null, if the value, or any link, is null) */
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @Override
+    public final Object resolvePath(final Property... props) {
+        Objects.requireNonNull(props, "props");
+        Object result = this;
+        for (final Property property : props) {
+            result = property.getObject(result);
+            if (result == null) {
+                break;
+            }
+        }
+        return result;
     }
 
     @Override

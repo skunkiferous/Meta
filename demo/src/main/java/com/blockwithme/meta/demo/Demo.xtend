@@ -24,7 +24,11 @@ import com.blockwithme.meta.annotations.HashSetProperty
 import java.util.List
 import java.util.Set
 import java.util.Map
-
+import com.blockwithme.meta.annotations.Listeners
+import com.blockwithme.meta.annotations.ListenerDef
+import com.blockwithme.meta.ObjectPropertyListener
+import com.blockwithme.meta.beans._Bean
+import com.blockwithme.meta.ObjectProperty
 
 /**
  * Hierarchy "root".
@@ -69,8 +73,16 @@ interface DemoType extends Root {
   String objectProp
 }
 
+class ChildPropListener implements ObjectPropertyListener<DemoTypeChild, Person, Person> {
+	override afterObjectPropertyChangeValidation(DemoTypeChild it,
+		ObjectProperty<DemoTypeChild, Person, Person, ?> prop, Person oldValue, Person newValue) {
+		_childAge = if (newValue === null) -1 else newValue.age
+	}
+}
+
 /** Example of a child type */
 @Bean(instance=true)
+@Listeners(#[@ListenerDef(property="childProp", type=ChildPropListener)])
 interface DemoTypeChild extends DemoType {
 	class Impl {
 		/** Pseudo-constructor for DemoTypeChild */
@@ -81,6 +93,9 @@ interface DemoTypeChild extends DemoType {
 
   /** Internal property */
   int _secret
+
+  /** Cache Property */
+  int _childAge
 
   /** Child Object property */
   Person childProp

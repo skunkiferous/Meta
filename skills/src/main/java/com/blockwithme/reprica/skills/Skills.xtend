@@ -210,10 +210,10 @@ interface AttributeType extends MetaInfo, Provider<Attribute> {
 	/** The category of the attribute. */
 	AttributeCategory category
 	/** If this is an "indicator" attribute, then maxValue is the name of the maximum value attribute. */
-	// TODO Replace with a MetaPath (Provider<? extends Bean> sourceOrNullForLocal, [Property#1, PropKey#1, ...])
+	// TODO Replace with a "Path"
 	String maxValue
 	/** If this is an "indicator" attribute, then regenRate is the name of the regeneration rate attribute. */
-	// TODO Replace with a MetaPath
+	// TODO Replace with a "Path"
 	String regenRate
 }
 

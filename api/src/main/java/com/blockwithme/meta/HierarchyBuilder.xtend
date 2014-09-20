@@ -803,23 +803,27 @@ class HierarchyBuilder {
 	/** Creates a new Type */
 	def <JAVA_TYPE> Type<JAVA_TYPE> newType(Class<JAVA_TYPE> theType,
 		Provider<JAVA_TYPE> theConstructor, Kind theKind,
+		ValidatorsMap validatorsMap, ListenersMap listenersMap,
 		Property<JAVA_TYPE,?> ... theProperties) {
-		newType(theType, theConstructor, theKind, Type.NO_TYPE, theProperties, NO_OBJECT_PROP)
+		newType(theType, theConstructor, theKind, validatorsMap, listenersMap, Type.NO_TYPE, theProperties, NO_OBJECT_PROP)
 	}
 
 	/** Creates a new Type with parents */
 	def <JAVA_TYPE> Type<JAVA_TYPE> newType(Class<JAVA_TYPE> theType,
-		Provider<JAVA_TYPE> theConstructor, Kind theKind, Type<?>[] theParents,
-		Property<JAVA_TYPE,?> ... theProperties) {
-		newType(theType, theConstructor, theKind, theParents, theProperties, NO_OBJECT_PROP)
+		Provider<JAVA_TYPE> theConstructor, Kind theKind,
+		ValidatorsMap validatorsMap, ListenersMap listenersMap,
+		Type<?>[] theParents, Property<JAVA_TYPE,?> ... theProperties) {
+		newType(theType, theConstructor, theKind, validatorsMap, listenersMap, theParents, theProperties, NO_OBJECT_PROP)
 	}
 
 	/** Creates a new Type with parents and component types */
 	def <JAVA_TYPE> Type<JAVA_TYPE> newType(Class<JAVA_TYPE> theType,
-		Provider<JAVA_TYPE> theConstructor, Kind theKind, Type<?>[] theParents,
-		Property<JAVA_TYPE,?>[] theProperties, ObjectProperty<JAVA_TYPE,Type<?>,?,?> ... theComponents) {
+		Provider<JAVA_TYPE> theConstructor, Kind theKind,
+		ValidatorsMap validatorsMap, ListenersMap listenersMap,
+		Type<?>[] theParents, Property<JAVA_TYPE,?>[] theProperties,
+		ObjectProperty<JAVA_TYPE,Type<?>,?,?> ... theComponents) {
 		new Type(preRegisterType(theType), theType, theConstructor, theKind,
-			theParents, theProperties, theComponents)
+			validatorsMap, listenersMap, theParents, theProperties, theComponents)
 	}
 
 	/** Creates a new TypePackage */

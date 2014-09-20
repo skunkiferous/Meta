@@ -15,68 +15,65 @@
  */
 package com.blockwithme.meta
 
+import com.blockwithme.fn1.BooleanFuncObject
+import com.blockwithme.fn1.ByteFuncObject
+import com.blockwithme.fn1.CharFuncObject
+import com.blockwithme.fn1.DoubleFuncObject
+import com.blockwithme.fn1.FloatFuncObject
+import com.blockwithme.fn1.IntFuncObject
+import com.blockwithme.fn1.LongFuncObject
+import com.blockwithme.fn1.ObjectFuncObject
+import com.blockwithme.fn1.ShortFuncObject
+import com.blockwithme.fn2.ObjectFuncObjectBoolean
+import com.blockwithme.fn2.ObjectFuncObjectByte
+import com.blockwithme.fn2.ObjectFuncObjectChar
+import com.blockwithme.fn2.ObjectFuncObjectDouble
+import com.blockwithme.fn2.ObjectFuncObjectFloat
+import com.blockwithme.fn2.ObjectFuncObjectInt
+import com.blockwithme.fn2.ObjectFuncObjectLong
+import com.blockwithme.fn2.ObjectFuncObjectObject
+import com.blockwithme.fn2.ObjectFuncObjectShort
+import com.blockwithme.meta.beans.Bean
+import com.blockwithme.util.base.SystemUtils
+import com.blockwithme.util.shared.Any
+import com.blockwithme.util.shared.AnyArray
+import com.blockwithme.util.shared.Footprint
 import com.blockwithme.util.shared.converters.BooleanConverter
 import com.blockwithme.util.shared.converters.ByteConverter
 import com.blockwithme.util.shared.converters.CharConverter
 import com.blockwithme.util.shared.converters.Converter
 import com.blockwithme.util.shared.converters.DoubleConverter
+import com.blockwithme.util.shared.converters.EnumByteConverter
+import com.blockwithme.util.shared.converters.EnumStringConverter
 import com.blockwithme.util.shared.converters.FloatConverter
 import com.blockwithme.util.shared.converters.IntConverter
 import com.blockwithme.util.shared.converters.LongConverter
+import com.blockwithme.util.shared.converters.NOPObjectConverter
+import com.blockwithme.util.shared.converters.ObjectConverter
 import com.blockwithme.util.shared.converters.ShortConverter
-import com.blockwithme.util.shared.Footprint
 import java.io.Serializable
+import java.lang.reflect.Array
+import java.util.ArrayList
+import java.util.Arrays
+import java.util.Collection
 import java.util.Collections
-import java.util.Map
-import java.util.TreeSet
-import java.util.logging.Logger
-
-import static com.blockwithme.util.shared.Preconditions.*
-import static extension com.blockwithme.util.xtend.StdExt.*
-import static java.util.Objects.*
-import com.blockwithme.fn1.ObjectFuncObject
-import com.blockwithme.fn2.ObjectFuncObjectObject
-import com.blockwithme.fn1.BooleanFuncObject
-import com.blockwithme.fn2.ObjectFuncObjectBoolean
-import com.blockwithme.fn1.ByteFuncObject
-import com.blockwithme.fn2.ObjectFuncObjectByte
-import com.blockwithme.fn1.CharFuncObject
-import com.blockwithme.fn2.ObjectFuncObjectChar
-import com.blockwithme.fn1.ShortFuncObject
-import com.blockwithme.fn2.ObjectFuncObjectShort
-import com.blockwithme.fn2.ObjectFuncObjectInt
-import com.blockwithme.fn1.IntFuncObject
-import com.blockwithme.fn2.ObjectFuncObjectFloat
-import com.blockwithme.fn1.FloatFuncObject
-import com.blockwithme.fn1.LongFuncObject
-import com.blockwithme.fn2.ObjectFuncObjectLong
-import com.blockwithme.fn1.DoubleFuncObject
-import com.blockwithme.fn2.ObjectFuncObjectDouble
+import java.util.Comparator
 import java.util.HashMap
 import java.util.HashSet
-import java.util.Set
-import java.util.concurrent.atomic.AtomicReference
-import java.util.Arrays
-import javax.inject.Provider
-import com.blockwithme.meta.beans.Bean
-import java.lang.reflect.Array
-import java.util.Collection
-import java.util.List
-import java.util.ArrayList
 import java.util.Iterator
-import com.blockwithme.util.shared.converters.ConverterBase
-import com.blockwithme.util.shared.Any
-import com.blockwithme.util.shared.AnyArray
-import com.blockwithme.util.shared.converters.EnumByteConverter
-import com.blockwithme.util.shared.converters.StringConverter
-import java.util.Objects
-import com.blockwithme.util.shared.converters.ObjectConverterBase
-import com.blockwithme.util.shared.converters.ObjectConverter
-import com.blockwithme.util.shared.converters.NOPObjectConverter
-import com.blockwithme.util.shared.converters.EnumStringConverter
+import java.util.List
+import java.util.Map
+import java.util.Set
+import java.util.TreeSet
 import java.util.concurrent.ConcurrentHashMap
-import com.blockwithme.util.base.SystemUtils
-import java.util.Comparator
+import java.util.concurrent.atomic.AtomicReference
+import java.util.logging.Logger
+import javax.inject.Provider
+
+import static com.blockwithme.util.shared.Preconditions.*
+import static java.util.Objects.*
+
+import static extension com.blockwithme.util.xtend.JavaUtilLoggingExtension.*
 
 /**
  * Hierarchy represents a Type hierarchy. It is not limited to types in the
@@ -428,6 +425,8 @@ abstract class MetaBase<PARENT> implements Comparable<MetaBase<?>> {
   public val int globalId
   /** The cached toString */
   private var String toString
+  /** The hashCode; it's *faster* if we cache it. */
+  private val int hashCode
 
     /** Meta-properties values. */
     package volatile var Object[] metaProperties = newArrayOfSize(0)
@@ -455,7 +454,13 @@ abstract class MetaBase<PARENT> implements Comparable<MetaBase<?>> {
         +") and theSimpleName("+theSimpleName+") do not match!")
     }
     globalId = theGlobalId
+    hashCode = fullName.hashCode
     LOG.debug(class.name+"("+fullName+") created with globalId: "+globalId)
+  }
+
+  /** Hashcode */
+  override final hashCode() {
+  	hashCode
   }
 
   /** toString */
@@ -574,6 +579,60 @@ package class NoConstructor<JAVA_TYPE> implements Provider<JAVA_TYPE> {
 
 
 /**
+ * Represents all the directly defined Validators for a Type.
+ * The Validators from parent types are not included.
+ */
+final class ValidatorsMap {
+	val map = new HashMap<String,List<Object>>
+	/**
+	 * Adds a Validator for a Property.
+	 * The Property is referred to by it's simple name.
+	 * At this stage, we cannot yet validate the type of "validator".
+	 */
+	def add(String propertySimpleName, Object validator) {
+		requireNonNull(validator, "validator")
+		var list = map.get(requireNonEmpty(propertySimpleName, "propertySimpleName"))
+		if (list === null) {
+			list = new ArrayList()
+			map.put(propertySimpleName, list)
+		}
+		list.add(validator)
+		this
+	}
+
+	/** Returns the validators */
+	def get() { Collections.unmodifiableMap(map) }
+}
+
+
+/**
+ * Represents all the directly defined Listeners for a Type.
+ * The Listeners from parent types are not included.
+ */
+final class ListenersMap {
+	val map = new HashMap<String,List<Object>>
+	/**
+	 * Adds a Listener for a Property.
+	 * The Property is referred to by it's simple name.
+	 * At this stage, we cannot yet validate the type of "listener".
+	 */
+	def add(String propertySimpleName, Object listener) {
+		requireNonNull(listener, "listener")
+		var list = map.get(requireNonEmpty(propertySimpleName, "propertySimpleName"))
+		if (list === null) {
+			list = new ArrayList()
+			map.put(propertySimpleName, list)
+		}
+		list.add(listener)
+		this
+	}
+
+	/** Returns the listeners */
+	def get() { Collections.unmodifiableMap(map) }
+}
+
+
+/**
  * Represents a Type. Since we expect to define types with
  * interfaces, multiple inheritance is possible, and therefore
  * we can have any number of parents.
@@ -605,7 +664,7 @@ package class NoConstructor<JAVA_TYPE> implements Provider<JAVA_TYPE> {
  *
  * @author monster
  */
-class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
+class Type<JAVA_TYPE> extends MetaBase<TypePackage> implements PropertyMatcher {
   /** Property Comparator */
   static val Comparator<Property<?,?>> PROP_CMP = [a,b|
       val MetaBase ma = a
@@ -684,7 +743,11 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
    */
   public val Property<JAVA_TYPE,?>[] virtualProperties
 
-  // TODO Add an allProperties, containing both properties and virtualProperties
+  /**
+   * The direct Properties, including the virtual properties
+   * Do not modify!
+   */
+  public val Property<JAVA_TYPE,?>[] allProperties
 
   /**
    * The properties of this type, and all it's parents (*without* the virtual properties)
@@ -710,7 +773,11 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
    */
   public val Property<?,?>[] inheritedVirtualProperties
 
-  // TODO Add an allInheritedProperties, containing both inheritedProperties and inheritedVirtualProperties
+  /**
+   * The properties of this type, and all it's parents, including the virtual properties
+   * Do not modify!
+   */
+  public val Property<?,?>[] allInheritedProperties
 
   /**
    * The Properties returning the generic Types of the "components" of this Type:
@@ -801,6 +868,15 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
     /** The default builder instance */
     private volatile var Provider<JAVA_TYPE> constructor
 
+  /** Map *all* property name to property (immutable) */
+  public val Map<Property<?,?>, PerTypePropertyData> propertyToPerTypeData
+
+  /** All our direct Property validators. */
+  package val Map<String, List<Object>> validators
+
+  /** All our direct Property listeners. */
+  package val Map<String, List<Object>> listeners
+
   /** Creates and returns a "fake Provider" for abstract types. */
   private static def <JAVA_TYPE> Provider<JAVA_TYPE> asProvider(Class<JAVA_TYPE> theType) {
     val NoConstructor<JAVA_TYPE> tmp = new NoConstructor<JAVA_TYPE>(theType)
@@ -810,6 +886,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
   /** Constructor */
   protected new(TypeRegistration registration, Class<JAVA_TYPE> theType,
     Provider<JAVA_TYPE> theConstructor, Kind theKind,
+	ValidatorsMap validatorsMap, ListenersMap listenersMap,
     Type<?>[] theParents, Property<JAVA_TYPE,?>[] theProperties,
     ObjectProperty<JAVA_TYPE,Type<?>,?,?>[] componentTypes) {
     super(requireNonNull(theType, "theType").name,
@@ -869,6 +946,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
 
     val TreeSet<Property<JAVA_TYPE,?>> ownset = new TreeSet(PROP_CMP)
     ownset.addAll(checkArray(theProperties, "theOwnProperties"))
+    allProperties = ownset
     val Type me = this
     for (prop : ownset) {
       val name = prop.simpleName
@@ -917,15 +995,44 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
     // (From modules we depend on)
 
     // Merge all properties in allProperties
+    validators = if (validatorsMap === null) Collections.emptyMap else validatorsMap.get
+    listeners = if (listenersMap === null) Collections.emptyMap else listenersMap.get
+    val allValidators = new HashMap<String, List<Object>>(validators)
+    val allListeners = new HashMap<String, List<Object>>(listeners)
+
     for (p : parents) {
       ownset.addAll(p.inheritedProperties as Property<JAVA_TYPE,?>[])
       virtualProps.addAll(p.inheritedVirtualProperties as Property<JAVA_TYPE,?>[])
+
+      for (e : p.validators.entrySet) {
+      	val propName = e.key
+      	var list = allValidators.get(propName)
+      	if (list === null) {
+      		list = new ArrayList
+      		allValidators.put(propName, list)
+      	}
+      	list.addAll(e.value)
+      }
+
+      for (e : p.listeners.entrySet) {
+      	val propName = e.key
+      	var list = allListeners.get(propName)
+      	if (list === null) {
+      		list = new ArrayList
+      		allListeners.put(propName, list)
+      	}
+      	list.addAll(e.value)
+      }
     }
     inheritedProperties = ownset
     inheritedVirtualProperties = virtualProps
     inheritedPropertyCount = inheritedProperties.length
     inheritedObjectProperties = ownset.filter(ObjectProperty)
     inheritedPrimitiveProperties = ownset.filter(PrimitiveProperty)
+    val TreeSet<Property<JAVA_TYPE,?>> allInheritedProps = new TreeSet(PROP_CMP)
+    allInheritedProps.addAll(ownset)
+    allInheritedProps.addAll(virtualProps)
+    allInheritedProperties = allInheritedProps
     typeId = registration.typeId
 
       var _primitivePropertyBitsTotal = 0
@@ -943,6 +1050,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
       var _doublePrimitivePropertyCount = 0
 
       val Map<String,Property<?,?>> _simpleNameToProperty = newHashMap()
+      val Map<Property<?,?>, PerTypePropertyData> _propertyToPerTypeData = newHashMap()
     for (prop : properties as Property<?,?>[]) {
       if (prop instanceof PrimitiveProperty<?,?,?>) {
         _primitivePropertyBitsTotal = _primitivePropertyBitsTotal + prop.bits
@@ -974,7 +1082,9 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
         }
       }
     }
-    for (prop : inheritedProperties) {
+
+    val helper = new PerTypePropertyDataHelper
+    for (prop : allInheritedProperties) {
       // Property name clash is not allowed between parent either
       val other = _simpleNameToProperty.put(prop.simpleName, prop)
       if ((other !== null) && (other !== prop)) {
@@ -983,19 +1093,9 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
           +" (at least "+prop.fullName+" and "+other.fullName+")"
         throw new IllegalStateException(msg)
       }
+      _propertyToPerTypeData.put(prop, prop.createPerTypePropertyData(helper, allValidators, allListeners))
     }
-    for (prop : inheritedVirtualProperties) {
-      // Property name clash is not allowed between parent either
-      val other = _simpleNameToProperty.put(prop.simpleName, prop)
-      if ((other !== null) && (other !== prop)) {
-      	if (!other.virtual) {
-	        val msg = theType
-	          +" inherits multiple properties with simpleName "+prop.simpleName
-	          +" (at least "+prop.fullName+" and "+other.fullName+")"
-	        throw new IllegalStateException(msg)
-        }
-      }
-    }
+
       propertyCount = properties.length
       primitivePropertyCount = primitiveProperties.length
       objectPropertyCount = objectProperties.length
@@ -1013,6 +1113,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
       floatPrimitivePropertyCount = _floatPrimitivePropertyCount
       doublePrimitivePropertyCount = _doublePrimitivePropertyCount
       simpleNameToProperty = Collections::unmodifiableMap(_simpleNameToProperty)
+      propertyToPerTypeData = Collections::unmodifiableMap(_propertyToPerTypeData)
 
     footprint = Footprint.round(_primitivePropertyByteTotal + Footprint.REFERENCE * objectPropertyCount)
       var total = footprint
@@ -1051,7 +1152,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
       if (length == 0) {
         return empty
       }
-        java.lang.reflect.Array.newInstance(type, length) as JAVA_TYPE[]
+        Array.newInstance(type, length) as JAVA_TYPE[]
     }
 
   /** The package */
@@ -1115,6 +1216,11 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> {
   def final void setConstructor(Provider<JAVA_TYPE> theConstructor) {
     constructor = if (theConstructor == null) asProvider(type) else theConstructor
   }
+
+	/** Returns the Properties that match. */
+	override final IProperty<?,?>[] listProperty(Bean bean) {
+		allInheritedProperties
+	}
 }
 
 
@@ -1184,7 +1290,7 @@ interface MetaVisitor extends PropertyVisitor {
  *
  * @author monster
  */
-interface IProperty<OWNER_TYPE, PROPERTY_TYPE> {
+interface IProperty<OWNER_TYPE, PROPERTY_TYPE> extends PropertyMatcher {
   /** The content/data Type of this property */
   def Class<PROPERTY_TYPE> getContentTypeClass()
   /** The zero-based global property ID */
@@ -1256,6 +1362,93 @@ interface IProperty<OWNER_TYPE, PROPERTY_TYPE> {
 
   /** Returns true, if the property is immutable. */
   def boolean isImmutable()
+
+  /** The zero-based property ID, within the owner (sub-)type */
+  def int getPerTypePropertyId(Type<OWNER_TYPE> owner)
+
+  /** The zero-based Long-or-Object property ID, within the (sub-)owner type. */
+  def int getPerTypeLongOrObjectPropertyId(Type<OWNER_TYPE> owner)
+
+  /** The virtual property ID, within the owner (sub-)type */
+  def int getPerTypeVirtualPropertyId(Type<OWNER_TYPE> owner)
+}
+
+/**
+ * Matches any number (0 or more) of Properties.
+ */
+interface PropertyMatcher {
+	/** Returns the Properties that match. */
+	def IProperty<?,?>[] listProperty(Bean bean)
+}
+
+/**
+ * Base-class for a data object, which contains the Property-related
+ * data, which is specific to a Property-owning type.
+ *
+ * In other words, it allows a Property to have "different values" for
+ * data that changes, depending on which subtype of the declaring type
+ * we are dealing with.
+ *
+ * The simplest example is the "property ID within this type"; since we
+ * support multiple inheritance, one type may inherit multiple properties
+ * which had the same ID in their respective parent types. And so each
+ * property will also have a unique-per-type property ID, among other things.
+ */
+package class PerTypePropertyData {
+  /** The zero-based property ID, within the owner (sub-)type */
+  public val int propertyId
+  /** The zero-based Long-or-Object property ID, within the (sub-)owner type. */
+  public val int longOrObjectPropertyId
+  /** The virtual property ID, within the owner (sub-)type */
+  public val int virtualPropertyId
+	/** Constructor */
+	new(PerTypePropertyDataHelper helper, Property<?,?> prop) {
+		this.propertyId = helper.propertyId++
+		if ((prop instanceof ObjectProperty) || (prop instanceof LongProperty))
+			this.longOrObjectPropertyId = helper.longOrObjectPropertyId++
+		else
+			this.longOrObjectPropertyId = -1
+		this.virtualPropertyId = if (prop.virtual) helper.virtualPropertyId++ else -1
+	}
+}
+
+/**
+ * This class cumulate values, to help in creating the
+ * (sub-)PerTypePropertyData instances.
+ */
+package class PerTypePropertyDataHelper {
+  /** The zero-based property ID, within the owner (sub-)type */
+  public var int propertyId
+  /** The zero-based Long-or-Object property ID, within the (sub-)owner type. */
+  public var int longOrObjectPropertyId
+  /** The virtual property ID, within the owner (sub-)type */
+  public var int virtualPropertyId
+  /** The zero-based Primitive (non-Object) property ID, within the owner (sub-)type */
+  public var int primitivePropertyId
+  /** The zero-based non-64-bit property ID, within the owner (sub-)type */
+  public var int nonSixtyFourBitPropertyId
+  /** The zero-based 64-bit property ID, within the owner (sub-)type */
+  public var int sixtyFourBitPropertyId
+  /** The non-Long property ID, within the owner (sub-)type */
+  public var int nonLongPropertyId
+  /** The zero-based Boolean property ID, within the owner (sub-)type */
+  public var int booleanPropertyId
+  /** The zero-based Byte property ID, within the owner (sub-)type */
+  public var int bytePropertyId
+  /** The zero-based Character property ID, within the owner (sub-)type */
+  public var int characterPropertyId
+  /** The zero-based Short property ID, within the owner (sub-)type */
+  public var int shortPropertyId
+  /** The zero-based Integer property ID, within the owner (sub-)type */
+  public var int integerPropertyId
+  /** The zero-based Float property ID, within the owner (sub-)type */
+  public var int floatPropertyId
+  /** The zero-based Long property ID, within the owner (sub-)type */
+  public var int longPropertyId
+  /** The zero-based Double property ID, within the owner (sub-)type */
+  public var int doublePropertyId
+  /** The zero-based Object (non-primitive) property ID, within the owner (sub-)type */
+  public var int objectPropertyId
 }
 
 /**
@@ -1275,16 +1468,7 @@ interface IProperty<OWNER_TYPE, PROPERTY_TYPE> {
  * the cost is once-per-property, and so independent of the number of
  * *instances*.
  *
- * TODO Define an helper type, with possible sub-type per property type,
- * which contains all the "type-specific" data about a property. Then
- * define one (immutable with AtomicRef?) map per Type, that maps the Property
- * Object to the helper object. The create getters in Properties that delegate to it.
- *
  * TODO We should support optional properties, with an @Opt annotation. This means code-gen in Beans.
- *
- * TODO New annotations to specify extended Property information: @Min(value), @Max(value), @Check(code), @NN(not-null/not-negative)
- *
- * TODO We must be able to specify "exact type" for a Property, as this has an effect on serialization. It could be verified by the Validator.
  *
  * @author monster
  */
@@ -1322,8 +1506,14 @@ extends MetaBase<Type<OWNER_TYPE>> implements IProperty<OWNER_TYPE, PROPERTY_TYP
   public val int longOrObjectPropertyId
   /** Does this represent a "virtual" property? */
   public val boolean virtual
-  /** The virtual property ID */
+  /** The virtual property ID, within the owner type */
   public val int virtualPropertyId
+  /** This Property, in an array. */
+  public val Property<?, ?>[] thisInArray
+
+	protected static def List<Object> nonNull(List<Object> list) {
+		if (list === null) Collections.emptyList else list
+	}
 
   /** Constructor */
   package new(PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, ? extends Converter<?,PROPERTY_TYPE>> theData) {
@@ -1345,6 +1535,8 @@ extends MetaBase<Type<OWNER_TYPE>> implements IProperty<OWNER_TYPE, PROPERTY_TYP
     parent = theData.ownerType.get(0)
     virtual = theData.virtual
     virtualPropertyId = theData.virtualPropertyId
+    thisInArray = newArrayOfSize(1)
+    thisInArray.set(0, this)
   }
 
   /** The content/data Type of this property */
@@ -1458,7 +1650,107 @@ extends MetaBase<Type<OWNER_TYPE>> implements IProperty<OWNER_TYPE, PROPERTY_TYP
     }
     result
   }
+
+	/** Returns the Properties that match. */
+	override final IProperty<?,?>[] listProperty(Bean bean) {
+		thisInArray
+	}
+
+	/** Creates and returns the PerTypePropertyData for the given type. */
+	package def PerTypePropertyData createPerTypePropertyData(PerTypePropertyDataHelper helper,
+		Map<String, List<Object>> validators, Map<String, List<Object>> listeners) {
+		new PerTypePropertyData(helper, this)
+	}
+
+	/** Creates and returns the PerTypePropertyData for the given type. */
+	protected final def PerTypePropertyData getPerTypePropertyData(Type<? extends OWNER_TYPE> type) {
+		// Intentional potential NullPointerException here.
+		val result = type.propertyToPerTypeData.get(this)
+		if (result === null) {
+			throw new IllegalStateException("No per-Type data found in type "
+				+type.fullName+" for "+fullName)
+		}
+		result
+	}
+
+  /** The zero-based property ID, within the owner (sub-)type */
+  override final getPerTypePropertyId(Type<OWNER_TYPE> owner) {
+  	getPerTypePropertyData(owner).propertyId
+  }
+
+  /** The zero-based Long-or-Object property ID, within the (sub-)owner type. */
+  override final getPerTypeLongOrObjectPropertyId(Type<OWNER_TYPE> owner) {
+  	getPerTypePropertyData(owner).longOrObjectPropertyId
+  }
+
+  /** The virtual property ID, within the owner (sub-)type */
+  override final getPerTypeVirtualPropertyId(Type<OWNER_TYPE> owner) {
+  	getPerTypePropertyData(owner).virtualPropertyId
+  }
 }
+
+
+/**
+ * Validator for ObjectProperty
+ */
+interface ObjectPropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE, INTERNAL_TYPE> {
+	/** Empty array of Validators */
+	ObjectPropertyValidator[] EMPTY = newArrayOfSize(0)
+
+	/**
+	 * Validates Property change events, returning non-null on error.
+	 * Warnings should be logged on the bean logger instead.
+	 */
+	def String beforeObjectPropertyChange(OWNER_TYPE instance,
+		ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE, ?> prop,
+		INTERNAL_TYPE oldValue, INTERNAL_TYPE newValue
+	)
+}
+
+
+/**
+ * Listener for ObjectProperty
+ */
+interface ObjectPropertyListener<OWNER_TYPE extends Bean, PROPERTY_TYPE, INTERNAL_TYPE> {
+	/** Empty array of Listeners */
+	ObjectPropertyListener[] EMPTY = newArrayOfSize(0)
+
+	/**
+	 * React to Property change events.
+	 * The typical use-case is to invalidate caches.
+	 */
+	def void afterObjectPropertyChangeValidation(OWNER_TYPE instance,
+		ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE, ?> prop,
+		INTERNAL_TYPE oldValue, INTERNAL_TYPE newValue
+	)
+}
+
+
+/**
+ * Base-class for a data object, which contains the ObjectProperty-related
+ * data, which is specific to a Property-owning type.
+ */
+package class PerTypeObjectPropertyData extends PerTypePropertyData {
+  /** The zero-based Object (non-primitive) property ID, within the owner (sub-)type */
+  public val int objectPropertyId
+
+	/** The Validators for the Property in the Type */
+	public val ObjectPropertyValidator[] validators
+
+	/** The Listeners for the Property in the Type */
+	public val ObjectPropertyListener[] listeners
+
+	new(PerTypePropertyDataHelper helper, ObjectProperty<?,?,?,?> prop,
+		List<Object> validators, List<Object> listeners) {
+		super(helper, prop)
+		this.validators = newArrayOfSize(validators.size)
+		validators.toArray(this.validators)
+		this.listeners = newArrayOfSize(listeners.size)
+		listeners.toArray(this.listeners)
+		objectPropertyId = helper.objectPropertyId++
+	}
+}
+
 
 /**
  * Represents an Object (non-primitive) Property.
@@ -1578,6 +1870,27 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
     setter.apply(object, anyArray.getObject(index) as PROPERTY_TYPE)
     object
   }
+
+	/** Creates and returns the PerTypePropertyData for the given type. */
+	package override createPerTypePropertyData(PerTypePropertyDataHelper helper,
+		Map<String, List<Object>> validators, Map<String, List<Object>> listeners) {
+		new PerTypeObjectPropertyData(helper, this, nonNull(validators.get(simpleName)), nonNull(listeners.get(simpleName)))
+	}
+
+  /** The zero-based Object (non-primitive) property ID, within the owner (sub-)type */
+  def final int getPerTypeDoublePropertyId(Type<OWNER_TYPE> owner) {
+  	(getPerTypePropertyData(owner) as PerTypeObjectPropertyData).objectPropertyId
+  }
+
+	/** The Validators for the Property in the Type */
+	def final ObjectPropertyValidator[] getValidators(Type<OWNER_TYPE> owner) {
+  		(getPerTypePropertyData(owner) as PerTypeObjectPropertyData).validators
+  	}
+
+	/** The Listeners for the Property in the Type */
+	def final ObjectPropertyListener[] getListeners(Type<OWNER_TYPE> owner) {
+  		(getPerTypePropertyData(owner) as PerTypeObjectPropertyData).listeners
+  	}
 }
 
 /**
@@ -1732,6 +2045,14 @@ extends IProperty<OWNER_TYPE, PROPERTY_TYPE> {
   def boolean getSigned()
   /** Is this a default primitive "wrapper" property? */
   def boolean getWrapper()
+  /** The zero-based Primitive (non-Object) property ID, within the owner (sub-)type */
+  def int getPerTypePrimitivePropertyId(Type<OWNER_TYPE> owner)
+  /** The zero-based non-64-bit property ID, within the owner (sub-)type */
+  def int getPerTypeNonSixtyFourBitPropertyId(Type<OWNER_TYPE> owner)
+  /** The zero-based 64-bit property ID, within the owner (sub-)type */
+  def int getPerTypeSixtyFourBitPropertyId(Type<OWNER_TYPE> owner)
+  /** The non-Long property ID, within the owner (sub-)type */
+  def int getPerTypeNonLongPropertyId(Type<OWNER_TYPE> owner)
 }
 
 
@@ -1791,6 +2112,38 @@ extends IPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 
   /** Sets the value of this property, as a long */
   def OWNER_TYPE fromLong(OWNER_TYPE object, long value)
+}
+
+/**
+ * Base-class for a data object, which contains the PrimitiveProperty-related
+ * data, which is specific to a Property-owning type.
+ */
+package class PerTypePrimitivePropertyData extends PerTypePropertyData {
+  /** The zero-based Primitive (non-Object) property ID, within the owner (sub-)type */
+  public val int primitivePropertyId
+  /** The zero-based non-64-bit property ID, within the owner (sub-)type */
+  public val int nonSixtyFourBitPropertyId
+  /** The zero-based 64-bit property ID, within the owner (sub-)type */
+  public val int sixtyFourBitPropertyId
+  /** The non-Long property ID, within the owner (sub-)type */
+  public val int nonLongPropertyId
+
+	new(PerTypePropertyDataHelper helper, PrimitiveProperty<?,?,?> prop) {
+		super(helper, prop)
+		primitivePropertyId = helper.primitivePropertyId++
+		if (prop.sixtyFourBit) {
+			nonSixtyFourBitPropertyId = -1
+			sixtyFourBitPropertyId = helper.sixtyFourBitPropertyId++
+			if (prop.floatingPoint)
+				nonLongPropertyId = helper.nonLongPropertyId++
+			else
+				nonLongPropertyId = -1
+		} else {
+			nonSixtyFourBitPropertyId = helper.nonSixtyFourBitPropertyId++
+			sixtyFourBitPropertyId = -1
+			nonLongPropertyId = helper.nonLongPropertyId++
+		}
+	}
 }
 
 
@@ -1916,8 +2269,33 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> implements IPrimitiveProperty<OWNER_
   override final boolean getWrapper() {
     wrapper
   }
-}
 
+	/** Creates and returns the PerTypePropertyData for the given type. */
+	package override createPerTypePropertyData(PerTypePropertyDataHelper helper,
+		Map<String, List<Object>> validators, Map<String, List<Object>> listeners) {
+		new PerTypePrimitivePropertyData(helper, this)
+	}
+
+  /** The zero-based Primitive (non-Object) property ID, within the owner (sub-)type */
+  override final int getPerTypePrimitivePropertyId(Type<OWNER_TYPE> owner) {
+  	(getPerTypePropertyData(owner) as PerTypePrimitivePropertyData).primitivePropertyId
+  }
+
+  /** The zero-based non-64-bit property ID, within the owner (sub-)type */
+  override final int getPerTypeNonSixtyFourBitPropertyId(Type<OWNER_TYPE> owner) {
+  	(getPerTypePropertyData(owner) as PerTypePrimitivePropertyData).nonSixtyFourBitPropertyId
+  }
+
+  /** The zero-based 64-bit property ID, within the owner (sub-)type */
+  override final int getPerTypeSixtyFourBitPropertyId(Type<OWNER_TYPE> owner) {
+  	(getPerTypePropertyData(owner) as PerTypePrimitivePropertyData).sixtyFourBitPropertyId
+  }
+
+  /** The non-Long property ID, within the owner (sub-)type */
+  override final int getPerTypeNonLongPropertyId(Type<OWNER_TYPE> owner) {
+  	(getPerTypePropertyData(owner) as PerTypePrimitivePropertyData).nonLongPropertyId
+  }
+}
 
 /**
  * Represents a non-64-bit (not Long/Double) primitive Property.
@@ -1948,6 +2326,60 @@ extends PrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
   }
 }
 
+
+/**
+ * Validator for BooleanProperty
+ */
+interface BooleanPropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+	/** Empty array of Validators */
+	BooleanPropertyValidator[] EMPTY = newArrayOfSize(0)
+
+	/**
+	 * Validates Property change events, returning non-null on error.
+	 * Warnings should be logged on the bean logger instead.
+	 */
+	def String beforeBooleanPropertyChange(OWNER_TYPE instance, BooleanProperty<OWNER_TYPE, PROPERTY_TYPE, ?> prop, boolean oldValue, boolean newValue)
+}
+
+
+/**
+ * Listener for BooleanProperty
+ */
+interface BooleanPropertyListener<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+	/** Empty array of Listeners */
+	BooleanPropertyListener[] EMPTY = newArrayOfSize(0)
+
+	/**
+	 * React to Property change events.
+	 * The typical use-case is to invalidate caches.
+	 */
+	def void afterBooleanPropertyChangeValidation(OWNER_TYPE instance, BooleanProperty<OWNER_TYPE, PROPERTY_TYPE, ?> prop, boolean oldValue, boolean newValue)
+}
+
+/**
+ * Base-class for a data object, which contains the BooleanProperty-related
+ * data, which is specific to a Property-owning type.
+ */
+package class PerTypeBooleanPropertyData extends PerTypePrimitivePropertyData {
+  /** The zero-based Boolean property ID, within the owner (sub-)type */
+  public val int booleanPropertyId
+
+	/** The Validators for the Property in the Type */
+	public val BooleanPropertyValidator[] validators
+
+	/** The Listeners for the Property in the Type */
+	public val BooleanPropertyListener[] listeners
+
+	new(PerTypePropertyDataHelper helper, BooleanProperty<?,?,?> prop,
+		List<Object> validators, List<Object> listeners) {
+		super(helper, prop)
+		this.validators = newArrayOfSize(validators.size)
+		validators.toArray(this.validators)
+		this.listeners = newArrayOfSize(listeners.size)
+		listeners.toArray(this.listeners)
+		booleanPropertyId = helper.booleanPropertyId++
+	}
+}
 
 /**
  * Represents an primitive boolean Property.
@@ -2068,6 +2500,27 @@ IIntegralPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
     setter.apply(object, value != 0)
     object
   }
+
+	/** Creates and returns the PerTypePropertyData for the given type. */
+	package override createPerTypePropertyData(PerTypePropertyDataHelper helper,
+		Map<String, List<Object>> validators, Map<String, List<Object>> listeners) {
+		new PerTypeBooleanPropertyData(helper, this, nonNull(validators.get(simpleName)), nonNull(listeners.get(simpleName)))
+	}
+
+  /** The zero-based Boolean property ID, within the owner (sub-)type */
+  def final int getPerTypeBooleanPropertyId(Type<OWNER_TYPE> owner) {
+  	(getPerTypePropertyData(owner) as PerTypeBooleanPropertyData).booleanPropertyId
+  }
+
+	/** The Validators for the Property in the Type */
+	def final BooleanPropertyValidator[] getValidators(Type<OWNER_TYPE> owner) {
+  		(getPerTypePropertyData(owner) as PerTypeBooleanPropertyData).validators
+  	}
+
+	/** The Listeners for the Property in the Type */
+	def final BooleanPropertyListener[] getListeners(Type<OWNER_TYPE> owner) {
+  		(getPerTypePropertyData(owner) as PerTypeBooleanPropertyData).listeners
+  	}
 }
 
 
@@ -2087,6 +2540,107 @@ extends BooleanProperty<OWNER_TYPE, Boolean, BooleanConverter<OWNER_TYPE, Boolea
       theGetter, theSetter, theVirtual
     )
   }
+}
+
+
+/** Validates the range of a ByteProperty */
+class BytePropertyRangeValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE>
+implements BytePropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
+	val byte min
+	val byte max
+	val byte softMin
+	val byte softMax
+
+	new (byte min, byte max, byte softMin, byte softMax) {
+		if (min > max) {
+			throw new IllegalArgumentException("min("+min+") > max("+max+")")
+		}
+		if (softMin > softMax) {
+			throw new IllegalArgumentException("softMin("+softMin+") > softMax("+softMax+")")
+		}
+		if (max < softMax) {
+			throw new IllegalArgumentException("max("+max+") < softMax("+softMax+")")
+		}
+		if (softMin < min) {
+			throw new IllegalArgumentException("softMin("+softMin+") < min("+min+")")
+		}
+		this.min = min
+		this.max = max
+		this.softMin = softMin
+		this.softMax = softMax
+	}
+
+	override beforeBytePropertyChange(OWNER_TYPE instance, ByteProperty<OWNER_TYPE, PROPERTY_TYPE, ?> prop, byte oldValue, byte newValue) {
+		if (newValue < min) {
+			return "newValue("+newValue+") < min("+min+")"
+		}
+		if (newValue > max) {
+			return "newValue("+newValue+") > max("+max+")"
+		}
+		if (newValue < softMin) {
+			instance.log.warn("newValue("+newValue+") < softMin("+softMin+")")
+		} else if (newValue > softMax) {
+			instance.log.warn("newValue("+newValue+") > softMax("+softMax+")")
+		}
+		null
+	}
+
+}
+
+
+/**
+ * Validator for ByteProperty
+ */
+interface BytePropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+	/** Empty array of Validators */
+	BytePropertyValidator[] EMPTY = newArrayOfSize(0)
+
+	/**
+	 * Validates Property change events, returning non-null on error.
+	 * Warnings should be logged on the bean logger instead.
+	 */
+	def String beforeBytePropertyChange(OWNER_TYPE instance, ByteProperty<OWNER_TYPE, PROPERTY_TYPE, ?> prop, byte oldValue, byte newValue)
+}
+
+
+/**
+ * Listener for ByteProperty
+ */
+interface BytePropertyListener<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+	/** Empty array of Listeners */
+	BytePropertyListener[] EMPTY = newArrayOfSize(0)
+
+	/**
+	 * React to Property change events.
+	 * The typical use-case is to invalidate caches.
+	 */
+	def void afterBytePropertyChangeValidation(OWNER_TYPE instance, ByteProperty<OWNER_TYPE, PROPERTY_TYPE, ?> prop, byte oldValue, byte newValue)
+}
+
+
+/**
+ * Base-class for a data object, which contains the ByteProperty-related
+ * data, which is specific to a Property-owning type.
+ */
+package class PerTypeBytePropertyData extends PerTypePrimitivePropertyData {
+  /** The zero-based Byte property ID, within the owner (sub-)type */
+  public val int bytePropertyId
+
+	/** The Validators for the Property in the Type */
+	public val BytePropertyValidator[] validators
+
+	/** The Listeners for the Property in the Type */
+	public val BytePropertyListener[] listeners
+
+	new(PerTypePropertyDataHelper helper, ByteProperty<?,?,?> prop,
+		List<Object> validators, List<Object> listeners) {
+		super(helper, prop)
+		this.validators = newArrayOfSize(validators.size)
+		validators.toArray(this.validators)
+		this.listeners = newArrayOfSize(listeners.size)
+		listeners.toArray(this.listeners)
+		bytePropertyId = helper.bytePropertyId++
+	}
 }
 
 
@@ -2208,6 +2762,27 @@ IIntegralPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
     setter.apply(object, value as byte)
     object
   }
+
+	/** Creates and returns the PerTypePropertyData for the given type. */
+	package override createPerTypePropertyData(PerTypePropertyDataHelper helper,
+		Map<String, List<Object>> validators, Map<String, List<Object>> listeners) {
+		new PerTypeBytePropertyData(helper, this, nonNull(validators.get(simpleName)), nonNull(listeners.get(simpleName)))
+	}
+
+  /** The zero-based Byte property ID, within the owner (sub-)type */
+  def final int getPerTypeBytePropertyId(Type<OWNER_TYPE> owner) {
+  	(getPerTypePropertyData(owner) as PerTypeBytePropertyData).bytePropertyId
+  }
+
+	/** The Validators for the Property in the Type */
+	def final BytePropertyValidator[] getValidators(Type<OWNER_TYPE> owner) {
+  		(getPerTypePropertyData(owner) as PerTypeBytePropertyData).validators
+  	}
+
+	/** The Listeners for the Property in the Type */
+	def final BytePropertyListener[] getListeners(Type<OWNER_TYPE> owner) {
+  		(getPerTypePropertyData(owner) as PerTypeBytePropertyData).listeners
+  	}
 }
 
 
@@ -2267,6 +2842,107 @@ implements IEnumProperty<OWNER_TYPE, PROPERTY_TYPE, EnumStringConverter<OWNER_TY
       theGetter, theSetter, theVirtual
     )
   }
+}
+
+
+/**
+ * Validator for CharacterProperty
+ */
+interface CharacterPropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+	/** Empty array of Validators */
+	CharacterPropertyValidator[] EMPTY = newArrayOfSize(0)
+
+	/**
+	 * Validates Property change events, returning non-null on error.
+	 * Warnings should be logged on the bean logger instead.
+	 */
+	def String beforeCharacterPropertyChange(OWNER_TYPE instance, CharacterProperty<OWNER_TYPE, PROPERTY_TYPE, ?> prop, char oldValue, char newValue)
+}
+
+
+/**
+ * Listener for CharacterProperty
+ */
+interface CharacterPropertyListener<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+	/** Empty array of Listeners */
+	CharacterPropertyListener[] EMPTY = newArrayOfSize(0)
+
+	/**
+	 * React to Property change events.
+	 * The typical use-case is to invalidate caches.
+	 */
+	def void afterCharacterPropertyChangeValidation(OWNER_TYPE instance, CharacterProperty<OWNER_TYPE, PROPERTY_TYPE, ?> prop, char oldValue, char newValue)
+}
+
+
+/**
+ * Base-class for a data object, which contains the CharacterProperty-related
+ * data, which is specific to a Property-owning type.
+ */
+package class PerTypeCharacterPropertyData extends PerTypePrimitivePropertyData {
+  /** The zero-based Character property ID, within the owner (sub-)type */
+  public val int characterPropertyId
+
+	/** The Validators for the Property in the Type */
+	public val CharacterPropertyValidator[] validators
+
+	/** The Listeners for the Property in the Type */
+	public val CharacterPropertyListener[] listeners
+
+	new(PerTypePropertyDataHelper helper, CharacterProperty<?,?,?> prop,
+		List<Object> validators, List<Object> listeners) {
+		super(helper, prop)
+		this.validators = newArrayOfSize(validators.size)
+		validators.toArray(this.validators)
+		this.listeners = newArrayOfSize(listeners.size)
+		listeners.toArray(this.listeners)
+		characterPropertyId = helper.characterPropertyId++
+	}
+}
+
+
+/** Validates the range of a CharacterProperty */
+class CharacterPropertyRangeValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE>
+implements CharacterPropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
+	val char min
+	val char max
+	val char softMin
+	val char softMax
+
+	new (char min, char max, char softMin, char softMax) {
+		if (min > max) {
+			throw new IllegalArgumentException("min("+min+") > max("+max+")")
+		}
+		if (softMin > softMax) {
+			throw new IllegalArgumentException("softMin("+softMin+") > softMax("+softMax+")")
+		}
+		if (max < softMax) {
+			throw new IllegalArgumentException("max("+max+") < softMax("+softMax+")")
+		}
+		if (softMin < min) {
+			throw new IllegalArgumentException("softMin("+softMin+") < min("+min+")")
+		}
+		this.min = min
+		this.max = max
+		this.softMin = softMin
+		this.softMax = softMax
+	}
+
+	override beforeCharacterPropertyChange(OWNER_TYPE instance, CharacterProperty<OWNER_TYPE, PROPERTY_TYPE, ?> prop, char oldValue, char newValue) {
+		if (newValue < min) {
+			return "newValue("+(newValue as int)+") < min("+(min as int)+")"
+		}
+		if (newValue > max) {
+			return "newValue("+(newValue as int)+") > max("+(max as int)+")"
+		}
+		if (newValue < softMin) {
+			instance.log.warn("newValue("+(newValue as int)+") < softMin("+(softMin as int)+")")
+		} else if (newValue > softMax) {
+			instance.log.warn("newValue("+(newValue as int)+") > softMax("+(softMax as int)+")")
+		}
+		null
+	}
+
 }
 
 
@@ -2388,6 +3064,27 @@ IIntegralPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
     setter.apply(object, value as char)
     object
   }
+
+	/** Creates and returns the PerTypePropertyData for the given type. */
+	package override createPerTypePropertyData(PerTypePropertyDataHelper helper,
+		Map<String, List<Object>> validators, Map<String, List<Object>> listeners) {
+		new PerTypeCharacterPropertyData(helper, this, nonNull(validators.get(simpleName)), nonNull(listeners.get(simpleName)))
+	}
+
+  /** The zero-based Character property ID, within the owner (sub-)type */
+  def final int getPerTypeCharacterPropertyId(Type<OWNER_TYPE> owner) {
+  	(getPerTypePropertyData(owner) as PerTypeCharacterPropertyData).characterPropertyId
+  }
+
+	/** The Validators for the Property in the Type */
+	def final CharacterPropertyValidator[] getValidators(Type<OWNER_TYPE> owner) {
+  		(getPerTypePropertyData(owner) as PerTypeCharacterPropertyData).validators
+  	}
+
+	/** The Listeners for the Property in the Type */
+	def final CharacterPropertyListener[] getListeners(Type<OWNER_TYPE> owner) {
+  		(getPerTypePropertyData(owner) as PerTypeCharacterPropertyData).listeners
+  	}
 }
 
 
@@ -2407,6 +3104,107 @@ extends CharacterProperty<OWNER_TYPE, Character, CharConverter<OWNER_TYPE, Chara
       16, Character, theGetter, theSetter, theVirtual
     )
   }
+}
+
+
+/**
+ * Validator for ShortProperty
+ */
+interface ShortPropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+	/** Empty array of Validators */
+	ShortPropertyValidator[] EMPTY = newArrayOfSize(0)
+
+	/**
+	 * Validates Property change events, returning non-null on error.
+	 * Warnings should be logged on the bean logger instead.
+	 */
+	def String beforeShortPropertyChange(OWNER_TYPE instance, ShortProperty<OWNER_TYPE, PROPERTY_TYPE, ?> prop, short oldValue, short newValue)
+}
+
+
+/**
+ * Listener for ShortProperty
+ */
+interface ShortPropertyListener<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+	/** Empty array of Listeners */
+	ShortPropertyListener[] EMPTY = newArrayOfSize(0)
+
+	/**
+	 * React to Property change events.
+	 * The typical use-case is to invalidate caches.
+	 */
+	def void afterShortPropertyChangeValidation(OWNER_TYPE instance, ShortProperty<OWNER_TYPE, PROPERTY_TYPE, ?> prop, short oldValue, short newValue)
+}
+
+
+/**
+ * Base-class for a data object, which contains the ShortProperty-related
+ * data, which is specific to a Property-owning type.
+ */
+package class PerTypeShortPropertyData extends PerTypePrimitivePropertyData {
+  /** The zero-based Short property ID, within the owner (sub-)type */
+  public val int shortPropertyId
+
+	/** The Validators for the Property in the Type */
+	public val ShortPropertyValidator[] validators
+
+	/** The Listeners for the Property in the Type */
+	public val ShortPropertyListener[] listeners
+
+	new(PerTypePropertyDataHelper helper, ShortProperty<?,?,?> prop,
+		List<Object> validators, List<Object> listeners) {
+		super(helper, prop)
+		this.validators = newArrayOfSize(validators.size)
+		validators.toArray(this.validators)
+		this.listeners = newArrayOfSize(listeners.size)
+		listeners.toArray(this.listeners)
+		shortPropertyId = helper.shortPropertyId++
+	}
+}
+
+
+/** Validates the range of a ShortProperty */
+class ShortPropertyRangeValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE>
+implements ShortPropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
+	val short min
+	val short max
+	val short softMin
+	val short softMax
+
+	new (short min, short max, short softMin, short softMax) {
+		if (min > max) {
+			throw new IllegalArgumentException("min("+min+") > max("+max+")")
+		}
+		if (softMin > softMax) {
+			throw new IllegalArgumentException("softMin("+softMin+") > softMax("+softMax+")")
+		}
+		if (max < softMax) {
+			throw new IllegalArgumentException("max("+max+") < softMax("+softMax+")")
+		}
+		if (softMin < min) {
+			throw new IllegalArgumentException("softMin("+softMin+") < min("+min+")")
+		}
+		this.min = min
+		this.max = max
+		this.softMin = softMin
+		this.softMax = softMax
+	}
+
+	override beforeShortPropertyChange(OWNER_TYPE instance, ShortProperty<OWNER_TYPE, PROPERTY_TYPE, ?> prop, short oldValue, short newValue) {
+		if (newValue < min) {
+			return "newValue("+newValue+") < min("+min+")"
+		}
+		if (newValue > max) {
+			return "newValue("+newValue+") > max("+max+")"
+		}
+		if (newValue < softMin) {
+			instance.log.warn("newValue("+newValue+") < softMin("+softMin+")")
+		} else if (newValue > softMax) {
+			instance.log.warn("newValue("+newValue+") > softMax("+softMax+")")
+		}
+		null
+	}
+
 }
 
 
@@ -2529,6 +3327,27 @@ IIntegralPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
     setter.apply(object, value as short)
     object
   }
+
+	/** Creates and returns the PerTypePropertyData for the given type. */
+	package override createPerTypePropertyData(PerTypePropertyDataHelper helper,
+		Map<String, List<Object>> validators, Map<String, List<Object>> listeners) {
+		new PerTypeShortPropertyData(helper, this, nonNull(validators.get(simpleName)), nonNull(listeners.get(simpleName)))
+	}
+
+  /** The zero-based Short property ID, within the owner (sub-)type */
+  def final int getPerTypeShortPropertyId(Type<OWNER_TYPE> owner) {
+  	(getPerTypePropertyData(owner) as PerTypeShortPropertyData).shortPropertyId
+  }
+
+	/** The Validators for the Property in the Type */
+	def final ShortPropertyValidator[] getValidators(Type<OWNER_TYPE> owner) {
+  		(getPerTypePropertyData(owner) as PerTypeShortPropertyData).validators
+  	}
+
+	/** The Listeners for the Property in the Type */
+	def final ShortPropertyListener[] getListeners(Type<OWNER_TYPE> owner) {
+  		(getPerTypePropertyData(owner) as PerTypeShortPropertyData).listeners
+  	}
 }
 
 
@@ -2548,6 +3367,106 @@ extends ShortProperty<OWNER_TYPE, Short, ShortConverter<OWNER_TYPE, Short>> {
       16, Short, theGetter, theSetter, theVirtual
     )
   }
+}
+
+
+/**
+ * Validator for IntegerProperty
+ */
+interface IntegerPropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+	/** Empty array of Validators */
+	IntegerPropertyValidator[] EMPTY = newArrayOfSize(0)
+
+	/**
+	 * Validates Property change events, returning non-null on error.
+	 * Warnings should be logged on the bean logger instead.
+	 */
+	def String beforeIntegerPropertyChange(OWNER_TYPE instance, IntegerProperty<OWNER_TYPE, PROPERTY_TYPE, ?> prop, int oldValue, int newValue)
+}
+
+
+/**
+ * Listener for IntegerProperty
+ */
+interface IntegerPropertyListener<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+	/** Empty array of Listeners */
+	IntegerPropertyListener[] EMPTY = newArrayOfSize(0)
+
+	/**
+	 * React to Property change events.
+	 * The typical use-case is to invalidate caches.
+	 */
+	def void afterIntegerPropertyChangeValidation(OWNER_TYPE instance, IntegerProperty<OWNER_TYPE, PROPERTY_TYPE, ?> prop, int oldValue, int newValue)
+}
+
+
+/**
+ * Base-class for a data object, which contains the IntegerProperty-related
+ * data, which is specific to a Property-owning type.
+ */
+package class PerTypeIntegerPropertyData extends PerTypePrimitivePropertyData {
+  /** The zero-based Integer property ID, within the owner (sub-)type */
+  public val int integerPropertyId
+
+	/** The Validators for the Property in the Type */
+	public val IntegerPropertyValidator[] validators
+
+	/** The Listeners for the Property in the Type */
+	public val IntegerPropertyListener[] listeners
+
+	new(PerTypePropertyDataHelper helper, IntegerProperty<?,?,?> prop,
+		List<Object> validators, List<Object> listeners) {
+		super(helper, prop)
+		this.validators = newArrayOfSize(validators.size)
+		validators.toArray(this.validators)
+		this.listeners = newArrayOfSize(listeners.size)
+		listeners.toArray(this.listeners)
+		integerPropertyId = helper.integerPropertyId++
+	}
+}
+
+
+/** Validates the range of a IntegerProperty */
+class IntegerPropertyRangeValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE>
+implements IntegerPropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
+	val int min
+	val int max
+	val int softMin
+	val int softMax
+
+	new (int min, int max, int softMin, int softMax) {
+		if (min > max) {
+			throw new IllegalArgumentException("min("+min+") > max("+max+")")
+		}
+		if (softMin > softMax) {
+			throw new IllegalArgumentException("softMin("+softMin+") > softMax("+softMax+")")
+		}
+		if (max < softMax) {
+			throw new IllegalArgumentException("max("+max+") < softMax("+softMax+")")
+		}
+		if (softMin < min) {
+			throw new IllegalArgumentException("softMin("+softMin+") < min("+min+")")
+		}
+		this.min = min
+		this.max = max
+		this.softMin = softMin
+		this.softMax = softMax
+	}
+
+	override beforeIntegerPropertyChange(OWNER_TYPE instance, IntegerProperty<OWNER_TYPE, PROPERTY_TYPE, ?> prop, int oldValue, int newValue) {
+		if (newValue < min) {
+			return "newValue("+newValue+") < min("+min+")"
+		}
+		if (newValue > max) {
+			return "newValue("+newValue+") > max("+max+")"
+		}
+		if (newValue < softMin) {
+			instance.log.warn("newValue("+newValue+") < softMin("+softMin+")")
+		} else if (newValue > softMax) {
+			instance.log.warn("newValue("+newValue+") > softMax("+softMax+")")
+		}
+		null
+	}
 }
 
 
@@ -2669,6 +3588,27 @@ IIntegralPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
     setter.apply(object, value as int)
     object
   }
+
+	/** Creates and returns the PerTypePropertyData for the given type. */
+	package override createPerTypePropertyData(PerTypePropertyDataHelper helper,
+		Map<String, List<Object>> validators, Map<String, List<Object>> listeners) {
+		new PerTypeIntegerPropertyData(helper, this, nonNull(validators.get(simpleName)), nonNull(listeners.get(simpleName)))
+	}
+
+  /** The zero-based Integer property ID, within the owner (sub-)type */
+  def final int getPerTypeIntegerPropertyId(Type<OWNER_TYPE> owner) {
+  	(getPerTypePropertyData(owner) as PerTypeIntegerPropertyData).integerPropertyId
+  }
+
+	/** The Validators for the Property in the Type */
+	def final IntegerPropertyValidator[] getValidators(Type<OWNER_TYPE> owner) {
+  		(getPerTypePropertyData(owner) as PerTypeIntegerPropertyData).validators
+  	}
+
+	/** The Listeners for the Property in the Type */
+	def final IntegerPropertyListener[] getListeners(Type<OWNER_TYPE> owner) {
+  		(getPerTypePropertyData(owner) as PerTypeIntegerPropertyData).listeners
+  	}
 }
 
 
@@ -2688,6 +3628,106 @@ extends IntegerProperty<OWNER_TYPE, Integer, IntConverter<OWNER_TYPE, Integer>> 
       Integer, theGetter, theSetter, theVirtual
     )
   }
+}
+
+
+/**
+ * Validator for FloatProperty
+ */
+interface FloatPropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+	/** Empty array of Validators */
+	FloatPropertyValidator[] EMPTY = newArrayOfSize(0)
+
+	/**
+	 * Validates Property change events, returning non-null on error.
+	 * Warnings should be logged on the bean logger instead.
+	 */
+	def String beforeFloatPropertyChange(OWNER_TYPE instance, FloatProperty<OWNER_TYPE, PROPERTY_TYPE, ?> prop, float oldValue, float newValue)
+}
+
+
+/**
+ * Listener for FloatProperty
+ */
+interface FloatPropertyListener<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+	/** Empty array of Listeners */
+	FloatPropertyListener[] EMPTY = newArrayOfSize(0)
+
+	/**
+	 * React to Property change events.
+	 * The typical use-case is to invalidate caches.
+	 */
+	def void afterFloatPropertyChangeValidation(OWNER_TYPE instance, FloatProperty<OWNER_TYPE, PROPERTY_TYPE, ?> prop, float oldValue, float newValue)
+}
+
+
+/**
+ * Base-class for a data object, which contains the FloatProperty-related
+ * data, which is specific to a Property-owning type.
+ */
+package class PerTypeFloatPropertyData extends PerTypePrimitivePropertyData {
+  /** The zero-based Float property ID, within the owner (sub-)type */
+  public val int floatPropertyId
+
+	/** The Validators for the Property in the Type */
+	public val FloatPropertyValidator[] validators
+
+	/** The Listeners for the Property in the Type */
+	public val FloatPropertyListener[] listeners
+
+	new(PerTypePropertyDataHelper helper, FloatProperty<?,?,?> prop,
+		List<Object> validators, List<Object> listeners) {
+		super(helper, prop)
+		this.validators = newArrayOfSize(validators.size)
+		validators.toArray(this.validators)
+		this.listeners = newArrayOfSize(listeners.size)
+		listeners.toArray(this.listeners)
+		floatPropertyId = helper.floatPropertyId++
+	}
+}
+
+
+/** Validates the range of a FloatProperty */
+class FloatPropertyRangeValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE>
+implements FloatPropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
+	val float min
+	val float max
+	val float softMin
+	val float softMax
+
+	new (float min, float max, float softMin, float softMax) {
+		if (min > max) {
+			throw new IllegalArgumentException("min("+min+") > max("+max+")")
+		}
+		if (softMin > softMax) {
+			throw new IllegalArgumentException("softMin("+softMin+") > softMax("+softMax+")")
+		}
+		if (max < softMax) {
+			throw new IllegalArgumentException("max("+max+") < softMax("+softMax+")")
+		}
+		if (softMin < min) {
+			throw new IllegalArgumentException("softMin("+softMin+") < min("+min+")")
+		}
+		this.min = min
+		this.max = max
+		this.softMin = softMin
+		this.softMax = softMax
+	}
+
+	override beforeFloatPropertyChange(OWNER_TYPE instance, FloatProperty<OWNER_TYPE, PROPERTY_TYPE, ?> prop, float oldValue, float newValue) {
+		if (newValue < min) {
+			return "newValue("+newValue+") < min("+min+")"
+		}
+		if (newValue > max) {
+			return "newValue("+newValue+") > max("+max+")"
+		}
+		if (newValue < softMin) {
+			instance.log.warn("newValue("+newValue+") < softMin("+softMin+")")
+		} else if (newValue > softMax) {
+			instance.log.warn("newValue("+newValue+") > softMax("+softMax+")")
+		}
+		null
+	}
 }
 
 
@@ -2798,6 +3838,27 @@ IRealPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
     setter.apply(object, value as float)
     object
   }
+
+	/** Creates and returns the PerTypePropertyData for the given type. */
+	package override createPerTypePropertyData(PerTypePropertyDataHelper helper,
+		Map<String, List<Object>> validators, Map<String, List<Object>> listeners) {
+		new PerTypeFloatPropertyData(helper, this, nonNull(validators.get(simpleName)), nonNull(listeners.get(simpleName)))
+	}
+
+  /** The zero-based Float property ID, within the owner (sub-)type */
+  def final int getPerTypeFloatPropertyId(Type<OWNER_TYPE> owner) {
+  	(getPerTypePropertyData(owner) as PerTypeFloatPropertyData).floatPropertyId
+  }
+
+	/** The Validators for the Property in the Type */
+	def final FloatPropertyValidator[] getValidators(Type<OWNER_TYPE> owner) {
+  		(getPerTypePropertyData(owner) as PerTypeFloatPropertyData).validators
+  	}
+
+	/** The Listeners for the Property in the Type */
+	def final FloatPropertyListener[] getListeners(Type<OWNER_TYPE> owner) {
+  		(getPerTypePropertyData(owner) as PerTypeFloatPropertyData).listeners
+  	}
 }
 
 
@@ -2817,6 +3878,106 @@ extends FloatProperty<OWNER_TYPE, Float, FloatConverter<OWNER_TYPE, Float>> {
       Float, theGetter, theSetter, theVirtual
     )
   }
+}
+
+
+/**
+ * Validator for LongProperty
+ */
+interface LongPropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+	/** Empty array of Validators */
+	LongPropertyValidator[] EMPTY = newArrayOfSize(0)
+
+	/**
+	 * Validates Property change events, returning non-null on error.
+	 * Warnings should be logged on the bean logger instead.
+	 */
+	def String beforeLongPropertyChange(OWNER_TYPE instance, LongProperty<OWNER_TYPE, PROPERTY_TYPE, ?> prop, long oldValue, long newValue)
+}
+
+
+/**
+ * Listener for LongProperty
+ */
+interface LongPropertyListener<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+	/** Empty array of Listeners */
+	LongPropertyListener[] EMPTY = newArrayOfSize(0)
+
+	/**
+	 * React to Property change events.
+	 * The typical use-case is to invalidate caches.
+	 */
+	def void afterLongPropertyChangeValidation(OWNER_TYPE instance, LongProperty<OWNER_TYPE, PROPERTY_TYPE, ?> prop, long oldValue, long newValue)
+}
+
+
+/**
+ * Base-class for a data object, which contains the LongProperty-related
+ * data, which is specific to a Property-owning type.
+ */
+package class PerTypeLongPropertyData extends PerTypePrimitivePropertyData {
+  /** The zero-based Long property ID, within the owner (sub-)type */
+  public val int longPropertyId
+
+	/** The Validators for the Property in the Type */
+	public val LongPropertyValidator[] validators
+
+	/** The Listeners for the Property in the Type */
+	public val LongPropertyListener[] listeners
+
+	new(PerTypePropertyDataHelper helper, LongProperty<?,?,?> prop,
+		List<Object> validators, List<Object> listeners) {
+		super(helper, prop)
+		this.validators = newArrayOfSize(validators.size)
+		validators.toArray(this.validators)
+		this.listeners = newArrayOfSize(listeners.size)
+		listeners.toArray(this.listeners)
+		longPropertyId = helper.longPropertyId++
+	}
+}
+
+
+/** Validates the range of a LongProperty */
+class LongPropertyRangeValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE>
+implements LongPropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
+	val long min
+	val long max
+	val long softMin
+	val long softMax
+
+	new (long min, long max, long softMin, long softMax) {
+		if (min > max) {
+			throw new IllegalArgumentException("min("+min+") > max("+max+")")
+		}
+		if (softMin > softMax) {
+			throw new IllegalArgumentException("softMin("+softMin+") > softMax("+softMax+")")
+		}
+		if (max < softMax) {
+			throw new IllegalArgumentException("max("+max+") < softMax("+softMax+")")
+		}
+		if (softMin < min) {
+			throw new IllegalArgumentException("softMin("+softMin+") < min("+min+")")
+		}
+		this.min = min
+		this.max = max
+		this.softMin = softMin
+		this.softMax = softMax
+	}
+
+	override beforeLongPropertyChange(OWNER_TYPE instance, LongProperty<OWNER_TYPE, PROPERTY_TYPE, ?> prop, long oldValue, long newValue) {
+		if (newValue < min) {
+			return "newValue("+newValue+") < min("+min+")"
+		}
+		if (newValue > max) {
+			return "newValue("+newValue+") > max("+max+")"
+		}
+		if (newValue < softMin) {
+			instance.log.warn("newValue("+newValue+") < softMin("+softMin+")")
+		} else if (newValue > softMax) {
+			instance.log.warn("newValue("+newValue+") > softMax("+softMax+")")
+		}
+		null
+	}
 }
 
 
@@ -2926,6 +4087,27 @@ implements IIntegralPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
     setter.apply(object, value)
     object
   }
+
+	/** Creates and returns the PerTypePropertyData for the given type. */
+	package override createPerTypePropertyData(PerTypePropertyDataHelper helper,
+		Map<String, List<Object>> validators, Map<String, List<Object>> listeners) {
+		new PerTypeLongPropertyData(helper, this, nonNull(validators.get(simpleName)), nonNull(listeners.get(simpleName)))
+	}
+
+  /** The zero-based Long property ID, within the owner (sub-)type */
+  def final int getPerTypeDoublePropertyId(Type<OWNER_TYPE> owner) {
+  	(getPerTypePropertyData(owner) as PerTypeLongPropertyData).longPropertyId
+  }
+
+	/** The Validators for the Property in the Type */
+	def final LongPropertyValidator[] getValidators(Type<OWNER_TYPE> owner) {
+  		(getPerTypePropertyData(owner) as PerTypeLongPropertyData).validators
+  	}
+
+	/** The Listeners for the Property in the Type */
+	def final LongPropertyListener[] getListeners(Type<OWNER_TYPE> owner) {
+  		(getPerTypePropertyData(owner) as PerTypeLongPropertyData).listeners
+  	}
 }
 
 
@@ -2945,6 +4127,106 @@ extends LongProperty<OWNER_TYPE, Long, LongConverter<OWNER_TYPE, Long>> {
       64, Long, theGetter, theSetter, theVirtual
     )
   }
+}
+
+
+/**
+ * Validator for DoubleProperty
+ */
+interface DoublePropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+	/** Empty array of Validators */
+	DoublePropertyValidator[] EMPTY = newArrayOfSize(0)
+
+	/**
+	 * Validates Property change events, returning non-null on error.
+	 * Warnings should be logged on the bean logger instead.
+	 */
+	def String beforeDoublePropertyChange(OWNER_TYPE instance, DoubleProperty<OWNER_TYPE, PROPERTY_TYPE, ?> prop, double oldValue, double newValue)
+}
+
+
+/**
+ * Listener for DoubleProperty
+ */
+interface DoublePropertyListener<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+	/** Empty array of Listeners */
+	DoublePropertyListener[] EMPTY = newArrayOfSize(0)
+
+	/**
+	 * React to Property change events.
+	 * The typical use-case is to invalidate caches.
+	 */
+	def void afterDoublePropertyChangeValidation(OWNER_TYPE instance, DoubleProperty<OWNER_TYPE, PROPERTY_TYPE, ?> prop, double oldValue, double newValue)
+}
+
+
+/**
+ * Base-class for a data object, which contains the PrimitiveProperty-related
+ * data, which is specific to a Property-owning type.
+ */
+package class PerTypeDoublePropertyData extends PerTypePrimitivePropertyData {
+  /** The zero-based Double property ID, within the owner (sub-)type */
+  public val int doublePropertyId
+
+	/** The Validators for the Property in the Type */
+	public val DoublePropertyValidator[] validators
+
+	/** The Listeners for the Property in the Type */
+	public val DoublePropertyListener[] listeners
+
+	new(PerTypePropertyDataHelper helper, DoubleProperty<?,?,?> prop,
+		List<Object> validators, List<Object> listeners) {
+		super(helper, prop)
+		this.validators = newArrayOfSize(validators.size)
+		validators.toArray(this.validators)
+		this.listeners = newArrayOfSize(listeners.size)
+		listeners.toArray(this.listeners)
+		doublePropertyId = helper.doublePropertyId++
+	}
+}
+
+
+/** Validates the range of a DoubleProperty */
+class DoublePropertyRangeValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE>
+implements DoublePropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
+	val double min
+	val double max
+	val double softMin
+	val double softMax
+
+	new (double min, double max, double softMin, double softMax) {
+		if (min > max) {
+			throw new IllegalArgumentException("min("+min+") > max("+max+")")
+		}
+		if (softMin > softMax) {
+			throw new IllegalArgumentException("softMin("+softMin+") > softMax("+softMax+")")
+		}
+		if (max < softMax) {
+			throw new IllegalArgumentException("max("+max+") < softMax("+softMax+")")
+		}
+		if (softMin < min) {
+			throw new IllegalArgumentException("softMin("+softMin+") < min("+min+")")
+		}
+		this.min = min
+		this.max = max
+		this.softMin = softMin
+		this.softMax = softMax
+	}
+
+	override beforeDoublePropertyChange(OWNER_TYPE instance, DoubleProperty<OWNER_TYPE, PROPERTY_TYPE, ?> prop, double oldValue, double newValue) {
+		if (newValue < min) {
+			return "newValue("+newValue+") < min("+min+")"
+		}
+		if (newValue > max) {
+			return "newValue("+newValue+") > max("+max+")"
+		}
+		if (newValue < softMin) {
+			instance.log.warn("newValue("+newValue+") < softMin("+softMin+")")
+		} else if (newValue > softMax) {
+			instance.log.warn("newValue("+newValue+") > softMax("+softMax+")")
+		}
+		null
+	}
 }
 
 
@@ -3056,6 +4338,27 @@ IRealPrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
     setter.apply(object, value)
     object
   }
+
+	/** Creates and returns the PerTypePropertyData for the given type. */
+	package override createPerTypePropertyData(PerTypePropertyDataHelper helper,
+		Map<String, List<Object>> validators, Map<String, List<Object>> listeners) {
+		new PerTypeDoublePropertyData(helper, this, nonNull(validators.get(simpleName)), nonNull(listeners.get(simpleName)))
+	}
+
+  /** The zero-based Double property ID, within the owner (sub-)type */
+  def final int getPerTypeDoublePropertyId(Type<OWNER_TYPE> owner) {
+  	(getPerTypePropertyData(owner) as PerTypeDoublePropertyData).doublePropertyId
+  }
+
+	/** The Validators for the Property in the Type */
+	def final DoublePropertyValidator[] getValidators(Type<OWNER_TYPE> owner) {
+  		(getPerTypePropertyData(owner) as PerTypeDoublePropertyData).validators
+  	}
+
+	/** The Listeners for the Property in the Type */
+	def final DoublePropertyListener[] getListeners(Type<OWNER_TYPE> owner) {
+  		(getPerTypePropertyData(owner) as PerTypeDoublePropertyData).listeners
+  	}
 }
 
 
@@ -3292,54 +4595,54 @@ public interface JavaMeta {
   public static val BUILDER = HierarchyBuilderFactory.getHierarchyBuilder(Object.name)
 
   /** The primitive Serializable Type */
-  public static val SERIALIZABLE = BUILDER.newType(Serializable, null, Kind.Trait)
+  public static val SERIALIZABLE = BUILDER.newType(Serializable, null, Kind.Trait, null, null)
 
   /** The primitive Object Type */
-  public static val OBJECT = BUILDER.newType(Object, ObjectProvider.INSTANCE, Kind.Data)
+  public static val OBJECT = BUILDER.newType(Object, ObjectProvider.INSTANCE, Kind.Data, null, null)
 
   /** The primitive Comparable Type */
-  public static val COMPARABLE = BUILDER.newType(Comparable, null, Kind.Trait)
+  public static val COMPARABLE = BUILDER.newType(Comparable, null, Kind.Trait, null, null)
 
   /** The primitive Number Type */
-  public static val NUMBER = BUILDER.newType(Number, null, Kind.Data, #[SERIALIZABLE])
+  public static val NUMBER = BUILDER.newType(Number, null, Kind.Data, null, null, #[SERIALIZABLE])
 
   /** The primitive Void Type */
-  public static val VOID = BUILDER.newType(Void, null, Kind.Data)
+  public static val VOID = BUILDER.newType(Void, null, Kind.Data, null, null)
 
   /** The primitive Boolean Type */
-  public static val BOOLEAN = BUILDER.newType(Boolean, new ConstantProvider(Boolean.FALSE), Kind.Data, #[SERIALIZABLE, COMPARABLE])
+  public static val BOOLEAN = BUILDER.newType(Boolean, new ConstantProvider(Boolean.FALSE), Kind.Data, null, null, #[SERIALIZABLE, COMPARABLE])
 
   /** The primitive Byte Type */
-  public static val BYTE = BUILDER.newType(Byte, new ConstantProvider(0 as byte), Kind.Data, #[NUMBER, COMPARABLE])
+  public static val BYTE = BUILDER.newType(Byte, new ConstantProvider(0 as byte), Kind.Data, null, null, #[NUMBER, COMPARABLE])
 
   /** The primitive Character Type */
-  public static val CHARACTER = BUILDER.newType(Character, new ConstantProvider(0 as char), Kind.Data, #[SERIALIZABLE, COMPARABLE])
+  public static val CHARACTER = BUILDER.newType(Character, new ConstantProvider(0 as char), Kind.Data, null, null, #[SERIALIZABLE, COMPARABLE])
 
   /** The primitive Short Type */
-  public static val SHORT = BUILDER.newType(Short, new ConstantProvider(0 as short), Kind.Data, #[NUMBER, COMPARABLE])
+  public static val SHORT = BUILDER.newType(Short, new ConstantProvider(0 as short), Kind.Data, null, null, #[NUMBER, COMPARABLE])
 
   /** The primitive Integer Type */
-  public static val INTEGER = BUILDER.newType(Integer, new ConstantProvider(0), Kind.Data, #[NUMBER, COMPARABLE])
+  public static val INTEGER = BUILDER.newType(Integer, new ConstantProvider(0), Kind.Data, null, null, #[NUMBER, COMPARABLE])
 
   /** The primitive Long Type */
-  public static val LONG = BUILDER.newType(Long, new ConstantProvider(0L), Kind.Data, #[NUMBER, COMPARABLE])
+  public static val LONG = BUILDER.newType(Long, new ConstantProvider(0L), Kind.Data, null, null, #[NUMBER, COMPARABLE])
 
   /** The primitive Float Type */
-  public static val FLOAT = BUILDER.newType(Float, new ConstantProvider(0.0f), Kind.Data, #[NUMBER, COMPARABLE])
+  public static val FLOAT = BUILDER.newType(Float, new ConstantProvider(0.0f), Kind.Data, null, null, #[NUMBER, COMPARABLE])
 
   /** The primitive Double Type */
-  public static val DOUBLE = BUILDER.newType(Double, new ConstantProvider(0.0), Kind.Data, #[NUMBER, COMPARABLE])
+  public static val DOUBLE = BUILDER.newType(Double, new ConstantProvider(0.0), Kind.Data, null, null, #[NUMBER, COMPARABLE])
 
   /** The primitive CharSequence Type */
-  public static val CHAR_SEQUENCE = BUILDER.newType(CharSequence, null, Kind.Trait)
+  public static val CHAR_SEQUENCE = BUILDER.newType(CharSequence, null, Kind.Trait, null, null)
 
   /** The primitive String Type */
   public static val STRING = BUILDER.newType(String,
-    new ConstantProvider(""), Kind.Data, #[SERIALIZABLE, CHAR_SEQUENCE, COMPARABLE])
+    new ConstantProvider(""), Kind.Data, null, null, #[SERIALIZABLE, CHAR_SEQUENCE, COMPARABLE])
 
   /** The Iterator Type */
   public static val ITERATOR = BUILDER.newType(Iterator, new ConstantProvider(Collections.emptyList.iterator),
-    Kind.Trait, Type.NO_TYPE, Property.NO_PROPERTIES, ONE_NULL_OBJECT_PROP)
+    Kind.Trait, null, null, Type.NO_TYPE, Property.NO_PROPERTIES, ONE_NULL_OBJECT_PROP)
 
   /** The iterator virtual property of the Iterables */
     public static val ITERABLE_ITERATOR_PROP = BUILDER.newObjectProperty(
@@ -3347,7 +4650,7 @@ public interface JavaMeta {
 
   /** The Iterable Type */
   public static val ITERABLE = BUILDER.newType(Iterable, new ConstantProvider(Collections.emptyList),
-    Kind.Trait, Type.NO_TYPE, <Property>newArrayList(ITERABLE_ITERATOR_PROP), ONE_NULL_OBJECT_PROP)
+    Kind.Trait, null, null, Type.NO_TYPE, <Property>newArrayList(ITERABLE_ITERATOR_PROP), ONE_NULL_OBJECT_PROP)
 
   /** The content/toArray "property" of the collections */
     public static val COLLECTION_CONTENT_PROP = BUILDER.newObjectProperty(
@@ -3365,16 +4668,16 @@ public interface JavaMeta {
 
   /** The Collection Type */
   public static val COLLECTION = BUILDER.newType(Collection,
-    ListProvider.INSTANCE as Provider as Provider<Collection>, Kind.Trait, #[ITERABLE],
+    ListProvider.INSTANCE as Provider as Provider<Collection>, Kind.Trait, null, null, #[ITERABLE],
     <Property>newArrayList(COLLECTION_CONTENT_PROP, COLLECTION_EMPTY_PROP, COLLECTION_SIZE_PROP),
     ONE_NULL_OBJECT_PROP)
 
   /** The List Type */
-  public static val LIST = BUILDER.newType(List, ListProvider.INSTANCE, Kind.Trait,
+  public static val LIST = BUILDER.newType(List, ListProvider.INSTANCE, Kind.Trait, null, null,
     #[COLLECTION], Property.NO_PROPERTIES, ONE_NULL_OBJECT_PROP)
 
   /** The Set Type */
-  public static val SET = BUILDER.newType(Set, SetProvider.INSTANCE, Kind.Trait,
+  public static val SET = BUILDER.newType(Set, SetProvider.INSTANCE, Kind.Trait, null, null,
     #[COLLECTION], Property.NO_PROPERTIES, ONE_NULL_OBJECT_PROP)
 
   /** The content/toArray "property" of the Maps */
@@ -3396,7 +4699,7 @@ public interface JavaMeta {
       Map, "iterator", Iterator, false, false, false, [entrySet.iterator], null, true)
 
   /** The Map Type */
-  public static val MAP = BUILDER.newType(Map, MapProvider.INSTANCE, Kind.Trait,
+  public static val MAP = BUILDER.newType(Map, MapProvider.INSTANCE, Kind.Trait, null, null,
     Type.NO_TYPE, <Property>newArrayList(MAP_CONTENT_PROP, MAP_EMPTY_PROP, MAP_SIZE_PROP), TWO_NULL_OBJECT_PROPS)
 
   /** The java.lang package */
@@ -3428,18 +4731,18 @@ public interface Meta {
   public static val BUILDER = HierarchyBuilderFactory.registerHierarchyBuilder(new MetaHierarchyBuilder())
 
   /** The MetaBase Type */
-  public static val META_BASE = BUILDER.newType(MetaBase, null, Kind.Data,
+  public static val META_BASE = BUILDER.newType(MetaBase, null, Kind.Data, null, null,
     #[JavaMeta.HIERARCHY.findType(Comparable)]
   )
 
   /** The TypePackage Type */
-  public static val TYPE_PACKAGE = BUILDER.newType(TypePackage, null, Kind.Data, #[META_BASE])
+  public static val TYPE_PACKAGE = BUILDER.newType(TypePackage, null, Kind.Data, null, null, #[META_BASE])
 
   /** The Type Type */
-  public static val Type<Type<?>> TYPE = BUILDER.newType(Type as Class, null, Kind.Data, #[META_BASE])
+  public static val Type<Type<?>> TYPE = BUILDER.newType(Type as Class, null, Kind.Data, null, null, #[META_BASE])
 
   /** The Property Type */
-  public static val Type<Property<?,?>> PROPERTY = BUILDER.newType(Property as Class, null, Kind.Data, #[META_BASE])
+  public static val Type<Property<?,?>> PROPERTY = BUILDER.newType(Property as Class, null, Kind.Data, null, null, #[META_BASE])
 
   /** The meta package */
   public static val COM_BLOCKWITHME_META_PACKAGE = BUILDER.newTypePackage(

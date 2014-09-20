@@ -28,10 +28,14 @@ import com.blockwithme.meta.beans.Interceptor
 import com.blockwithme.meta.beans._Bean
 import java.util.HashSet
 import com.blockwithme.meta.beans.Entity
+import com.blockwithme.meta.Type
+import com.blockwithme.meta.annotations.ValidationException
 
 /**
  * Singleton, used for all normal "beans".
  * Simply delegates back to the bean, marking it as dirty if needed.
+ *
+ * TODO Add validators to all properties, and call the in setXXX
  *
  * @author monster
  */
@@ -51,6 +55,24 @@ class DefaultInterceptor implements Interceptor {
 
 	override boolean setBooleanProperty(_Bean instance, BooleanProperty<?, ?, ?> prop, boolean oldValue, boolean newValue) {
         if (oldValue !== newValue) {
+            val metaType = instance.metaType as Type
+            var String error = null
+            for (v : prop.getValidators(metaType)) {
+            	val msg = v.beforeBooleanPropertyChange(instance, prop, oldValue, newValue)
+            	if (msg !== null) {
+            		if (error === null) {
+            			error = msg
+            		} else {
+            			error = error + " " + msg
+            		}
+            	}
+            }
+            if (error !== null) {
+            	throw new ValidationException(error)
+            }
+            for (l : prop.getListeners(metaType)) {
+            	l.afterBooleanPropertyChangeValidation(instance, prop, oldValue, newValue)
+            }
             instance.setSelected(prop)
         }
         newValue
@@ -62,6 +84,24 @@ class DefaultInterceptor implements Interceptor {
 
 	override byte setByteProperty(_Bean instance, ByteProperty<?, ?, ?> prop, byte oldValue, byte newValue) {
         if (oldValue !== newValue) {
+            val metaType = instance.metaType as Type
+            var String error = null
+            for (v : prop.getValidators(metaType)) {
+            	val msg = v.beforeBytePropertyChange(instance, prop, oldValue, newValue)
+            	if (msg !== null) {
+            		if (error === null) {
+            			error = msg
+            		} else {
+            			error = error + " " + msg
+            		}
+            	}
+            }
+            if (error !== null) {
+            	throw new ValidationException(error)
+            }
+            for (l : prop.getListeners(metaType)) {
+            	l.afterBytePropertyChangeValidation(instance, prop, oldValue, newValue)
+            }
             instance.setSelected(prop)
         }
         newValue
@@ -73,6 +113,24 @@ class DefaultInterceptor implements Interceptor {
 
 	override char setCharacterProperty(_Bean instance, CharacterProperty<?, ?, ?> prop, char oldValue, char newValue) {
         if (oldValue !== newValue) {
+            val metaType = instance.metaType as Type
+            var String error = null
+            for (v : prop.getValidators(metaType)) {
+            	val msg = v.beforeCharacterPropertyChange(instance, prop, oldValue, newValue)
+            	if (msg !== null) {
+            		if (error === null) {
+            			error = msg
+            		} else {
+            			error = error + " " + msg
+            		}
+            	}
+            }
+            if (error !== null) {
+            	throw new ValidationException(error)
+            }
+            for (l : prop.getListeners(metaType)) {
+            	l.afterCharacterPropertyChangeValidation(instance, prop, oldValue, newValue)
+            }
             instance.setSelected(prop)
         }
         newValue
@@ -84,6 +142,24 @@ class DefaultInterceptor implements Interceptor {
 
 	override short setShortProperty(_Bean instance, ShortProperty<?, ?, ?> prop, short oldValue, short newValue) {
         if (oldValue !== newValue) {
+            val metaType = instance.metaType as Type
+            var String error = null
+            for (v : prop.getValidators(metaType)) {
+            	val msg = v.beforeShortPropertyChange(instance, prop, oldValue, newValue)
+            	if (msg !== null) {
+            		if (error === null) {
+            			error = msg
+            		} else {
+            			error = error + " " + msg
+            		}
+            	}
+            }
+            if (error !== null) {
+            	throw new ValidationException(error)
+            }
+            for (l : prop.getListeners(metaType)) {
+            	l.afterShortPropertyChangeValidation(instance, prop, oldValue, newValue)
+            }
             instance.setSelected(prop)
         }
         newValue
@@ -95,6 +171,24 @@ class DefaultInterceptor implements Interceptor {
 
 	override int setIntegerProperty(_Bean instance, IntegerProperty<?, ?, ?> prop, int oldValue, int newValue) {
         if (oldValue !== newValue) {
+            val metaType = instance.metaType as Type
+            var String error = null
+            for (v : prop.getValidators(metaType)) {
+            	val msg = v.beforeIntegerPropertyChange(instance, prop, oldValue, newValue)
+            	if (msg !== null) {
+            		if (error === null) {
+            			error = msg
+            		} else {
+            			error = error + " " + msg
+            		}
+            	}
+            }
+            if (error !== null) {
+            	throw new ValidationException(error)
+            }
+            for (l : prop.getListeners(metaType)) {
+            	l.afterIntegerPropertyChangeValidation(instance, prop, oldValue, newValue)
+            }
             instance.setSelected(prop)
         }
         newValue
@@ -106,6 +200,24 @@ class DefaultInterceptor implements Interceptor {
 
 	override float setFloatProperty(_Bean instance, FloatProperty<?, ?, ?> prop, float oldValue, float newValue) {
         if (oldValue !== newValue) {
+            val metaType = instance.metaType as Type
+            var String error = null
+            for (v : prop.getValidators(metaType)) {
+            	val msg = v.beforeFloatPropertyChange(instance, prop, oldValue, newValue)
+            	if (msg !== null) {
+            		if (error === null) {
+            			error = msg
+            		} else {
+            			error = error + " " + msg
+            		}
+            	}
+            }
+            if (error !== null) {
+            	throw new ValidationException(error)
+            }
+            for (l : prop.getListeners(metaType)) {
+            	l.afterFloatPropertyChangeValidation(instance, prop, oldValue, newValue)
+            }
             instance.setSelected(prop)
         }
         newValue
@@ -117,6 +229,24 @@ class DefaultInterceptor implements Interceptor {
 
 	override double setDoubleProperty(_Bean instance, DoubleProperty<?, ?, ?> prop, double oldValue, double newValue) {
         if (oldValue !== newValue) {
+            val metaType = instance.metaType as Type
+            var String error = null
+            for (v : prop.getValidators(metaType)) {
+            	val msg = v.beforeDoublePropertyChange(instance, prop, oldValue, newValue)
+            	if (msg !== null) {
+            		if (error === null) {
+            			error = msg
+            		} else {
+            			error = error + " " + msg
+            		}
+            	}
+            }
+            if (error !== null) {
+            	throw new ValidationException(error)
+            }
+            for (l : prop.getListeners(metaType)) {
+            	l.afterDoublePropertyChangeValidation(instance, prop, oldValue, newValue)
+            }
             instance.setSelected(prop)
         }
         newValue
@@ -128,6 +258,24 @@ class DefaultInterceptor implements Interceptor {
 
 	override long setLongProperty(_Bean instance, LongProperty<?, ?, ?> prop, long oldValue, long newValue) {
         if (oldValue !== newValue) {
+            val metaType = instance.metaType as Type
+            var String error = null
+            for (v : prop.getValidators(metaType)) {
+            	val msg = v.beforeLongPropertyChange(instance, prop, oldValue, newValue)
+            	if (msg !== null) {
+            		if (error === null) {
+            			error = msg
+            		} else {
+            			error = error + " " + msg
+            		}
+            	}
+            }
+            if (error !== null) {
+            	throw new ValidationException(error)
+            }
+            for (l : prop.getListeners(metaType)) {
+            	l.afterLongPropertyChangeValidation(instance, prop, oldValue, newValue)
+            }
             instance.setSelected(prop)
         }
         newValue
@@ -138,7 +286,32 @@ class DefaultInterceptor implements Interceptor {
 	}
 
 	override <E> setObjectProperty(_Bean instance, ObjectProperty<?, E,?,?> prop, E oldValue, E newValue) {
-		objectPropertyChanged(instance, prop.fullName, instance.indexOfProperty(prop), oldValue, newValue)
+        if (oldValue !== newValue) {
+            val metaType = instance.metaType as Type
+            var String error = null
+            for (v : prop.getValidators(metaType)) {
+            	val msg = v.beforeObjectPropertyChange(instance, prop, oldValue, newValue)
+            	if (msg !== null) {
+            		if (error === null) {
+            			error = msg
+            		} else {
+            			error = error + " " + msg
+            		}
+            	}
+            }
+            if (error !== null) {
+            	throw new ValidationException(error)
+            }
+        }
+		val result = objectPropertyChanged(instance, prop.fullName,
+			instance.indexOfProperty(prop), oldValue, newValue)
+		if (oldValue !== newValue) {
+            val metaType = instance.metaType as Type
+            for (l : prop.getListeners(metaType)) {
+            	l.afterObjectPropertyChangeValidation(instance, prop, oldValue, newValue)
+            }
+        }
+        result
 	}
 
 	protected def <E> objectPropertyChanged(_Bean instance, Object propId,
@@ -172,7 +345,7 @@ class DefaultInterceptor implements Interceptor {
 	def validateObjectType(Object e) {
 		if (!(e.class.enum || VALID_PROPERTY_TYPES.contains(e.class))) {
 			if (!e.class.annotations.exists[it.annotationType==Data])
-				throw new IllegalArgumentException("Property values of type "
+				throw new ValidationException("Property values of type "
 					+e.class+" not (yet) supported")
 		}
 	}

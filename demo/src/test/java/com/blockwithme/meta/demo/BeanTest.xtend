@@ -27,6 +27,7 @@ import com.blockwithme.meta.demo.impl.SixtyFivePropsProvider
 import java.util.Collection
 import org.junit.Assert
 import org.junit.Test
+import com.blockwithme.meta.beans.BeanPath
 
 /**
  * @author monster
@@ -94,6 +95,7 @@ class BeanTest extends BaseTst {
 		dtc.clearSelection(true, true)
 		dtc.setSelectionRecursive
 		Assert.assertEquals("dtc._secret", 42, dtc._secret)
+		Assert.assertEquals("dtc._childAge", 33, dtc._childAge)
 		Assert.assertTrue("dtc.selected1", dtc.selected)
 		Assert.assertTrue("person.selected1", person.selected)
 		Assert.assertTrue("dtc.selectedRecursive1", dtc.selectedRecursive)
@@ -280,5 +282,21 @@ class BeanTest extends BaseTst {
 		person.name = "John"
 		person.profession = "Admin"
 		Assert.assertEquals("changeCounter", before+3, as_Bean.changeCounter)
+	}
+
+	@Test
+	public def void testBeanPath() {
+ 		val dtc = new DemoTypeChildProvider().get as DemoTypeChildImpl
+		val person = new PersonProvider().get as PersonImpl
+		person.age = 33
+		person.name = "John"
+		person.profession = "Admin"
+		dtc.childProp = person
+
+    	val path = BeanPath.from(Meta.DEMO_TYPE_CHILD__CHILD_PROP, Meta.NAMED__NAME)
+    	val iter = dtc.resolvePath(path, true).iterator
+		Assert.assertTrue("iter.hasNext", iter.hasNext)
+    	Assert.assertEquals("iter.next", "John", iter.next)
+		Assert.assertFalse("iter.hasNext", iter.hasNext)
 	}
 }

@@ -26,10 +26,10 @@ import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
+import com.blockwithme.meta.IProperty;
 import com.blockwithme.meta.JavaMeta;
 import com.blockwithme.meta.Property;
 import com.blockwithme.meta.Type;
-import com.blockwithme.meta.beans.BeanPath;
 import com.blockwithme.meta.beans.CollectionBeanConfig;
 import com.blockwithme.meta.beans.ObjectCollectionInterceptor;
 import com.blockwithme.meta.beans._Bean;
@@ -47,8 +47,7 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
         _SetBean<E> {
 
     /** An Iterable<_Bean>, over the Collection values */
-    private class BeanCollectionIterator implements Iterable<_Bean>,
-            Iterator<_Bean> {
+    private class BeanCollectionIterator implements Iterator<_Bean> {
 
         /** The next bean */
         private _Bean next;
@@ -74,14 +73,6 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
         /** Constructor */
         public BeanCollectionIterator() {
             findNext();
-        }
-
-        /* (non-Javadoc)
-         * @see java.lang.Iterable#iterator()
-         */
-        @Override
-        public final Iterator<_Bean> iterator() {
-            return this;
         }
 
         /* (non-Javadoc)
@@ -367,7 +358,10 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
     /** Returns an Iterable<_Bean>, over the property values */
     @Override
     protected final Iterable<_Bean> getBeanIterator() {
-        return new BeanCollectionIterator();
+        if (valueType.bean) {
+            return new SubBeanIterator(new BeanCollectionIterator());
+        }
+        return super.getBeanIterator();
     }
 
     /** Returns the number of possible selections. */
@@ -988,13 +982,22 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
         return (CollectionBeanImpl<E>) super.getDelegate();
     }
 
-    /** Resolve Property, and optional key, on self. */
+    /** Reads the value(s) of this Property, and add them to values, if they match. */
     @Override
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-    protected final Object partResolve(final BeanPath<?, ?> path) {
-        final Property prop = path.getProperty();
-        return (prop == JavaMeta.COLLECTION_CONTENT_PROP) ? get((Integer) path
-                .getKey()) : prop.getObject(this);
+    public void readProperty(final IProperty<?, ?> prop,
+            final Object[] keyMatcher, final List<Object> values) {
+        if (prop == JavaMeta.COLLECTION_CONTENT_PROP) {
+            if (keyMatcher == null) {
+                values.addAll(this);
+            } else {
+                for (final Object obj : keyMatcher) {
+                    final int index = (Integer) obj;
+                    values.add(get(index));
+                }
+            }
+        } else {
+            super.readProperty(prop, keyMatcher, values);
+        }
     }
 
     /** Allows collections to perform special copy implementations. */

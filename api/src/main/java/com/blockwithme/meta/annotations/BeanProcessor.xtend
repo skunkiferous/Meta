@@ -40,6 +40,8 @@ import java.lang.annotation.Inherited
 import java.lang.annotation.Retention
 import java.lang.annotation.RetentionPolicy
 import java.lang.annotation.Target
+import java.util.ArrayList
+import java.util.Collection
 import java.util.HashMap
 import java.util.HashSet
 import java.util.List
@@ -52,23 +54,177 @@ import org.eclipse.xtend.lib.macro.RegisterGlobalsContext
 import org.eclipse.xtend.lib.macro.TransformationContext
 import org.eclipse.xtend.lib.macro.declaration.AnnotationReference
 import org.eclipse.xtend.lib.macro.declaration.ClassDeclaration
+import org.eclipse.xtend.lib.macro.declaration.EnumerationTypeDeclaration
 import org.eclipse.xtend.lib.macro.declaration.InterfaceDeclaration
+import org.eclipse.xtend.lib.macro.declaration.MemberDeclaration
 import org.eclipse.xtend.lib.macro.declaration.MethodDeclaration
 import org.eclipse.xtend.lib.macro.declaration.MutableClassDeclaration
+import org.eclipse.xtend.lib.macro.declaration.MutableEnumerationTypeDeclaration
 import org.eclipse.xtend.lib.macro.declaration.MutableFieldDeclaration
 import org.eclipse.xtend.lib.macro.declaration.MutableInterfaceDeclaration
+import org.eclipse.xtend.lib.macro.declaration.MutableTypeDeclaration
 import org.eclipse.xtend.lib.macro.declaration.TypeDeclaration
 import org.eclipse.xtend.lib.macro.declaration.TypeReference
 import org.eclipse.xtend.lib.macro.declaration.Visibility
 
 import static java.util.Objects.*
-import java.util.ArrayList
-import java.util.Collections
-import org.eclipse.xtend.lib.macro.declaration.EnumerationTypeDeclaration
-import org.eclipse.xtend.lib.macro.declaration.MutableTypeDeclaration
-import org.eclipse.xtend.lib.macro.declaration.MutableEnumerationTypeDeclaration
-import org.eclipse.xtend.lib.macro.declaration.MemberDeclaration
-import java.util.Collection
+import com.blockwithme.meta.ValidatorsMap
+import com.blockwithme.meta.ListenersMap
+import com.blockwithme.meta.BytePropertyRangeValidator
+import com.blockwithme.meta.CharacterPropertyRangeValidator
+import com.blockwithme.meta.ShortPropertyRangeValidator
+import com.blockwithme.meta.IntegerPropertyRangeValidator
+import com.blockwithme.meta.FloatPropertyRangeValidator
+import com.blockwithme.meta.LongPropertyRangeValidator
+import com.blockwithme.meta.DoublePropertyRangeValidator
+
+/**
+ * Specifies a Validator for a Property.
+ *
+ * The Validator is assumed to be thread-safe and will be instantiated
+ * and used as part of the per-Type list of Validators for that Property.
+ *
+ * To make things simple, we use the "simple name" of the Property as Key,
+ * and since the Validators are Property-Type-specific, we do not try to
+ * check at compile time if they are of the right type.
+ */
+@Retention(RetentionPolicy.CLASS)
+annotation ValidatorDef {
+	/** The "simple" Property name within the annotated type */
+	String property
+	/**
+	 * The class that implements the validator.
+	 * Note that the required type depends on the exact property type;
+	 * BooleanPropertyValidator, ...
+	 */
+	Class<?> type
+}
+
+/**
+ * Specifies any number of Property Validators for a Bean.
+ *
+ * TODO New annotations validate @NN(not-null/not-negative)
+ *
+ * TODO We must be able to specify "exact type" for a Property, as this has an effect on serialization. It could be verified by the Validator.
+ */
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.CLASS)
+annotation Validators {
+	ValidatorDef[] value
+}
+
+/**
+ * Specifies a "range" for some Properties.
+ *
+ * The range is validated by instantiating an appropriate validator.
+ */
+@Target(ElementType.FIELD)
+@Retention(RetentionPolicy.CLASS)
+annotation Range {
+	/**
+	 * The (hard) minimum value.
+	 *
+	 * Leave empty to not have a minimum value.
+	 *
+	 * Breaking this limit will cause an exception to be thrown when setting the Property.
+	 */
+	String min = ""
+
+	/**
+	 * The (hard) maximum value.
+	 *
+	 * Leave empty to not have a maximum value.
+	 *
+	 * Breaking this limit will cause an exception to be thrown when setting the Property.
+	 */
+	String max = ""
+
+	/**
+	 * The soft minimum value.
+	 *
+	 * Leave empty to not have a soft minimum value.
+	 *
+	 * Breaking this limit will cause a warning to be logged when setting the Property.
+	 */
+	String softMin = ""
+
+	/**
+	 * The soft maximum value.
+	 *
+	 * Leave empty to not have a soft maximum value.
+	 *
+	 * Breaking this limit will cause a warning to be logged when setting the Property.
+	 */
+	String softMax = ""
+}
+
+/**
+ * A ValidationException is thrown, when one or more validators
+ * find problems with the new value of a Property.
+ */
+class ValidationException extends RuntimeException {
+    new(String message) {
+        super(message)
+    }
+
+    new(Throwable cause) {
+        super(cause)
+    }
+
+    new(String message, Throwable cause) {
+        super(message, cause)
+    }
+}
+
+/**
+ * Specifies a Listener for a Property.
+ *
+ * The Listener is assumed to be thread-safe and will be instantiated
+ * and used as part of the per-Type list of Listeners for that Property.
+ *
+ * To make things simple, we use the "simple name" of the Property as Key,
+ * and since the Listeners are Property-Type-specific, we do not try to
+ * check at compile time if they are of the right type.
+ *
+ * TODO Until retro-fitting is available, it would be good to be able
+ * to declare listeners or "other" types, for example a type you depend
+ * on from a base project.
+ */
+@Retention(RetentionPolicy.CLASS)
+annotation ListenerDef {
+	/** The "simple" Property name within the annotated type */
+	String property
+	/**
+	 * The class that implements the listener.
+	 * Note that the required type depends on the exact property type;
+	 * BooleanPropertyListener, ...
+	 */
+	Class<?> type
+}
+
+/**
+ * Specifies any number of Property Listeners for a Bean.
+ */
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.CLASS)
+annotation Listeners {
+	ListenerDef[] value
+}
+
+/**
+ * Used on a Bean.Impl.method(parameter), to cause the generation
+ * of variations on this method, by replacing the parameters
+ * annotated with DefaultsTo, with the "value" of DefaultsTo.
+ *
+ * We'll assume that the use of DefaultsTo should not "create virtual Properties"
+ *
+ * @Generated is used to differentiate user-methods from generated ones.
+ */
+@Target(ElementType.PARAMETER)
+@Retention(RetentionPolicy.CLASS)
+annotation DefaultsTo {
+	String value
+}
 
 /**
  * Annotates an interface declared in a C-style-struct syntax
@@ -175,6 +331,10 @@ package class PropertyInfo {
   boolean nullAllowed
   /** Virtual Property? Then the implementation is generated as part of the "Impl methods" */
   boolean virtualProp
+  String min
+  String max
+  String softMin
+  String softMax
 }
 
 @Data
@@ -298,12 +458,14 @@ annotation BeanImplemented {
  * GENERATE:
  * 9) For each type, the fields are replaced with getters and setters
  * 10) Type.Impl.(static,public)_init_(Type) method is used as a pseudo-constructor, if present.
+ * 10.1) DefaultsTo annotated Type.Impl.(static,public)method(Type[,...]) are "defaulted"
  * 11) For every Type.Impl.(static,public)method(Type[,...]), a method without the Type parameter is declared in Type
  * 12) Extract virtual properties from the optional Impl class
  * 13) A builder is created in Meta for that package
  * 14) For each type property, a property accessor class is generated
  * 15) For each type property, a property object in the "Meta" interface is generated.
  * 16) For each type, a type Provider under impl package is generated.
+ * 16.1) For each type, the declared Listeners and Validators (including Range validation) are extracted.
  * 17) For each type, following the properties, a type instance is created.
  * 18) After all types, a package meta-object is created.
  * 19) The list of dependencies for the Hierarchy is computed.
@@ -348,7 +510,7 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
   static val BP_NON_BEAN_TODO = "BP_NON_BEAN_TODO"
   static val INIT = "_init_()"
   static val BEAN_FILTER = and(isInterface,withAnnotation(Bean))
-  static val PROP_INFO_FIELDS = 7
+  static val PROP_INFO_FIELDS = 11
 
   /** Returns true, if the type is/should be a Bean */
   private def boolean isBean(org.eclipse.xtend.lib.macro.declaration.Type type) {
@@ -609,6 +771,14 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
   	list.toArray(newArrayOfSize(list.size))
   }
 
+	// STEP 10.1
+	// DefaultsTo annotated Type.Impl.(static,public)method(Type[,...]) are "defaulted"
+	private def void preDefineDefaultedMethods(Map<String,Object> processingContext,
+		TypeDeclaration td, ClassDeclaration innerImplClass,
+		HashMap<String,String> ownInnerMethods, MethodDeclaration m) {
+		// TODO
+	}
+
   // STEP 1/2
   private def BeanInfo beanInfo(Map<String,Object> processingContext, TypeDeclaration td) {
     // Lazy init
@@ -675,13 +845,12 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
 				val declaration = innerMethodToString(td, m);
 				if (declaration != null) {
 					ownInnerMethods.put(declaration, innerImplName)
-					if (m.simpleName.length > 3) {
-			  			if (declaration.startsWith("get")) {
-	  						if (m.parameters.tail.empty) {
-								xetterInnerMethods.put(declaration, m)
-							}
-						}
+					if ((m.simpleName.length > 3) && declaration.startsWith("get") && m.parameters.tail.empty) {
+						xetterInnerMethods.put(declaration, m)
 					}
+					// STEP 10.1
+					preDefineDefaultedMethods(processingContext, td, innerImplClass,
+						ownInnerMethods, m)
 				}
 			}
 		}
@@ -817,6 +986,18 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
 	  while (properties.size <= index) {
 	  	properties.add(null)
 	  }
+	  // Read optional Range annotation and store it so a Validator can be created automatically
+	  	var min = ""
+	  	var max = ""
+	  	var softMin = ""
+	  	var softMax = ""
+	  val rangeAnn = f.findAnnotation(findTypeGlobally(Range))
+	  if (rangeAnn !== null) {
+	  	min = rangeAnn.getStringValue("min")
+	  	max = rangeAnn.getStringValue("max")
+	  	softMin = rangeAnn.getStringValue("softMin")
+	  	softMax = rangeAnn.getStringValue("softMax")
+	  }
 	  if (ftype.array || oldStyleCol) {
 	  	// A collection property!
 	  	val componentTypeName0 = if (oldStyleCol) {
@@ -882,14 +1063,14 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
 	    properties.set(index, new PropertyInfo(
 	        requireNonNull(simpleName, "f.simpleName"),
 	        requireNonNull(typeName, "typeName"), doc, collType, fixedSize,
-	        nullAllowed, virtualProp))
+	        nullAllowed, virtualProp, min, max, softMin, softMax))
 	  } else if (isMap) {
 	  	// A Map property!
 	  	val String typeName = MapBean.name+ftypeName.substring(start)
 	    properties.set(index, new PropertyInfo(
 	        requireNonNull(simpleName, "f.simpleName"),
 	        requireNonNull(typeName, "typeName"), doc, null, -1,
-	        true, virtualProp))
+	        true, virtualProp, min, max, softMin, softMax))
 	  } else {
 	  	  if (isCollProp) {
 	  		// NOT a collection property!
@@ -898,7 +1079,7 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
 	      properties.set(index, new PropertyInfo(
 	        requireNonNull(simpleName, "f.simpleName"),
 	        requireNonNull(ftypeName, "ftypeName"),
-	        doc, null, -1, false, virtualProp))
+	        doc, null, -1, false, virtualProp, min, max, softMin, softMax))
 	  }
 	  if (!validPropertyType(processingContext, ftype, td)) {
 	    result.validity.add("Property "+simpleName+" is not valid")
@@ -1029,6 +1210,10 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
   				warn(BeanProcessor, "transform", mtd, "findAllMethods("+mtd.qualifiedName+") "
   					+ mtd.findAllMethods().map[declaringType.qualifiedName+'.'+signature]
   				)
+  				// STEP 10.1
+  				// TODO First, actually add the defaulted methods to innerImplClass
+  				// And if this does not cause innerImplClass.declaredMethods to be
+  				// updated, then add them explicitly in the interface too
 				for (m : innerImplClass.declaredMethods) {
 					val key = innerMethodToString(mtd, m)
 					if (innerImpl.declarationToClass.containsKey(key)) {
@@ -1074,6 +1259,7 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
 		if ((innerImpl == null) || innerImpl.declarationToClass.empty) {
 			return
 		}
+		// TODO All the "defaulted" methods from STEP 10.1 must also be imported here
 		val parentImplMethods = new HashMap<String,String>
 		val piBI = findParentBeanInfo(processingContext, impl)
 		if ((piBI != null) && (piBI.innerImpl != null)) {
@@ -1413,15 +1599,205 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
       if (java !== null) {
         JavaMeta.name+"."+cameCaseToSnakeCase(java.simpleName)
 	  } else {
-	      val meta = com.blockwithme.meta.beans.Meta.HIERARCHY.findType(beanInfo.qualifiedName)
+	      val meta = Meta.HIERARCHY.findType(beanInfo.qualifiedName)
 	      if (meta !== null) {
-	        com.blockwithme.meta.beans.Meta.name+"."+cameCaseToSnakeCase(meta.simpleName)
+	        Meta.name+"."+cameCaseToSnakeCase(meta.simpleName)
 		  } else {
 	      	null
 	      }
       }
     }
   }
+
+  /** Generates an appropriate Validator instantiation */
+  private def String genValidatorFor(PropertyInfo propInfo) {
+  	var min = ""
+  	var max = ""
+  	var softMin = ""
+  	var softMax = ""
+  	var type = ""
+
+  	val _min = propInfo.min
+  	val _max = propInfo.max
+  	val _softMin = propInfo.softMin
+  	val _softMax = propInfo.softMax
+
+  	if (propInfo.type == "byte") {
+	  	min = "java.lang.Byte.MIN_VALUE"
+	  	max = "java.lang.Byte.MAX_VALUE"
+	  	softMin = min
+	  	softMax = max
+	  	if (_min != "") {
+	  		min = _min
+	  	}
+	  	if (_max != "") {
+	  		max = _max
+	  	}
+	  	if (_softMin != "") {
+	  		softMin = _softMin
+	  	}
+	  	if (_softMax != "") {
+	  		softMax = _softMax
+	  	}
+  		type = BytePropertyRangeValidator.name
+  	} else if (propInfo.type == "char") {
+	  	min = "java.lang.Character.MIN_VALUE"
+	  	max = "java.lang.Character.MAX_VALUE"
+	  	softMin = min
+	  	softMax = max
+	  	if (_min != "") {
+	  		min = _min
+	  	}
+	  	if (_max != "") {
+	  		max = _max
+	  	}
+	  	if (_softMin != "") {
+	  		softMin = _softMin
+	  	}
+	  	if (_softMax != "") {
+	  		softMax = _softMax
+	  	}
+  		type = CharacterPropertyRangeValidator.name
+  	} else if (propInfo.type == "short") {
+	  	min = "java.lang.Short.MIN_VALUE"
+	  	max = "java.lang.Short.MAX_VALUE"
+	  	softMin = min
+	  	softMax = max
+	  	if (_min != "") {
+	  		min = _min
+	  	}
+	  	if (_max != "") {
+	  		max = _max
+	  	}
+	  	if (_softMin != "") {
+	  		softMin = _softMin
+	  	}
+	  	if (_softMax != "") {
+	  		softMax = _softMax
+	  	}
+  		type = ShortPropertyRangeValidator.name
+  	} else if (propInfo.type == "int") {
+	  	min = "java.lang.Integer.MIN_VALUE"
+	  	max = "java.lang.Integer.MAX_VALUE"
+	  	softMin = min
+	  	softMax = max
+	  	if (_min != "") {
+	  		min = _min
+	  	}
+	  	if (_max != "") {
+	  		max = _max
+	  	}
+	  	if (_softMin != "") {
+	  		softMin = _softMin
+	  	}
+	  	if (_softMax != "") {
+	  		softMax = _softMax
+	  	}
+  		type = IntegerPropertyRangeValidator.name
+  	} else if (propInfo.type == "long") {
+	  	min = "java.lang.Long.MIN_VALUE"
+	  	max = "java.lang.Long.MAX_VALUE"
+	  	softMin = min
+	  	softMax = max
+	  	if (_min != "") {
+	  		min = _min
+	  	}
+	  	if (_max != "") {
+	  		max = _max
+	  	}
+	  	if (_softMin != "") {
+	  		softMin = _softMin
+	  	}
+	  	if (_softMax != "") {
+	  		softMax = _softMax
+	  	}
+  		type = LongPropertyRangeValidator.name
+  	} else if (propInfo.type == "double") {
+	  	min = "java.lang.Double.MIN_VALUE"
+	  	max = "java.lang.Double.MAX_VALUE"
+	  	softMin = min
+	  	softMax = max
+	  	if (_min != "") {
+	  		min = _min
+	  	}
+	  	if (_max != "") {
+	  		max = _max
+	  	}
+	  	if (_softMin != "") {
+	  		softMin = _softMin
+	  	}
+	  	if (_softMax != "") {
+	  		softMax = _softMax
+	  	}
+  		type = DoublePropertyRangeValidator.name
+  	}
+  	if (type == "") {
+  		throw new IllegalStateException("Does not know how to create validator for "+propInfo.type)
+  	}
+  	type+"("+min+","+max+","+softMin+","+softMax+")"
+  }
+
+   /** Finds and returns the Validators, if any. */
+   private def String findPropertyValidators(TypeDeclaration intf, BeanInfo beanInfo) {
+	   	val ranges = beanInfo.properties.filter[(min!=""||max!=""||softMin!=""||softMax!="")].iterator
+	  	val validatorsAnn = intf.findAnnotation(findTypeGlobally(Validators))
+	  	if ((validatorsAnn !== null) || ranges.hasNext) {
+		   	val buf = new StringBuilder('''new «ValidatorsMap.name»()''')
+		   	if (validatorsAnn !== null) {
+		  		for (a : validatorsAnn.getAnnotationArrayValue("value")) {
+		  			val propName = a.getStringValue("property")
+		  			if ((propName !== null) && !propName.empty) {
+			  			val type = a.getClassValue("type")
+			  			if (type !== null) {
+				  			buf.append('.add("').append(propName).append('", new ')
+				  				.append(type.name).append("())")
+		  				} else {
+					    	error(BeanProcessor, "transform", intf, intf.qualifiedName+": "
+					    		+ValidatorDef.name+".type cannot be null")
+		  				}
+		  			} else {
+				    	error(BeanProcessor, "transform", intf, intf.qualifiedName+": "
+				    		+ValidatorDef.name+".property cannot be null or empty")
+			    	}
+		  		}
+	  		}
+	  		while (ranges.hasNext) {
+	  			val r = ranges.next
+	  			val propName = r.name
+	  			buf.append('.add("').append(propName).append('", new ').append(genValidatorFor(r)).append(")")
+	  		}
+		   	buf.toString
+	  	} else {
+	  		"null"
+	  	}
+   }
+
+   /** Finds and returns the Listeners, if any. */
+   private def String findPropertyListeners(TypeDeclaration intf, BeanInfo beanInfo) {
+	  	val listenersAnn = intf.findAnnotation(findTypeGlobally(Listeners))
+	  	if (listenersAnn !== null) {
+		   	val buf = new StringBuilder('''new «ListenersMap.name»()''')
+	  		for (a : listenersAnn.getAnnotationArrayValue("value")) {
+	  			val propName = a.getStringValue("property")
+	  			if ((propName !== null) && !propName.empty) {
+		  			val type = a.getClassValue("type")
+		  			if (type !== null) {
+			  			buf.append('.add("').append(propName).append('", new ')
+			  				.append(type.name).append("())")
+	  				} else {
+				    	error(BeanProcessor, "transform", intf, intf.qualifiedName+": "
+				    		+ValidatorDef.name+".type cannot be null")
+	  				}
+	  			} else {
+			    	error(BeanProcessor, "transform", intf, intf.qualifiedName+": "
+			    		+ListenerDef.name+".property cannot be null or empty")
+		    	}
+	  		}
+		   	buf.toString
+	  	} else {
+	  		"null"
+	  	}
+   }
 
   /** Adds the Type field */
   private def void addTypeField(TypeDeclaration intf,
@@ -1457,14 +1833,19 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
         final = true
         static = true
         type = newTypeReference(Type, beanType)
+        // STEP 16.1
+        val validators = findPropertyValidators(intf, beanInfo)
+        val listeners = findPropertyListeners(intf, beanInfo)
         if (beanInfo.isInstance) {
 	        initializer = [
 	          '''BUILDER.newType(«simpleName».class, new «providerName(pkg, simpleName)»(), «kind»,
+	          «validators», «listeners»,
 	          new Type[] {«parents»}«props»)'''
 	        ]
         } else {
 	        initializer = [
 	          '''BUILDER.newType(«simpleName».class, null, «kind»,
+	          «validators», «listeners»,
 	          new Type[] {«parents»}«props»)'''
 	        ]
         }
@@ -1901,6 +2282,14 @@ return result;'''
 						i = i + 1
 						props.set(i, String.valueOf(p.virtualProp))
 						i = i + 1
+						props.set(i, p.min)
+						i = i + 1
+						props.set(i, p.max)
+						i = i + 1
+						props.set(i, p.softMin)
+						i = i + 1
+						props.set(i, p.softMax)
+						i = i + 1
 					}
 					set("properties", props)
 				}
@@ -1963,8 +2352,12 @@ return result;'''
 			val fixedSize = Integer.parseInt(_props.get(i+4))
 			val nullAllowed = Boolean.parseBoolean(_props.get(i+5))
 			val virtualProp = Boolean.parseBoolean(_props.get(i+6))
+		  	val min = _props.get(i+7)
+		  	val max = _props.get(i+8)
+		  	val softMin = _props.get(i+9)
+		  	val softMax = _props.get(i+10)
 			properties.set(i/PROP_INFO_FIELDS, new PropertyInfo(name, type, comment, colType,
-				fixedSize, nullAllowed, virtualProp))
+				fixedSize, nullAllowed, virtualProp, min, max, softMin, softMax))
 			i = i + PROP_INFO_FIELDS
 		}
 		val innerImplObj = new InnerImpl(innerImpl.get(0))

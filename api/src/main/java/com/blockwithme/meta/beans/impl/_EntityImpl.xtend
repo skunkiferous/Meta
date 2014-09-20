@@ -15,9 +15,9 @@
  */
 package com.blockwithme.meta.beans.impl;
 
-import com.blockwithme.meta.Type;
-import com.blockwithme.meta.beans.EntityContext;
-import com.blockwithme.meta.beans._Entity;
+import com.blockwithme.meta.Type
+import com.blockwithme.meta.beans.Handle
+import com.blockwithme.meta.beans._Entity
 
 /**
  * Base class for entities.
@@ -25,15 +25,8 @@ import com.blockwithme.meta.beans._Entity;
  * @author monster
  */
 abstract class _EntityImpl extends _BeanImpl implements _Entity {
-    /**
-     * @param type
-     */
-    new(Type<?> type) {
-        super(type);
-    }
-
-    /** The EntityContext of this Entity */
-    var EntityContext entityContext;
+    /** The Handle */
+    var volatile Handle handle
 
     /** The creation time of this Entity */
     var long creationTime;
@@ -41,13 +34,29 @@ abstract class _EntityImpl extends _BeanImpl implements _Entity {
     /** The last modification time of this Entity */
     var long lastModificationTime;
 
-    override final EntityContext getEntityContext() {
-        return entityContext;
+    /**
+     * @param type
+     */
+    new(Type<?> type) {
+        super(type);
     }
 
-    override final void setEntityContext(EntityContext entityContext) {
-        this.entityContext = entityContext;
-    }
+	override final Handle getHandle() {
+		if (handle == null) {
+			throw new IllegalStateException("Handle not initialized")
+		}
+		handle
+	}
+
+	override final void setHandle(Handle handle) {
+		if (handle == null) {
+			throw new IllegalArgumentException("Handle cannot be null")
+		}
+		if (this.handle != null) {
+			throw new IllegalStateException("Handle already set")
+		}
+		this.handle = handle
+	}
 
     override final long getCreationTime() {
         return creationTime;
@@ -68,7 +77,9 @@ abstract class _EntityImpl extends _BeanImpl implements _Entity {
     /** Make a new instance of the same type as self. */
     protected override _BeanImpl newInstance() {
         val result = super.newInstance() as _EntityImpl;
-        result.entityContext = entityContext;
+        // TODO If it has the same Handle, then it is the same Entity;
+        // Is that really what we want to do?
+        result.handle = handle;
         result.creationTime = creationTime;
         result.lastModificationTime = lastModificationTime;
         return result;

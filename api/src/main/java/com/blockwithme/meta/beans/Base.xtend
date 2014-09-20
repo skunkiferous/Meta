@@ -22,22 +22,26 @@ import com.blockwithme.meta.ContentOwner
 import com.blockwithme.meta.DoubleProperty
 import com.blockwithme.meta.FloatProperty
 import com.blockwithme.meta.HierarchyBuilderFactory
+import com.blockwithme.meta.IProperty
 import com.blockwithme.meta.IntegerProperty
 import com.blockwithme.meta.JavaMeta
 import com.blockwithme.meta.Kind
 import com.blockwithme.meta.LongProperty
 import com.blockwithme.meta.ObjectProperty
 import com.blockwithme.meta.Property
+import com.blockwithme.meta.PropertyMatcher
+import com.blockwithme.meta.PropertyVisitor
 import com.blockwithme.meta.ShortProperty
 import com.blockwithme.meta.Type
 import java.util.Collection
 import java.util.List
-import java.util.Set
 import java.util.Map
-import java.util.logging.Logger
 import java.util.Objects
-import com.blockwithme.meta.PropertyVisitor
-import com.blockwithme.meta.beans.impl.AbstractBeanVisitor
+import java.util.Set
+import java.util.logging.Logger
+import com.blockwithme.util.shared.AnyAccessor
+import static com.blockwithme.util.shared.Preconditions.*
+import com.blockwithme.fn1.ProcObject
 
 /** Base for all data/bean objects */
 interface Bean {
@@ -139,6 +143,9 @@ interface _Bean extends Bean, BeanVisitable {
     /** Returns the "root" Bean, if any. */
     def _Bean getRootBean()
 
+    /** Updates the "root" Bean */
+    def void updateRootBean()
+
     /** Returns true, if this Bean has the same (non-null) root as the Bean passed as parameter */
     def boolean hasSameRoot(_Bean other)
 
@@ -149,10 +156,18 @@ interface _Bean extends Bean, BeanVisitable {
      * Resolves a BeanPath to a value (including null, if the value, or any link, is null),
      * or fails, if failOnIncompatbileProperty is true, and an "incompatible" Property
      * is encountered along the way.
-     *
-     * TODO Test! (Including collections and maps)
      */
-    def Object resolvePath(BeanPath<?,?> path, boolean failOnIncompatbileProperty)
+    def Iterable<Object> resolvePath(BeanPath path, boolean failOnIncompatbileProperty)
+
+    /** Reads the value(s) of this Property, and add them to values, if they match. */
+    def void readProperty(IProperty<?, ?> p, Object[] keyMatcher, List<Object> values)
+
+    /**
+     * Resolves a "simple" path to a value (including null, if the value,
+     * or any link, is null).
+     * Will throw if the values types don't match the Properties.
+     */
+    def Object resolvePath(Property ... props)
 
     // TODO Create standard Immutable-Static-Reference @Data object, with working serialization.
 }
@@ -218,55 +233,60 @@ interface BeanVisitable {
 
 
 /**
- * Represents a "path", within a tree of Beans.
+ * Represents any number of "path", within a tree of Beans.
  *
  * Remember that paths can also "go up" by using the "parent" Property.
  */
 @Data
-class BeanPath<OWNER_TYPE, PROPERTY_TYPE> {
-	/** A Property, that points to the next BeanPath owner, if any, otherwise to the desired value. */
-	com.blockwithme.meta.Property<OWNER_TYPE, PROPERTY_TYPE> property
-	/** The optional key/index, within the Property object, pointing to next, if Property is a Map/Collection */
-	Object key
+class BeanPath {
+	/**
+	 * A PropertyMatcher, that matches either the Property representing
+	 * the next step in a path, or representing the final value.
+	 */
+	PropertyMatcher propertyMatcher
+	/**
+	 * The optional list of matched keys/indexes, within the Property value,
+	 * if the Property value is a Map/Collection, pointing to next step in a path,
+	 * or representing the final value.
+	 *
+	 * A "null" matcher matches everything, and is required for non-maps/collections.
+	 */
+	Object[] keyMatcher
 	/** The next link in the path, unless we are at the value, in which case it is null. */
-	BeanPath<?,?> next
+	BeanPath next
 
-  new(Property<OWNER_TYPE, PROPERTY_TYPE> property, Object key, BeanPath<?, ?> next) {
-    this._property = Objects.requireNonNull(property, "property")
-    if (key instanceof Bean) {
-    	throw new IllegalArgumentException(
-    		"Beans are not supported as keys (keys must be immutable). Got: "+key.class)
-    }
-    this._key = key
+  new(PropertyMatcher propertyMatcher, Object[] keyMatcher, BeanPath next) {
+    this._propertyMatcher = Objects.requireNonNull(propertyMatcher, "propertyMatcher")
+    this._keyMatcher = if ((keyMatcher !== null) && (keyMatcher.length == 0)) null else keyMatcher
     this._next = next
   }
 
-  new(Property<OWNER_TYPE, PROPERTY_TYPE> property, BeanPath<?, ?> next) {
-    this(property, null, next)
+  new(PropertyMatcher propertyMatcher, Object[] keyMatcher) {
+    this(propertyMatcher, keyMatcher, null)
   }
 
-  new(Property<OWNER_TYPE, PROPERTY_TYPE> property) {
-    this(property, null, null)
+  new(PropertyMatcher propertyMatcher, BeanPath next) {
+    this(propertyMatcher, null, next)
+  }
+
+  new(PropertyMatcher propertyMatcher) {
+    this(propertyMatcher, null, null)
   }
 
   override String toString() {
-    return "BeanPath("+property.fullName+","+key+","+next+")";
+    return "BeanPath("+propertyMatcher+","+keyMatcher+","+next+")";
   }
 
   /** Builds a full Bean path, from a list of Properties */
-  def static BeanPath[] from(Property ... props) {
+  def static BeanPath from(IProperty ... props) {
   	val len = props.length
-  	val result = <BeanPath>newArrayOfSize(len)
   	var i = len-1
-  	var BeanPath last = null
-  	while (i > 0) {
-  		val p = props.get(i) as Property
-  		var next = new BeanPath(p, last)
-  		result.set(i,next)
-  		next = last
-  		i--
+  	var BeanPath prev = null
+  	while (i >= 0) {
+  		val p = props.get(i--) as IProperty
+  		prev = new BeanPath(p, prev)
   	}
-  	result
+  	prev
   }
 }
 
@@ -274,8 +294,29 @@ class BeanPath<OWNER_TYPE, PROPERTY_TYPE> {
 /**
  * The "context" within which an Entity exists.
  * It could be a JPA table, or anything that contains entities.
+ *
+ * I want Entity to be "generic"; it might come from an SQL table, or from Redis,
+ * or from a "property file"; it does not matter. For each "context" that might
+ * be the source of entities, the "right" kind of ID might be something completely
+ * different; a "long", a "UUID", a "file-path" ... And it probably makes sense
+ * to keep whatever is that entity ID, within that entity, into the most appropriate
+ * form there is (as a primitive long, as a UUID instance, as a File, ...)
+ * So I don't want to force any specific ID form onto the Entity, but I need
+ * some kind of universal representation for those IDs. Something that can be
+ * serialized, by another entity, even if that other entity lives in a different
+ * context. So the entity context is there to make sure we can turn and entity ID
+ * to a String, and also to a URN, which allows specifying the ID AND the context
+ * in a single String.
+ *
+ * We will make the simplifying assumption that *IDs never change*, nor does the
+ * hosting context.
+ *
+ * A URN for an Entity can be composed as: namespace+":"+unique-ID
  */
 interface EntityContext {
+	/** Returns the unique namespace for this entity context. */
+	def String getNamespace()
+
 	/**
 	 * Returns the unique ID (within this context) of the entity.
 	 * Null maps to null.
@@ -283,10 +324,71 @@ interface EntityContext {
 	def String getIDAsString(Entity entity)
 
 	/**
-	 * Finds/loads/creates/.. and entity, based on it's ID.
-	 * TODO This must be *async*
+	 * Finds/loads/creates/.. an entity, based on it's ID.
+	 * The actual entity might, or not, be currently available.
 	 */
-	def Entity getEntityFromID(String idAsString)
+	def Handle getEntityFromID(String idAsString)
+
+	/**
+	 * Requests, that the requested Entity be loaded, and the requester be informed
+	 * when it happens (or fails).
+	 *
+	 * requester and onLoad can be null, in case you don't care when it's loaded.
+	 *
+	 * requester specifies who requested the load, so that onLoad be called in the
+	 * right thread (We assume Entities are tied to a specific thread, as they are NOT
+	 * thread-safe, and that whatever implements an EntityContext knows how to sort this
+	 * out).
+	 *
+	 * onLoad will be passed an Exception, if the load fails.
+	 */
+	def void requestLoad(Handle requested, Handle requester, ProcObject<Object> onLoad)
+}
+
+/**
+ * An Handle to an Entity.
+ *
+ * The Handle enables an object to reference an Entity, even if it is not loaded
+ * yet, or if it is loaded somewhere else, and therefore cannot be loaded here too.
+ *
+ * An Handle ties an Entity to an EntityContext, and should provide the
+ * information any EntityContext needs, to access the referenced Entity
+ * in a thread-safe way.
+ */
+class Handle {
+	/** The ID-as-String of the Entity */
+	public val String id
+	/** The entity context */
+	public val EntityContext context
+	/** toString */
+	val String toString
+	/** hashCode */
+	val int hashCode
+	/** The current reference to the Entity */
+	var volatile Entity entity
+	/** Constructor */
+	new(String id, EntityContext context) {
+		this.id = requireNonEmpty(id, "id")
+		this.context = requireNonNull(context, "context")
+		toString = context.namespace+":"+id
+		hashCode = toString.hashCode
+	}
+	/** Returns the reference to the Entity. It might be currently null. */
+	final def Entity getEntity() {
+		entity
+	}
+	/** Sets the reference to the Entity. It can be null. */
+	final def void setEntity(Entity entity) {
+		this.entity = entity
+	}
+	/** toString */
+	final override toString() {
+		toString
+	}
+	/** Hashcode */
+	final override hashCode() {
+		hashCode
+	}
 }
 
 /**
@@ -323,21 +425,19 @@ interface EntityContext {
  * to choose transactions or not. Maybe we just need multiple Interceptors, to take
  * care of that, but this only really works if we store changes in a separate "map"
  * (Property, [Key/Index], OldValue), because it would be stupid to double all the
- * fields to allow transaction, but then no use them.
+ * fields to allow transaction, but then not use them.
  */
 interface Entity extends Bean {
-	// NOP
+	/** Returns the Entity Handle */
+	def Handle getHandle()
 }
 
 /**
  * "Internal" Entity interface.
  */
 interface _Entity extends Entity, _Bean {
-	/** Return the context owning this entity. */
-	def EntityContext getEntityContext()
-
-	/** Sets the context owning this entity. */
-	def void setEntityContext(EntityContext entityContext)
+	/** Sets the Entity Handle, if it wasn't set yet, or fails. */
+	def void setHandle(Handle handle)
 
 	/** Returns the creation time in milliseconds */
 	def long getCreationTime()
@@ -509,13 +609,95 @@ interface _MapBean<K,V> extends MapBean<K,V>, _Bean {
 
 /** An immutable Reference to an immutable Bean. */
 @Data
-class Ref<E extends Bean> {
+class Ref<E extends Bean> implements BeanVisitable {
 	E value
 	new(E e) {
 		if ((e != null) && !e.immutable) {
 			throw new IllegalArgumentException("Reference must be immutable: "+e)
 		}
 		_value = e
+	}
+
+    override String toString() {
+        return "{\"value\":" + value + "}";
+    }
+
+    override void accept(BeanVisitor visitor) {
+        if (visitor.startVisitNonBean(this)) {
+            visitor.visitNonBeanProperty("value", value);
+        }
+        visitor.endVisitNonBean(this);
+    }
+}
+
+/** Represents a Property change event, within a Bean */
+class PropChangeEvent {
+	/** Accessor for the old value. */
+	public static val OLD = new AnyAccessor<PropChangeEvent> {
+		override getDoubleUnsafe(PropChangeEvent holder) {
+			holder.primitiveOldValue
+		}
+
+		override getObjectUnsafe(PropChangeEvent holder) {
+			holder.objectOldValue
+		}
+
+		override protected setObjectPrimitive(PropChangeEvent holder, Object object, double primitive) {
+			holder.objectOldValue = object
+			holder.primitiveOldValue = primitive
+		}
+	}
+	/** Accessor for the new value. */
+	public static val NEW = new AnyAccessor<PropChangeEvent> {
+		override getDoubleUnsafe(PropChangeEvent holder) {
+			holder.primitiveNewValue
+		}
+
+		override getObjectUnsafe(PropChangeEvent holder) {
+			holder.objectNewValue
+		}
+
+		override protected setObjectPrimitive(PropChangeEvent holder, Object object, double primitive) {
+			holder.objectNewValue = object
+			holder.primitiveNewValue = primitive
+		}
+	}
+	/** Accessor for the Property key/index, if any. */
+	public static val KEY = new AnyAccessor<PropChangeEvent> {
+		override getDoubleUnsafe(PropChangeEvent holder) {
+			holder.primitiveKey
+		}
+
+		override getObjectUnsafe(PropChangeEvent holder) {
+			holder.objectKey
+		}
+
+		override protected setObjectPrimitive(PropChangeEvent holder, Object object, double primitive) {
+			holder.objectKey = object
+			holder.primitiveKey = primitive
+		}
+	}
+	/** The event source */
+	public val _Bean source
+	/** The Property */
+	public val Property<?,?> property
+	/** The old value, if primitive */
+	package var double primitiveOldValue
+	/** The new value, if primitive */
+	package var double primitiveNewValue
+	/** The Property key/index, if any, if primitive */
+	package var double primitiveKey
+	/** The old value, if Object */
+	package var Object objectOldValue
+	/** The new value, if Object */
+	package var Object objectNewValue
+	/** The Property key/index, if any, if Object */
+	package var Object objectKey
+
+	/** The constructor. */
+	new(_Bean source, Property<?,?> property) {
+		this.source = requireNonNull(source, "source")
+		this.property = requireNonNull(property, "property")
 	}
 }
 
@@ -531,7 +713,7 @@ interface Meta {
 	val BUILDER = HierarchyBuilderFactory.getHierarchyBuilder(Bean.name)
 
 	/** The Bean Type */
-	val BEAN = BUILDER.newType(Bean, null, Kind.Trait)
+	val BEAN = BUILDER.newType(Bean, null, Kind.Trait, null, null)
 
 	/** The change counter Bean property */
     val _BEAN__CHANGE_COUNTER = BUILDER.newIntegerProperty(
@@ -550,20 +732,20 @@ interface Meta {
     	_Bean, "rootBean", _Bean, true, true, false, [rootBean], null, true)
 
 	/** The _Bean Type */
-	val _BEAN = BUILDER.newType(_Bean, null, Kind.Trait, #[BEAN],
-		com.blockwithme.meta.beans.Meta._BEAN__CHANGE_COUNTER,
-		com.blockwithme.meta.beans.Meta._BEAN__PARENT_BEAN,
-		com.blockwithme.meta.beans.Meta._BEAN__PARENT_KEY,
-		com.blockwithme.meta.beans.Meta._BEAN__ROOT_BEAN)
+	val _BEAN = BUILDER.newType(_Bean, null, Kind.Trait, null, null, #[BEAN],
+		Meta._BEAN__CHANGE_COUNTER,
+		Meta._BEAN__PARENT_BEAN,
+		Meta._BEAN__PARENT_KEY,
+		Meta._BEAN__ROOT_BEAN)
 
 	/** The Entity Type */
-	val ENTITY = BUILDER.newType(Entity, null, Kind.Trait, #[BEAN])
+	val ENTITY = BUILDER.newType(Entity, null, Kind.Trait, null, null, #[BEAN])
 
 	/** The _Entity Type */
-	val _ENTITY = BUILDER.newType(_Entity, null, Kind.Trait, #[ENTITY, _BEAN])
+	val _ENTITY = BUILDER.newType(_Entity, null, Kind.Trait, null, null, #[ENTITY, _BEAN])
 
 	/** The CollectionBeanConfig Type; we pretend it has no property. */
-	val COLLECTION_BEAN_CONFIG = BUILDER.newType(CollectionBeanConfig, null, Kind.Data)
+	val COLLECTION_BEAN_CONFIG = BUILDER.newType(CollectionBeanConfig, null, Kind.Data, null, null)
 
 	/** The configuration property of the collection beans */
     val COLLECTION_BEAN__CONFIG = BUILDER.newObjectProperty(
@@ -574,32 +756,32 @@ interface Meta {
     	CollectionBean, "valueType", Type, true, true, true, [valueType], null, false)
 
 	/** The CollectionBean Type */
-	val COLLECTION_BEAN = BUILDER.newType(CollectionBean, null, Kind.Trait,
+	val COLLECTION_BEAN = BUILDER.newType(CollectionBean, null, Kind.Trait, null, null,
 		#[BEAN, JavaMeta.LIST, JavaMeta.SET], <Property>newArrayList(COLLECTION_BEAN__CONFIG),
 		COLLECTION_BEAN__VALUE_TYPE as ObjectProperty)
 
 	/** The ListBean Type */
-	val LIST_BEAN = BUILDER.newType(ListBean, null, Kind.Trait,
+	val LIST_BEAN = BUILDER.newType(ListBean, null, Kind.Trait, null, null,
 		#[COLLECTION_BEAN, JavaMeta.LIST], Property.NO_PROPERTIES,
 		COLLECTION_BEAN__VALUE_TYPE as ObjectProperty)
 
 	/** The SetBean Type */
-	val SET_BEAN = BUILDER.newType(SetBean, null, Kind.Trait,
+	val SET_BEAN = BUILDER.newType(SetBean, null, Kind.Trait, null, null,
 		#[COLLECTION_BEAN, JavaMeta.SET], Property.NO_PROPERTIES,
 		COLLECTION_BEAN__VALUE_TYPE as ObjectProperty)
 
 	/** The _CollectionBean Type */
-	val _COLLECTION_BEAN = BUILDER.newType(_CollectionBean, null, Kind.Trait,
+	val _COLLECTION_BEAN = BUILDER.newType(_CollectionBean, null, Kind.Trait, null, null,
 		#[COLLECTION_BEAN, _BEAN], Property.NO_PROPERTIES,
 		COLLECTION_BEAN__VALUE_TYPE as ObjectProperty)
 
 	/** The _ListBean Type */
-	val _LIST_BEAN = BUILDER.newType(_ListBean, null, Kind.Trait,
+	val _LIST_BEAN = BUILDER.newType(_ListBean, null, Kind.Trait, null, null,
 		#[_COLLECTION_BEAN, LIST_BEAN], Property.NO_PROPERTIES,
 		COLLECTION_BEAN__VALUE_TYPE as ObjectProperty)
 
 	/** The _SetBean Type */
-	val _SET_BEAN = BUILDER.newType(_SetBean, null, Kind.Trait,
+	val _SET_BEAN = BUILDER.newType(_SetBean, null, Kind.Trait, null, null,
 		#[_COLLECTION_BEAN, SET_BEAN], Property.NO_PROPERTIES,
 		COLLECTION_BEAN__VALUE_TYPE as ObjectProperty)
 
@@ -612,17 +794,17 @@ interface Meta {
     	MapBean, "valueType", Type, true, true, true, [valueType], null, false)
 
 	/** The MapBean Type */
-	val MAP_BEAN = BUILDER.newType(MapBean, null, Kind.Trait,
+	val MAP_BEAN = BUILDER.newType(MapBean, null, Kind.Trait, null, null,
 		#[BEAN, JavaMeta.MAP], Property.NO_PROPERTIES, MAP_BEAN__KEY_TYPE as ObjectProperty,
 		MAP_BEAN__VALUE_TYPE as ObjectProperty)
 
 	/** The _MapBean Type */
-	val _MAP_BEAN = BUILDER.newType(_MapBean, null, Kind.Trait,
+	val _MAP_BEAN = BUILDER.newType(_MapBean, null, Kind.Trait, null, null,
 		#[MAP_BEAN, _BEAN], Property.NO_PROPERTIES, MAP_BEAN__KEY_TYPE as ObjectProperty,
 		MAP_BEAN__VALUE_TYPE as ObjectProperty)
 
 	/** The Ref Type */
-	val REF = BUILDER.newType(Ref, null, Kind.Data)
+	val REF = BUILDER.newType(Ref, null, Kind.Data, null, null)
 
 	/** The Beans package */
 	val COM_BLOCKWITHME_META_BEANS_PACKAGE = BUILDER.newTypePackage(

@@ -23,6 +23,8 @@ import com.blockwithme.meta.JavaMeta
 import java.util.Arrays
 import java.util.Map
 import java.util.HashMap
+import com.blockwithme.meta.beans.BeanPath
+import java.util.ArrayList
 
 /**
  * @author monster
@@ -620,5 +622,32 @@ class MapBeanTest extends BaseTst {
     	assertEquals("map.entrySet.iterator.next.key", two, se.key)
     	assertEquals("map.entrySet.iterator.next.value", 2L, se.value)
     	assertFalse("map.entrySet.iterator.hasNext", siterE.hasNext)
+	}
+
+	@Test
+	public def void testBeanPath() {
+    	val map = new HashMap<String,Long>
+     	val one = "one"
+    	val two = "two"
+    	val three = "three"
+    	map.put(one, 1L)
+    	map.put(two, 2L)
+    	map.put(three, 3L)
+
+    	val mmt = new MyMapType
+    	mmt.map.putAll(map)
+
+    	val path = new BeanPath(JavaMeta.MAP_CONTENT_PROP)
+    	val expected = new ArrayList(map.values)
+    	for (o : mmt.map.resolvePath(path, true)) {
+    		assertTrue("remove("+o+")", expected.remove(o))
+    	}
+		assertTrue("expected.empty", expected.empty)
+
+    	val pathTwo = new BeanPath(JavaMeta.MAP_CONTENT_PROP, #[two])
+    	val iter = mmt.map.resolvePath(pathTwo, true).iterator
+		assertTrue("iter.hasNext", iter.hasNext)
+    	assertEquals("iter.next", 2L, iter.next)
+		assertFalse("iter.hasNext", iter.hasNext)
 	}
 }

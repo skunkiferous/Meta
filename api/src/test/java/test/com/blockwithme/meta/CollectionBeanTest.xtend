@@ -20,9 +20,14 @@ import static org.junit.Assert.*
 import org.junit.Test
 import org.junit.BeforeClass
 import com.blockwithme.meta.beans.CollectionBean
+import com.blockwithme.meta.beans._CollectionBean
 import java.util.Arrays
 import com.blockwithme.meta.JavaMeta
 import java.util.Collections
+import com.blockwithme.meta.beans.BeanPath
+import java.util.ArrayList
+import com.blockwithme.meta.beans.Meta
+import com.blockwithme.meta.beans.impl.CollectionBeanImpl
 
 /**
  * Tests the CollectionBean.
@@ -880,5 +885,71 @@ class CollectionBeanTest extends BaseTst {
      	Collections.sort(list)
      	val content = cb.hashSet.content
      	assertTrue(list+" vs "+Arrays.asList(content), list.equals(Arrays.asList(content)))
+	}
+
+	private def void doBeanPathTest(CollectionBeanImpl<String> col, boolean hashSet) {
+     	val one = "one"
+    	val two = "two"
+    	val three = "three"
+    	val list = #[one,two,three]
+    	val path = new BeanPath(JavaMeta.COLLECTION_CONTENT_PROP)
+    	col.addAll(list)
+    	val expected = new ArrayList(list)
+    	for (o : col.resolvePath(path, true)) {
+    		assertTrue("remove("+o+")", expected.remove(o) || ((o === null) && hashSet))
+    	}
+		assertTrue("expected.empty", expected.empty)
+	}
+
+	@Test
+	public def void testBeanPath() {
+    	val cb = new MyCollectionType
+    	doBeanPathTest(cb.unorderedSet, false)
+    	doBeanPathTest(cb.orderedSet, false)
+    	doBeanPathTest(cb.sortedSet, false)
+    	doBeanPathTest(cb.hashSet, true)
+    	doBeanPathTest(cb.list, false)
+	}
+
+	@Test
+	public def void testFixedBeanPath() {
+    	val cb = new MyCollectionType
+     	val zero = "zero"
+     	val one = "one"
+    	val two = "two"
+    	val three = "three"
+     	val four = "four"
+    	val five = "five"
+    	val six = "six"
+     	val seven = "seven"
+    	val eight = "eight"
+    	val nine = "nine"
+    	val ten = #[zero,one,two,three,four,five,six,seven,eight,nine]
+    	var i = 0
+    	for (v : ten) {
+    		cb.fixedSizeList.set(i++, v)
+    	}
+    	val path = new BeanPath(JavaMeta.COLLECTION_CONTENT_PROP)
+    	val expected = new ArrayList(ten)
+    	for (o : cb.fixedSizeList.resolvePath(path, true)) {
+    		assertTrue("remove("+o+")", expected.remove(o))
+    	}
+		assertTrue("expected.empty", expected.empty)
+	}
+
+	@Test
+	public def void testBeanBeanPath() {
+     	val cb = new MyCollectionType
+    	val a = new MyBeanImpl
+    	val b = new MyBeanImpl
+    	val c = new MyBeanImpl
+    	val abc = #[a,b,c]
+    	cb.beanList.addAll(abc)
+    	val path = new BeanPath(JavaMeta.COLLECTION_CONTENT_PROP,#[1],new BeanPath(Meta._BEAN__PARENT_BEAN))
+    	val expected = new ArrayList(#[cb.beanList])
+    	for (o : cb.beanList.resolvePath(path, true)) {
+    		assertTrue("remove("+o+")", expected.remove(o))
+    	}
+		assertTrue("expected.empty", expected.empty)
 	}
 }
