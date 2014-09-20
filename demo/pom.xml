@@ -10,9 +10,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>com.blockwithme</groupId>
-	<artifactId>MetaDemo</artifactId>
-	<version>0.1.0</version>
+	<artifactId>demo</artifactId>
 	<packaging>jar</packaging>
 	<inceptionYear>2013</inceptionYear>
 	<name>Demo for Meta</name>
@@ -44,9 +42,10 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
 	</licenses>
 
 	<parent>
-		<groupId>com.blockwithme</groupId>
-		<artifactId>oss-parent</artifactId>
-		<version>0.10.0</version>
+		<groupId>com.blockwithme.meta</groupId>
+		<artifactId>meta</artifactId>
+		<version>0.2.0</version>
+		<relativePath>..</relativePath>
 	</parent>
 
 	<build>
@@ -113,24 +112,24 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>com.blockwithme</groupId>
-			<artifactId>UtilBase</artifactId>
-			<version>0.5.0</version>
+			<groupId>com.blockwithme.util</groupId>
+			<artifactId>base</artifactId>
+			<version>0.6.0</version>
 		</dependency>
 		<dependency>
-			<groupId>com.blockwithme</groupId>
-			<artifactId>UtilShared</artifactId>
-			<version>0.5.0</version>
+			<groupId>com.blockwithme.util</groupId>
+			<artifactId>shared</artifactId>
+			<version>0.6.0</version>
 		</dependency>
 		<dependency>
-			<groupId>com.blockwithme</groupId>
-			<artifactId>UtilXtend</artifactId>
-			<version>0.5.0</version>
+			<groupId>com.blockwithme.util</groupId>
+			<artifactId>xtend</artifactId>
+			<version>0.6.0</version>
 		</dependency>
 		<dependency>
-			<groupId>com.blockwithme</groupId>
-			<artifactId>UtilServer</artifactId>
-			<version>0.5.0</version>
+			<groupId>com.blockwithme.util</groupId>
+			<artifactId>server</artifactId>
+			<version>0.6.0</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
@@ -141,6 +140,11 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
 		<dependency>
 			<groupId>com.blockwithme</groupId>
 			<artifactId>FuncGenerated012</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>api</artifactId>
+			<version>${project.version}</version>
 		</dependency>
  		<dependency>
 			<groupId>org.eclipse.xtend</groupId>
@@ -157,15 +161,10 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
 		<dependency>
 			<groupId>com.google.inject.extensions</groupId>
 			<artifactId>guice-multibindings</artifactId>
-			</dependency>
+		</dependency>
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-core</artifactId>
-			</dependency>
-		<dependency>
-			<groupId>com.blockwithme</groupId>
-			<artifactId>Meta</artifactId>
-			<version>0.1.0</version>
 		</dependency>
 	</dependencies>
 	<repositories>

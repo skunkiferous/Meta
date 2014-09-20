@@ -1,1 +1,14 @@
+*.class
+gwt-unitCache
+
+# Package Files #
+*.jar
+*.war
+*.ear
 /target
+.idea
+*.iml
+.settings
+.classpath
+.project
+/war
