@@ -29,7 +29,7 @@ import com.blockwithme.meta.beans._Bean
 import java.util.HashSet
 import com.blockwithme.meta.beans.Entity
 import com.blockwithme.meta.Type
-import com.blockwithme.meta.annotations.ValidationException
+import com.blockwithme.meta.beans.annotations.ValidationException
 
 /**
  * Singleton, used for all normal "beans".

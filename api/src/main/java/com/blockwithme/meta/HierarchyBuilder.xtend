@@ -89,6 +89,9 @@ class HierarchyBuilder {
 	/** The next property ID */
 	var propertyId = 0
 
+	/** The next meta property ID */
+	var metaPropertyId = 0
+
 	/** The next package ID */
 	var packageId = 0
 
@@ -198,6 +201,12 @@ class HierarchyBuilder {
 		this.globalId = this.globalId + 1
 		val globalPropertyId = this.propertyId
 		this.propertyId = this.propertyId + 1
+		val globalMetaPropertyId = if (theMeta) {
+			this.metaPropertyId = this.metaPropertyId + 1
+			this.metaPropertyId - 1
+		} else {
+			-1
+		}
 
 		val propertyId = incCounter(counters, "propertyId")
 		var specificTypePropId = -1
@@ -235,8 +244,8 @@ class HierarchyBuilder {
 
 		new PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(this, theOwner, theSimpleName,
 			theConverter, thePropType, theMeta, theVirtual, dataType, globalId, globalPropertyId,
-			propertyId, specificTypePropId, virtualPropertyId, theBits, primitivePropertyId,
-			nonSixtyFourBitPropertyId, sixtyFourBitPropertyId, nonLongPropertyId,
+			globalMetaPropertyId, propertyId, specificTypePropId, virtualPropertyId, theBits,
+			primitivePropertyId, nonSixtyFourBitPropertyId, sixtyFourBitPropertyId, nonLongPropertyId,
 			longOrObjectPropertyId)
 	}
 

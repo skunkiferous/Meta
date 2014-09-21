@@ -15,20 +15,20 @@
  */
 package com.blockwithme.meta.demo
 
-import com.blockwithme.meta.annotations.Bean
-import com.blockwithme.meta.annotations.ListProperty
-import com.blockwithme.meta.annotations.OrderedSetProperty
-import com.blockwithme.meta.annotations.SortedSetProperty
-import com.blockwithme.meta.annotations.UnorderedSetProperty
-import com.blockwithme.meta.annotations.HashSetProperty
 import java.util.List
 import java.util.Set
 import java.util.Map
-import com.blockwithme.meta.annotations.Listeners
-import com.blockwithme.meta.annotations.ListenerDef
 import com.blockwithme.meta.ObjectPropertyListener
 import com.blockwithme.meta.beans._Bean
 import com.blockwithme.meta.ObjectProperty
+import com.blockwithme.meta.beans.annotations.Bean
+import com.blockwithme.meta.beans.annotations.Listeners
+import com.blockwithme.meta.beans.annotations.ListenerDef
+import com.blockwithme.meta.beans.annotations.OrderedSetProperty
+import com.blockwithme.meta.beans.annotations.UnorderedSetProperty
+import com.blockwithme.meta.beans.annotations.SortedSetProperty
+import com.blockwithme.meta.beans.annotations.HashSetProperty
+import com.blockwithme.meta.beans.annotations.ListProperty
 
 /**
  * Hierarchy "root".

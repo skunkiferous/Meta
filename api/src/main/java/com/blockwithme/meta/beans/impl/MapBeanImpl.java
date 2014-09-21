@@ -189,8 +189,14 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
     /** The Type of the keys. */
     private final Type<K> keyType;
 
+    /** Is the Type of the keys a Bean? */
+    private final boolean keyTypeIsBean;
+
     /** The Type of the values. */
     private final Type<V> valueType;
+
+    /** Is the Type of the values a Bean? */
+    private final boolean valueTypeIsBean;
 
     /** The collection size */
     private int size;
@@ -294,6 +300,9 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
         interceptor = DefaultObjectObjectMapInterceptor.INSTANCE;
         keyType = Objects.requireNonNull(theKeyType, "theKeyType");
         valueType = Objects.requireNonNull(theValueType, "theValueType");
+        keyTypeIsBean = SystemUtils.isAssignableFrom(Bean.class, keyType.type);
+        valueTypeIsBean = SystemUtils.isAssignableFrom(Bean.class,
+                valueType.type);
         keys = theKeyType.empty;
         values = theValueType.empty;
     }
@@ -751,7 +760,7 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
         if (p == JavaMeta.MAP_CONTENT_PROP) {
             ensureCapacityInternalAndClear(other.keys.length);
             if (immutably) {
-                if (other.keyType.bean && other.valueType.bean) {
+                if (other.keyTypeIsBean && other.valueTypeIsBean) {
                     for (final Entry<K, V> e : other.entrySet()) {
                         final _BeanImpl k = (_BeanImpl) e.getKey();
                         final _BeanImpl kCopy = (k == null) ? null : k
@@ -767,7 +776,7 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
                             vCopy.setParentBeanAndKey(this, kCopy);
                         }
                     }
-                } else if (other.keyType.bean) {
+                } else if (other.keyTypeIsBean) {
                     for (final Entry<K, V> e : other.entrySet()) {
                         final _BeanImpl k = (_BeanImpl) e.getKey();
                         final _BeanImpl kCopy = (k == null) ? null : k
@@ -777,7 +786,7 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
                             kCopy.setParentBeanAndKey(this, lastPutIndex);
                         }
                     }
-                } else if (other.valueType.bean) {
+                } else if (other.valueTypeIsBean) {
                     for (final Entry<K, V> e : other.entrySet()) {
                         final K k = e.getKey();
                         final _BeanImpl v = (_BeanImpl) e.getValue();
@@ -794,7 +803,7 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
                     }
                 }
             } else {
-                if (other.keyType.bean && other.valueType.bean) {
+                if (other.keyTypeIsBean && other.valueTypeIsBean) {
                     for (final Entry<K, V> e : other.entrySet()) {
                         final _BeanImpl k = (_BeanImpl) e.getKey();
                         final _BeanImpl kCopy = (k == null) ? null : k.doCopy();
@@ -802,13 +811,13 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
                         final _BeanImpl vCopy = (v == null) ? null : v.doCopy();
                         put((K) kCopy, (V) vCopy);
                     }
-                } else if (other.keyType.bean) {
+                } else if (other.keyTypeIsBean) {
                     for (final Entry<K, V> e : other.entrySet()) {
                         final _BeanImpl k = (_BeanImpl) e.getKey();
                         final _BeanImpl kCopy = (k == null) ? null : k.doCopy();
                         put((K) kCopy, e.getValue());
                     }
-                } else if (other.valueType.bean) {
+                } else if (other.valueTypeIsBean) {
                     for (final Entry<K, V> e : other.entrySet()) {
                         final _BeanImpl v = (_BeanImpl) e.getValue();
                         final _BeanImpl vCopy = (v == null) ? null : v.doCopy();
@@ -828,7 +837,7 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
     /** Returns an Iterable<_Bean>, over the property values */
     @Override
     protected final Iterable<_Bean> getBeanIterator() {
-        if (keyType.bean || valueType.bean) {
+        if (keyTypeIsBean || valueTypeIsBean) {
             return new SubBeanIterator(new BeanMapIterator());
         }
         return super.getBeanIterator();

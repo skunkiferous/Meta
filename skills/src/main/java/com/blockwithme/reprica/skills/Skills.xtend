@@ -15,7 +15,6 @@
  */
 package com.blockwithme.reprica.skills
 
-import com.blockwithme.meta.annotations.Bean
 import com.blockwithme.meta.beans._Bean
 import static extension com.blockwithme.util.xtend.StdExt.*
 import java.util.List
@@ -27,6 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import com.blockwithme.util.base.SystemUtils
 import java.util.Collections
 import com.blockwithme.meta.beans.Ref
+import com.blockwithme.meta.beans.annotations.Bean
 
 // TODO Percent modifier on Percent Attribute should add itself, instead of multiplying by itself. But then non-Percent modifier on Percent Attribute should be illegal.
 

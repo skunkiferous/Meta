@@ -31,11 +31,13 @@ import com.blockwithme.meta.IProperty;
 import com.blockwithme.meta.ObjectProperty;
 import com.blockwithme.meta.Property;
 import com.blockwithme.meta.Type;
+import com.blockwithme.meta.beans.Bean;
 import com.blockwithme.meta.beans.BeanPath;
 import com.blockwithme.meta.beans.BeanVisitor;
 import com.blockwithme.meta.beans.Entity;
 import com.blockwithme.meta.beans.Interceptor;
 import com.blockwithme.meta.beans._Bean;
+import com.blockwithme.util.base.SystemUtils;
 
 /**
  * Bean impl for all data/bean objects.
@@ -122,7 +124,7 @@ public abstract class _BeanImpl implements _Bean {
         private void findNext() {
             while (nextIndex < properties.length) {
                 final ObjectProperty p = properties[nextIndex];
-                if (p.bean) {
+                if (isBean(p)) {
                     next = (_Bean) p.getObject(_BeanImpl.this);
                     if (next != null) {
                         return;
@@ -312,6 +314,11 @@ public abstract class _BeanImpl implements _Bean {
     protected static final int compare(final Comparable a, final Comparable b) {
         return (a == null) ? ((b == null) ? 0 : -1) : ((b == null) ? 1 : a
                 .compareTo(b));
+    }
+
+    /** Returns true, if this ObjectProperty contains Beans. */
+    private static boolean isBean(final ObjectProperty<?, ?, ?, ?> p) {
+        return SystemUtils.isAssignableFrom(Bean.class, p.contentTypeClass);
     }
 
     /** For special beans with variable size, we can grow the selection range. */
@@ -816,7 +823,7 @@ public abstract class _BeanImpl implements _Bean {
         for (final Property p : metaType.inheritedProperties) {
             if (!p.isImmutable()) {
                 if (p instanceof ObjectProperty) {
-                    if (((ObjectProperty) p).bean) {
+                    if (isBean((ObjectProperty) p)) {
                         final _BeanImpl value = (_BeanImpl) p.getObject(other);
                         if (value != null) {
                             if (immutably) {

@@ -30,6 +30,7 @@ import com.blockwithme.meta.IProperty;
 import com.blockwithme.meta.JavaMeta;
 import com.blockwithme.meta.Property;
 import com.blockwithme.meta.Type;
+import com.blockwithme.meta.beans.Bean;
 import com.blockwithme.meta.beans.CollectionBeanConfig;
 import com.blockwithme.meta.beans.ObjectCollectionInterceptor;
 import com.blockwithme.meta.beans._Bean;
@@ -274,6 +275,9 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
     /** The Type of the values. */
     private final Type<E> valueType;
 
+    /** Is the Type of the values a Bean? */
+    private final boolean valueTypeIsBean;
+
     /** The collection size */
     private int size;
 
@@ -337,6 +341,8 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
         interceptor = DefaultCollectionInterceptor.INSTANCE;
         this.valueType = Objects.requireNonNull(valueType, "valueType");
         Objects.requireNonNull(config, "config").validate(valueType);
+        valueTypeIsBean = SystemUtils.isAssignableFrom(Bean.class,
+                valueType.type);
         this.config = config;
         final int fixedSize = config.getFixedSize();
         if (fixedSize != -1) {
@@ -358,7 +364,7 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
     /** Returns an Iterable<_Bean>, over the property values */
     @Override
     protected final Iterable<_Bean> getBeanIterator() {
-        if (valueType.bean) {
+        if (valueTypeIsBean) {
             return new SubBeanIterator(new BeanCollectionIterator());
         }
         return super.getBeanIterator();
@@ -1008,7 +1014,7 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
         final CollectionBeanImpl<E> other = (CollectionBeanImpl<E>) _other;
         if (p == JavaMeta.COLLECTION_CONTENT_PROP) {
             ensureCapacityInternal(other.size);
-            if (other.valueType.bean) {
+            if (other.valueTypeIsBean) {
                 if (other.config.getFixedSize() < 0) {
                     if (immutably) {
                         int i = 0;

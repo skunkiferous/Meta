@@ -33,7 +33,6 @@ import com.blockwithme.fn2.ObjectFuncObjectInt
 import com.blockwithme.fn2.ObjectFuncObjectLong
 import com.blockwithme.fn2.ObjectFuncObjectObject
 import com.blockwithme.fn2.ObjectFuncObjectShort
-import com.blockwithme.meta.beans.Bean
 import com.blockwithme.util.base.SystemUtils
 import com.blockwithme.util.shared.Any
 import com.blockwithme.util.shared.AnyArray
@@ -230,8 +229,8 @@ public class Hierarchy implements Comparable<Hierarchy> {
     }
 
     /** Sets the value of this property, as an Object */
-    static def setObject(MetaBase<?> object, int index, Object value) {
-    synchronized (Hierarchy) {
+    static def void setObject(MetaBase<?> object, int index, Object value) {
+      synchronized (Hierarchy) {
             var array = object.metaProperties;
             if (index >= array.length) {
                 val tmp = newArrayOfSize(index + 1)
@@ -239,6 +238,14 @@ public class Hierarchy implements Comparable<Hierarchy> {
                 array = object.metaProperties = tmp;
             }
             array.set(index, value)
+      }
+    }
+
+    /** Gets the value of this property, as an Object */
+    static def Object getObject(MetaBase<?> object, int index, Object defaultValue) {
+      synchronized (Hierarchy) {
+        var array = object.metaProperties;
+        if (index >= array.length) defaultValue else array.get(index)
       }
     }
 
@@ -541,6 +548,7 @@ package class PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends 
 
   int globalId
   int globalPropertyId
+  int globalMetaPropertyId
   int propertyId
   int specificTypePropId
   int virtualPropertyId
@@ -703,9 +711,6 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> implements PropertyMatcher {
 
   /** Does this type represents a primitive/primitive-wrapper type? */
   public val boolean primitive
-
-  /** Is this object a "Bean"? */
-  public val boolean bean
 
   /**
    * The direct parent Types of this Type
@@ -896,7 +901,6 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> implements PropertyMatcher {
         +theType+" not supported; use the Wrapper instead")
     }
     primitive = primTypes.contains(theType)
-    bean = Bean.isAssignableFrom(theType)
     type = theType
     empty = Array.newInstance(type, 0) as JAVA_TYPE[]
     constructor = if (theConstructor == null) asProvider(theType) else theConstructor
@@ -1218,7 +1222,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> implements PropertyMatcher {
   }
 
 	/** Returns the Properties that match. */
-	override final IProperty<?,?>[] listProperty(Bean bean) {
+	override final IProperty<?,?>[] listProperty(Object obj) {
 		allInheritedProperties
 	}
 }
@@ -1378,7 +1382,7 @@ interface IProperty<OWNER_TYPE, PROPERTY_TYPE> extends PropertyMatcher {
  */
 interface PropertyMatcher {
 	/** Returns the Properties that match. */
-	def IProperty<?,?>[] listProperty(Bean bean)
+	def IProperty<?,?>[] listProperty(Object obj)
 }
 
 /**
@@ -1652,7 +1656,7 @@ extends MetaBase<Type<OWNER_TYPE>> implements IProperty<OWNER_TYPE, PROPERTY_TYP
   }
 
 	/** Returns the Properties that match. */
-	override final IProperty<?,?>[] listProperty(Bean bean) {
+	override final IProperty<?,?>[] listProperty(Object obj) {
 		thisInArray
 	}
 
@@ -1693,7 +1697,7 @@ extends MetaBase<Type<OWNER_TYPE>> implements IProperty<OWNER_TYPE, PROPERTY_TYP
 /**
  * Validator for ObjectProperty
  */
-interface ObjectPropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE, INTERNAL_TYPE> {
+interface ObjectPropertyValidator<OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE> {
 	/** Empty array of Validators */
 	ObjectPropertyValidator[] EMPTY = newArrayOfSize(0)
 
@@ -1711,7 +1715,7 @@ interface ObjectPropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE, INTERN
 /**
  * Listener for ObjectProperty
  */
-interface ObjectPropertyListener<OWNER_TYPE extends Bean, PROPERTY_TYPE, INTERNAL_TYPE> {
+interface ObjectPropertyListener<OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE> {
 	/** Empty array of Listeners */
 	ObjectPropertyListener[] EMPTY = newArrayOfSize(0)
 
@@ -1779,9 +1783,6 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
     /** The Setter Functor */
     public val ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> setter
 
-  /** Is this object a "Bean"? */
-  public val boolean bean
-
   /** The converter. Used to convert PROPERTY_TYPE values to/from INTERNAL_TYPE. */
   public val CONVERTER converter
 
@@ -1797,7 +1798,6 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
     exactType = theExactType
     getter = theGetter
     setter = theSetter
-    bean = Bean.isAssignableFrom(theData.dataType)
     converter = theData.converter
   }
 
@@ -1902,39 +1902,36 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
  */
 package class MetaGetter<OWNER_TYPE extends MetaBase<?>,PROPERTY_TYPE>
 implements ObjectFuncObject<PROPERTY_TYPE,OWNER_TYPE> {
-  /** The zero-based global property ID */
-  public val int globalPropertyId
+  /** The zero-based meta property ID */
+  public val int metaPropertyId
 
     /** The default value */
     public val PROPERTY_TYPE defaultValue
 
     /** Constructor */
-    new (int theGlobalPropertyId, PROPERTY_TYPE theDefaultValue) {
-      globalPropertyId = theGlobalPropertyId
+    new (int theMetaPropertyId, PROPERTY_TYPE theDefaultValue) {
+      metaPropertyId = theMetaPropertyId
       defaultValue = theDefaultValue
     }
 
   override final apply(OWNER_TYPE object) {
-    val array = object.metaProperties
-    val index = globalPropertyId
-    val result = if (index >= array.length) null else array.get(index)
-    if (result == null) defaultValue else result as PROPERTY_TYPE
+  	Hierarchy.getObject(object, metaPropertyId, defaultValue) as PROPERTY_TYPE
   }
 }
 
 /** Setter for Meta-Properties */
 package class MetaSetter<OWNER_TYPE extends MetaBase<?>,PROPERTY_TYPE>
 implements ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> {
-  /** The zero-based global property ID */
-  public val int globalPropertyId
+  /** The zero-based meta property ID */
+  public val int metaPropertyId
 
     /** Constructor */
-    new (int theGlobalPropertyId) {
-      globalPropertyId = theGlobalPropertyId
+    new (int theMetaPropertyId) {
+      metaPropertyId = theMetaPropertyId
     }
 
   override final apply(OWNER_TYPE object, PROPERTY_TYPE value) {
-    Hierarchy.setObject(object, globalPropertyId, value)
+    Hierarchy.setObject(object, metaPropertyId, value)
     object
   }
 }
@@ -1977,8 +1974,8 @@ ObjectConverter<OWNER_TYPE,PROPERTY_TYPE,PROPERTY_TYPE>> {
   private new(PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, ObjectConverter<OWNER_TYPE,PROPERTY_TYPE,PROPERTY_TYPE>> theData,
     PROPERTY_TYPE theDefaultValue) {
     super(theData, true, true, false,
-      new MetaGetter<OWNER_TYPE,PROPERTY_TYPE>(theData.globalPropertyId, theDefaultValue),
-      new MetaSetter<OWNER_TYPE,PROPERTY_TYPE>(theData.globalPropertyId))
+      new MetaGetter<OWNER_TYPE,PROPERTY_TYPE>(theData.globalMetaPropertyId, theDefaultValue),
+      new MetaSetter<OWNER_TYPE,PROPERTY_TYPE>(theData.globalMetaPropertyId))
     if (theDefaultValue != null) {
       if (!theData.dataType.isInstance(theDefaultValue)) {
         throw new IllegalArgumentException()
@@ -2330,7 +2327,7 @@ extends PrimitiveProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> {
 /**
  * Validator for BooleanProperty
  */
-interface BooleanPropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+interface BooleanPropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
 	/** Empty array of Validators */
 	BooleanPropertyValidator[] EMPTY = newArrayOfSize(0)
 
@@ -2345,7 +2342,7 @@ interface BooleanPropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
 /**
  * Listener for BooleanProperty
  */
-interface BooleanPropertyListener<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+interface BooleanPropertyListener<OWNER_TYPE, PROPERTY_TYPE> {
 	/** Empty array of Listeners */
 	BooleanPropertyListener[] EMPTY = newArrayOfSize(0)
 
@@ -2544,7 +2541,7 @@ extends BooleanProperty<OWNER_TYPE, Boolean, BooleanConverter<OWNER_TYPE, Boolea
 
 
 /** Validates the range of a ByteProperty */
-class BytePropertyRangeValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE>
+class BytePropertyRangeValidator<OWNER_TYPE, PROPERTY_TYPE>
 implements BytePropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
 	val byte min
 	val byte max
@@ -2578,9 +2575,11 @@ implements BytePropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
 			return "newValue("+newValue+") > max("+max+")"
 		}
 		if (newValue < softMin) {
-			instance.log.warn("newValue("+newValue+") < softMin("+softMin+")")
+			val log = Logger.getLogger(instance.class.name)
+			log.warn("newValue("+newValue+") < softMin("+softMin+")")
 		} else if (newValue > softMax) {
-			instance.log.warn("newValue("+newValue+") > softMax("+softMax+")")
+			val log = Logger.getLogger(instance.class.name)
+			log.warn("newValue("+newValue+") > softMax("+softMax+")")
 		}
 		null
 	}
@@ -2591,7 +2590,7 @@ implements BytePropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
 /**
  * Validator for ByteProperty
  */
-interface BytePropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+interface BytePropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
 	/** Empty array of Validators */
 	BytePropertyValidator[] EMPTY = newArrayOfSize(0)
 
@@ -2606,7 +2605,7 @@ interface BytePropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
 /**
  * Listener for ByteProperty
  */
-interface BytePropertyListener<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+interface BytePropertyListener<OWNER_TYPE, PROPERTY_TYPE> {
 	/** Empty array of Listeners */
 	BytePropertyListener[] EMPTY = newArrayOfSize(0)
 
@@ -2848,7 +2847,7 @@ implements IEnumProperty<OWNER_TYPE, PROPERTY_TYPE, EnumStringConverter<OWNER_TY
 /**
  * Validator for CharacterProperty
  */
-interface CharacterPropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+interface CharacterPropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
 	/** Empty array of Validators */
 	CharacterPropertyValidator[] EMPTY = newArrayOfSize(0)
 
@@ -2863,7 +2862,7 @@ interface CharacterPropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
 /**
  * Listener for CharacterProperty
  */
-interface CharacterPropertyListener<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+interface CharacterPropertyListener<OWNER_TYPE, PROPERTY_TYPE> {
 	/** Empty array of Listeners */
 	CharacterPropertyListener[] EMPTY = newArrayOfSize(0)
 
@@ -2902,7 +2901,7 @@ package class PerTypeCharacterPropertyData extends PerTypePrimitivePropertyData 
 
 
 /** Validates the range of a CharacterProperty */
-class CharacterPropertyRangeValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE>
+class CharacterPropertyRangeValidator<OWNER_TYPE, PROPERTY_TYPE>
 implements CharacterPropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
 	val char min
 	val char max
@@ -2936,9 +2935,11 @@ implements CharacterPropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
 			return "newValue("+(newValue as int)+") > max("+(max as int)+")"
 		}
 		if (newValue < softMin) {
-			instance.log.warn("newValue("+(newValue as int)+") < softMin("+(softMin as int)+")")
+			val log = Logger.getLogger(instance.class.name)
+			log.warn("newValue("+(newValue as int)+") < softMin("+(softMin as int)+")")
 		} else if (newValue > softMax) {
-			instance.log.warn("newValue("+(newValue as int)+") > softMax("+(softMax as int)+")")
+			val log = Logger.getLogger(instance.class.name)
+			log.warn("newValue("+(newValue as int)+") > softMax("+(softMax as int)+")")
 		}
 		null
 	}
@@ -3110,7 +3111,7 @@ extends CharacterProperty<OWNER_TYPE, Character, CharConverter<OWNER_TYPE, Chara
 /**
  * Validator for ShortProperty
  */
-interface ShortPropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+interface ShortPropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
 	/** Empty array of Validators */
 	ShortPropertyValidator[] EMPTY = newArrayOfSize(0)
 
@@ -3125,7 +3126,7 @@ interface ShortPropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
 /**
  * Listener for ShortProperty
  */
-interface ShortPropertyListener<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+interface ShortPropertyListener<OWNER_TYPE, PROPERTY_TYPE> {
 	/** Empty array of Listeners */
 	ShortPropertyListener[] EMPTY = newArrayOfSize(0)
 
@@ -3164,7 +3165,7 @@ package class PerTypeShortPropertyData extends PerTypePrimitivePropertyData {
 
 
 /** Validates the range of a ShortProperty */
-class ShortPropertyRangeValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE>
+class ShortPropertyRangeValidator<OWNER_TYPE, PROPERTY_TYPE>
 implements ShortPropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
 	val short min
 	val short max
@@ -3198,9 +3199,11 @@ implements ShortPropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
 			return "newValue("+newValue+") > max("+max+")"
 		}
 		if (newValue < softMin) {
-			instance.log.warn("newValue("+newValue+") < softMin("+softMin+")")
+			val log = Logger.getLogger(instance.class.name)
+			log.warn("newValue("+newValue+") < softMin("+softMin+")")
 		} else if (newValue > softMax) {
-			instance.log.warn("newValue("+newValue+") > softMax("+softMax+")")
+			val log = Logger.getLogger(instance.class.name)
+			log.warn("newValue("+newValue+") > softMax("+softMax+")")
 		}
 		null
 	}
@@ -3373,7 +3376,7 @@ extends ShortProperty<OWNER_TYPE, Short, ShortConverter<OWNER_TYPE, Short>> {
 /**
  * Validator for IntegerProperty
  */
-interface IntegerPropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+interface IntegerPropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
 	/** Empty array of Validators */
 	IntegerPropertyValidator[] EMPTY = newArrayOfSize(0)
 
@@ -3388,7 +3391,7 @@ interface IntegerPropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
 /**
  * Listener for IntegerProperty
  */
-interface IntegerPropertyListener<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+interface IntegerPropertyListener<OWNER_TYPE, PROPERTY_TYPE> {
 	/** Empty array of Listeners */
 	IntegerPropertyListener[] EMPTY = newArrayOfSize(0)
 
@@ -3427,7 +3430,7 @@ package class PerTypeIntegerPropertyData extends PerTypePrimitivePropertyData {
 
 
 /** Validates the range of a IntegerProperty */
-class IntegerPropertyRangeValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE>
+class IntegerPropertyRangeValidator<OWNER_TYPE, PROPERTY_TYPE>
 implements IntegerPropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
 	val int min
 	val int max
@@ -3461,9 +3464,11 @@ implements IntegerPropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
 			return "newValue("+newValue+") > max("+max+")"
 		}
 		if (newValue < softMin) {
-			instance.log.warn("newValue("+newValue+") < softMin("+softMin+")")
+			val log = Logger.getLogger(instance.class.name)
+			log.warn("newValue("+newValue+") < softMin("+softMin+")")
 		} else if (newValue > softMax) {
-			instance.log.warn("newValue("+newValue+") > softMax("+softMax+")")
+			val log = Logger.getLogger(instance.class.name)
+			log.warn("newValue("+newValue+") > softMax("+softMax+")")
 		}
 		null
 	}
@@ -3634,7 +3639,7 @@ extends IntegerProperty<OWNER_TYPE, Integer, IntConverter<OWNER_TYPE, Integer>> 
 /**
  * Validator for FloatProperty
  */
-interface FloatPropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+interface FloatPropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
 	/** Empty array of Validators */
 	FloatPropertyValidator[] EMPTY = newArrayOfSize(0)
 
@@ -3649,7 +3654,7 @@ interface FloatPropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
 /**
  * Listener for FloatProperty
  */
-interface FloatPropertyListener<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+interface FloatPropertyListener<OWNER_TYPE, PROPERTY_TYPE> {
 	/** Empty array of Listeners */
 	FloatPropertyListener[] EMPTY = newArrayOfSize(0)
 
@@ -3688,7 +3693,7 @@ package class PerTypeFloatPropertyData extends PerTypePrimitivePropertyData {
 
 
 /** Validates the range of a FloatProperty */
-class FloatPropertyRangeValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE>
+class FloatPropertyRangeValidator<OWNER_TYPE, PROPERTY_TYPE>
 implements FloatPropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
 	val float min
 	val float max
@@ -3722,9 +3727,11 @@ implements FloatPropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
 			return "newValue("+newValue+") > max("+max+")"
 		}
 		if (newValue < softMin) {
-			instance.log.warn("newValue("+newValue+") < softMin("+softMin+")")
+			val log = Logger.getLogger(instance.class.name)
+			log.warn("newValue("+newValue+") < softMin("+softMin+")")
 		} else if (newValue > softMax) {
-			instance.log.warn("newValue("+newValue+") > softMax("+softMax+")")
+			val log = Logger.getLogger(instance.class.name)
+			log.warn("newValue("+newValue+") > softMax("+softMax+")")
 		}
 		null
 	}
@@ -3884,7 +3891,7 @@ extends FloatProperty<OWNER_TYPE, Float, FloatConverter<OWNER_TYPE, Float>> {
 /**
  * Validator for LongProperty
  */
-interface LongPropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+interface LongPropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
 	/** Empty array of Validators */
 	LongPropertyValidator[] EMPTY = newArrayOfSize(0)
 
@@ -3899,7 +3906,7 @@ interface LongPropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
 /**
  * Listener for LongProperty
  */
-interface LongPropertyListener<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+interface LongPropertyListener<OWNER_TYPE, PROPERTY_TYPE> {
 	/** Empty array of Listeners */
 	LongPropertyListener[] EMPTY = newArrayOfSize(0)
 
@@ -3938,7 +3945,7 @@ package class PerTypeLongPropertyData extends PerTypePrimitivePropertyData {
 
 
 /** Validates the range of a LongProperty */
-class LongPropertyRangeValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE>
+class LongPropertyRangeValidator<OWNER_TYPE, PROPERTY_TYPE>
 implements LongPropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
 	val long min
 	val long max
@@ -3972,9 +3979,11 @@ implements LongPropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
 			return "newValue("+newValue+") > max("+max+")"
 		}
 		if (newValue < softMin) {
-			instance.log.warn("newValue("+newValue+") < softMin("+softMin+")")
+			val log = Logger.getLogger(instance.class.name)
+			log.warn("newValue("+newValue+") < softMin("+softMin+")")
 		} else if (newValue > softMax) {
-			instance.log.warn("newValue("+newValue+") > softMax("+softMax+")")
+			val log = Logger.getLogger(instance.class.name)
+			log.warn("newValue("+newValue+") > softMax("+softMax+")")
 		}
 		null
 	}
@@ -4133,7 +4142,7 @@ extends LongProperty<OWNER_TYPE, Long, LongConverter<OWNER_TYPE, Long>> {
 /**
  * Validator for DoubleProperty
  */
-interface DoublePropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+interface DoublePropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
 	/** Empty array of Validators */
 	DoublePropertyValidator[] EMPTY = newArrayOfSize(0)
 
@@ -4148,7 +4157,7 @@ interface DoublePropertyValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
 /**
  * Listener for DoubleProperty
  */
-interface DoublePropertyListener<OWNER_TYPE extends Bean, PROPERTY_TYPE> {
+interface DoublePropertyListener<OWNER_TYPE, PROPERTY_TYPE> {
 	/** Empty array of Listeners */
 	DoublePropertyListener[] EMPTY = newArrayOfSize(0)
 
@@ -4187,7 +4196,7 @@ package class PerTypeDoublePropertyData extends PerTypePrimitivePropertyData {
 
 
 /** Validates the range of a DoubleProperty */
-class DoublePropertyRangeValidator<OWNER_TYPE extends Bean, PROPERTY_TYPE>
+class DoublePropertyRangeValidator<OWNER_TYPE, PROPERTY_TYPE>
 implements DoublePropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
 	val double min
 	val double max
@@ -4221,9 +4230,11 @@ implements DoublePropertyValidator<OWNER_TYPE, PROPERTY_TYPE> {
 			return "newValue("+newValue+") > max("+max+")"
 		}
 		if (newValue < softMin) {
-			instance.log.warn("newValue("+newValue+") < softMin("+softMin+")")
+			val log = Logger.getLogger(instance.class.name)
+			log.warn("newValue("+newValue+") < softMin("+softMin+")")
 		} else if (newValue > softMax) {
-			instance.log.warn("newValue("+newValue+") > softMax("+softMax+")")
+			val log = Logger.getLogger(instance.class.name)
+			log.warn("newValue("+newValue+") > softMax("+softMax+")")
 		}
 		null
 	}
