@@ -23,6 +23,8 @@ import org.junit.Test
 import java.util.ArrayList
 import java.util.Arrays
 import java.util.Collections
+import com.blockwithme.meta.demo.impl.DemoTypeChildProvider
+import com.blockwithme.meta.demo.impl.DemoTypeChildImpl
 
 /**
  * @author monster
@@ -57,5 +59,17 @@ class TestMovingPerson extends BaseTst {
 			+"com.blockwithme.meta.demo.Person.profession, com.blockwithme.meta.demo.Salutable.hello, "
 			+"com.blockwithme.meta.demo.sub.LandMoving.fast, "
 			+"com.blockwithme.meta.demo.sub.LandMoving.landMovingSpeed]", list.toString)
+	}
+
+	@Test
+	def testFixedType() {
+		val dtc = new DemoTypeChildProvider().get as DemoTypeChildImpl
+		var failed = false
+		try {
+			dtc.childProp = new MovingPersonProvider().get
+		} catch(RuntimeException e) {
+			failed = true
+		}
+		Assert.assertTrue("DemoTypeChild.childProp accepted a Person subtype", failed)
 	}
 }

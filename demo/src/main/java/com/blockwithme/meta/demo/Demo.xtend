@@ -29,6 +29,7 @@ import com.blockwithme.meta.beans.annotations.UnorderedSetProperty
 import com.blockwithme.meta.beans.annotations.SortedSetProperty
 import com.blockwithme.meta.beans.annotations.HashSetProperty
 import com.blockwithme.meta.beans.annotations.ListProperty
+import com.blockwithme.meta.beans.annotations.FixedType
 
 /**
  * Hierarchy "root".
@@ -98,6 +99,7 @@ interface DemoTypeChild extends DemoType {
   int _childAge
 
   /** Child Object property */
+  @FixedType
   Person childProp
 
 }

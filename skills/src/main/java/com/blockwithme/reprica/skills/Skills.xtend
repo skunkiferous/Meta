@@ -29,6 +29,7 @@ import com.blockwithme.meta.beans.Ref
 import com.blockwithme.meta.beans.annotations.Bean
 
 // TODO Percent modifier on Percent Attribute should add itself, instead of multiplying by itself. But then non-Percent modifier on Percent Attribute should be illegal.
+// But if we change this, we need to update the Buff/Debuff/Immunity computation.
 
 
 /** A Filter specifies if an Effect is going to be taken into account when evaluating a Value. */
@@ -41,7 +42,7 @@ interface Filter {
 
 /** Base class for Filters. */
 abstract class AbstractFilter implements Filter {
-	/** Allows combining FIlters easily. */
+	/** Allows combining Filters easily. */
 	private static final class AndFilter extends AbstractFilter {
 		Filter first
 		Filter second
@@ -65,6 +66,9 @@ abstract class AbstractFilter implements Filter {
 /**
  * An effect category groups Effects of the same type together.
  * The buffs/debuffs are stackable if they pertain to different categories.
+ *
+ * To simply *cancel* an effect, you just need to apply a "0" effect of the
+ * same category.
  */
 enum EffectCategory {
 	/** Simple buff (or debuff) to one, multiple or all stats */
@@ -82,6 +86,22 @@ enum EffectCategory {
 	 * will be reached turn 5 and not turn 1
 	 */
 	Euphoria
+}
+
+/**
+ * EffectPolarity represents the "sign" of an Effect; an Effect can either be
+ * "positive" (a Buff), "negative" (a Debuff), or "neutral" (an "Immunity")
+ */
+enum EffectPolarity {
+	/** A "positive" Effect */
+	Buff,
+	/** A "negative" Effect */
+	Debuff,
+	/**
+	 * A "neutral" Effect (there would have been very little use to a "neutral"
+	 * Effect that did not also have some other side-effect)
+	 */
+	Immunity
 }
 
 /**
@@ -137,9 +157,17 @@ class AttributeCategory {
 
 /** Specifies what (technical) kind of data the attribute contains. */
 enum AttributeDataType {
+	/** Can be anything */
 	Number,
+	/** Should normally be between 0 (0%) and 1 (100%) */
 	Percent,
-	Boolean
+	/** Can only be 0 (false), or 1 (true) */
+	Boolean,
+	/**
+	 * The floating point value is cast as a long, which allows storing
+	 * *52* bits of data in the value.
+	 */
+	BitField
 }
 
 /** Base type of everything in this package */
@@ -244,8 +272,11 @@ interface Attribute extends Root {
 			val type = requireNonNull(requireNonNull(newEffect, "newEffect").type, "newEffect.type")
 			val category = requireNonNull(type.category, "newEffect.type.category")
 			val cat = type.category
-			_effects.removeIf[cat == category]
-			_effects.add(newEffect)
+			val effects = _effects
+			if (!effects.exists[(cat == category) && immunity]) {
+				effects.removeIf[cat == category]
+				effects.add(newEffect)
+			}
 		}
 
 		/** Update this attribute. This will delegate to the effects. */
@@ -350,8 +381,12 @@ interface EntityType extends MetaInfo, Provider<Entity> {
 		static def AttributeType newBooleanAttr(EntityType it, String name, AttributeCategory category) {
 			newAttr(it, name, category, 0.0, 0.0, 1.0, AttributeDataType.Boolean)
 		}
+		/** Creates and adds a new boolean attribute type */
+		static def AttributeType newBitFieldAttr(EntityType it, String name, AttributeCategory category) {
+			newAttr(it, name, category, 0.0, 0.0, SystemUtils.MAX_DOUBLE_INT_VALUE, AttributeDataType.BitField)
+		}
 		/** Creates and adds a new attribute type */
-		static def AttributeType newAttr(EntityType it, String name,
+		static private def AttributeType newAttr(EntityType it, String name,
 			AttributeCategory category, double defaultValue, double min, double max,
 			AttributeDataType dataType) {
 			if (_attributes.containsKey(name)) {
@@ -453,7 +488,11 @@ interface EffectType extends EntityType {
 			result.duration.baseValue = if (range == 0) {
 				_maxDuration
 			} else {
-				_minDuration + range*Skills.RANDOM.nextDouble
+				var rnd = Skills.RANDOM.nextDouble
+				while (rnd === 0) {
+					rnd = Skills.RANDOM.nextDouble
+				}
+				_minDuration + range*rnd
 			}
 			result.creationTurn = Skills.TURN.get
 			result
@@ -481,16 +520,15 @@ interface EffectType extends EntityType {
 			duration.defaultValue = (min + max)/2.0
 			it
 		}
+
+		/** Returns true, if the attribute matches */
+		static def boolean matches(EffectType it, ModifierTarget target, Attribute attribute) {
+			true
+		}
 	}
 
 	/** The category of an effect */
 	EffectCategory category
-
-	/**
-	 * Does this effect adds up to the base stat as an absolute value (false)
-	 * or instead as a percent (true)?
-	 */
-	boolean percent
 
 	/** Minimum duration */
 	double _minDuration
@@ -499,7 +537,11 @@ interface EffectType extends EntityType {
 	double _maxDuration
 }
 
-/** An effect can modify a value */
+/**
+ * An effect can modify a value.
+ *
+ * An effect can *either* be a "buff", a "debuff" or an "immunity".
+ */
 interface Effect extends Entity {
 	class Impl {
 		/** Evaluates the effective value of an attribute of an entity. */
@@ -510,10 +552,6 @@ interface Effect extends Entity {
 		/** Describes the evaluation of the effective value of an attribute of an entity. */
 		static def String describe(Effect it, Filter filter, String previousValue, int turn) {
 			if ((filter == null) || filter.accept(it)) _describe(previousValue, turn) else previousValue
-		}
-		/** Returns true if this Effect is "negative" (a debuff). */
-		static def boolean getDebuff(Effect it) {
-			!buff
 		}
 		/** The type of the entity */
 		static def EffectType getType(Effect it) {
@@ -541,6 +579,16 @@ interface Effect extends Entity {
 		static def int elapsed(Effect it, int turn) {
 			(turn - creationTurn)
 		}
+
+		/** Returns the "polarity" of an Effect. */
+		static def EffectPolarity getPolarity(Effect it) {
+			if (buff)
+				EffectPolarity.Buff
+			else if (debuff)
+				EffectPolarity.Debuff
+			else
+				EffectPolarity.Immunity
+		}
 	}
 
 	/** The turn on which the effect was created. */
@@ -552,10 +600,17 @@ interface Effect extends Entity {
 	def String _describe(String previousValue, int turn)
 	/** Returns true if this Effect is "positive" (a buff). */
 	def boolean getBuff()
+	/** Returns true if this Effect is "negative" (a debuff). */
+	def boolean getDebuff()
+	/**
+	 * Returns true if this Effect is an "immunity" (a zero-effect, that actively
+	 * prevent other effects of the same type from replacing it).
+	 */
+	def boolean getImmunity()
 }
 
 /**
- * The type of an effect.
+ * The type of a "basic" effect.
  */
 @Bean(instance=true)
 interface BasicEffectType extends EffectType {
@@ -563,22 +618,26 @@ interface BasicEffectType extends EffectType {
 		/** Pseudo-constructor for basic effects */
 		static def void _init_(BasicEffectType it) {
 			// We do not know yet if it's going to be a "percent" effect
-			newAttr("effect")
+			newAttr("strength")
 		}
 		/** Creates a new BasicEffect */
 		static def BasicEffect get(BasicEffectType it) {
 			val result = init(Meta.BASIC_EFFECT.create) as BasicEffect
 			val range = (_maxEffect - _minEffect)
-			result.effect.baseValue = if (range == 0) {
+			result.strength.baseValue = if (range == 0) {
 				_maxEffect
 			} else {
-				_minEffect + range*Skills.RANDOM.nextDouble
+				var rnd = Skills.RANDOM.nextDouble
+				while (rnd === 0) {
+					rnd = Skills.RANDOM.nextDouble
+				}
+				_minEffect + range*rnd
 			}
 			result
 		}
 
 		/** The value/strength of the "effect". */
-		static def AttributeType getEffect(BasicEffectType it) { attr("effect") }
+		static def AttributeType getStrength(BasicEffectType it) { attr("strength") }
 
 		/** Sets the effect range. */
 		static def BasicEffectType effectRange(BasicEffectType it, double min, double max) {
@@ -587,10 +646,27 @@ interface BasicEffectType extends EffectType {
 			}
 			it._minEffect = min
 			it._maxEffect = max
-			effect.defaultValue = (min + max)/2.0
+			strength.defaultValue = (min + max)/2.0
 			it
 		}
+
+		/** Returns true, if the attribute matches */
+		static def boolean matches(BasicEffectType it, ModifierTarget target, Attribute attribute) {
+			if (EffectType.Impl.matches(it, target, attribute)) {
+				val dataType = attribute.type.value.dataType
+				val number = (dataType === AttributeDataType.Number)
+				if (percent) ((dataType === AttributeDataType.Percent) || number) else number
+			} else {
+				false
+			}
+		}
 	}
+
+	/**
+	 * Does this effect adds up to the base stat as an absolute value (false)
+	 * or instead as a percent (true)?
+	 */
+	boolean percent
 
 	/** The minimum effect */
 	double _minEffect
@@ -599,18 +675,18 @@ interface BasicEffectType extends EffectType {
 	double _maxEffect
 }
 
-/** A basic effect uses a standard algorithm to modify a value */
+/**A basic effect uses a standard algorithm to modify a value */
 @Bean(instance=true)
 interface BasicEffect extends Effect {
 	class Impl {
 		/** {@inheritDoc} */
 		static def double _eval(BasicEffect it, double previousValue, int turn) {
-			val change = effect.eval(null, turn)
+			val change = strength.eval(null, turn)
 			if (type.percent) (previousValue * change) else (previousValue + change)
 		}
 		/** {@inheritDoc} */
 		static def String _describe(BasicEffect it, String previousValue, int turn) {
-			val change = effect.eval(null, turn)
+			val change = strength.eval(null, turn)
 			previousValue + " + "+type.name+"("+if (type.percent)
 				(change*100.0)+"%)"
 			else
@@ -618,14 +694,89 @@ interface BasicEffect extends Effect {
 		}
 		/** Returns true if this Effect is "positive" (a buff). */
 		static def boolean getBuff(BasicEffect it) {
-			if (type.percent) (effect.baseValue > 1) else (effect.baseValue > 0)
+			var result = if (type.percent) (strength.baseValue > 1) else (strength.baseValue > 0)
+			if (strength.type.value.moreIsBetter) result else !result
+		}
+		/** Returns true if this Effect is "negative" (a debuff). */
+		static def boolean getDebuff(BasicEffect it) {
+			var result = if (type.percent) (strength.baseValue < 1) else (strength.baseValue < 0)
+			if (strength.type.value.moreIsBetter) result else !result
+		}
+		/**
+		 * Returns true if this Effect is an "immunity" (a zero-effect, that actively
+		 * prevent other effects of the same type from replacing it).
+		 */
+		static def boolean getImmunity(BasicEffect it) {
+			// "neutral" stays neutral, independent of "moreIsBetter"
+			if (type.percent) (strength.baseValue === 1) else (strength.baseValue === 0)
 		}
 		/** The type of the entity */
 		static def BasicEffectType getType(BasicEffect it) {
 			_type.value as BasicEffectType
 		}
 		/** The value/strength of the "effect". */
-		static def Attribute getEffect(BasicEffect it) { attr("effect") }
+		static def Attribute getStrength(BasicEffect it) { attr("strength") }
+	}
+}
+
+/**
+ * The type of a "death" effect.
+ */
+@Bean(instance=true)
+interface DeathEffectType extends EffectType {
+	class Impl {
+		/** Pseudo-constructor for basic effects */
+		static def void _init_(DeathEffectType it) {
+		}
+		/** Creates a new BasicEffect */
+		static def DeathEffect get(DeathEffectType it) {
+			init(Meta.DEATH_EFFECT.create) as DeathEffect
+		}
+
+		/** Returns true, if the attribute matches */
+		static def boolean matches(DeathEffectType it, ModifierTarget target, Attribute attribute) {
+			if (EffectType.Impl.matches(it, target, attribute)) {
+				val at = attribute.type.value;
+				// TODO Update matching to something more reliable
+				(at.dataType === AttributeDataType.Boolean) && (at.name == "dead")
+			} else {
+				false
+			}
+		}
+	}
+}
+
+/** A "death" effect */
+@Bean(instance=true)
+interface DeathEffect extends Effect {
+	class Impl {
+		/** {@inheritDoc} */
+		static def double _eval(DeathEffect it, double previousValue, int turn) {
+			1
+		}
+		/** {@inheritDoc} */
+		static def String _describe(DeathEffect it, String previousValue, int turn) {
+			"1"
+		}
+		/** Returns true if this Effect is "positive" (a buff). */
+		static def boolean getBuff(DeathEffect it) {
+			false
+		}
+		/** Returns true if this Effect is "negative" (a debuff). */
+		static def boolean getDebuff(DeathEffect it) {
+			true
+		}
+		/**
+		 * Returns true if this Effect is an "immunity" (a zero-effect, that actively
+		 * prevent other effects of the same type from replacing it).
+		 */
+		static def boolean getImmunity(DeathEffect it) {
+			false
+		}
+		/** The type of the entity */
+		static def DeathEffectType getType(DeathEffect it) {
+			_type.value as DeathEffectType
+		}
 	}
 }
 
@@ -660,6 +811,10 @@ class EffectBuilder {
 			throw new IllegalStateException("type must be immutable!")
 		}
 		_matcher = matcher
+	}
+	/** Returns true, if the attribute matches */
+	def boolean matches(ModifierTarget target, Attribute attribute) {
+		type.matches(target, attribute) && matcher.matches(target, attribute)
 	}
 }
 
@@ -1186,6 +1341,19 @@ interface ModifierType extends EntityType {
 			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
 				category, minEffect, maxEffect, true, matcher)
 		}
+		/** Creates and adds a new DeathEffect builder */
+		static def EffectBuilder newDeathEffect(ModifierType it, double percentPerTurn,
+			double minDuration, double maxDuration) {
+			val type = Meta.DEATH_EFFECT_TYPE.create
+			type.percentActivation.defaultValue = 1
+			type.percentPerTurn.defaultValue = percentPerTurn
+			type.durationRange(minDuration, maxDuration)
+			type.category = EffectCategory.Simple
+			type.name = "Death"
+			val result = new EffectBuilder(type.snapshot, new SimpleAttributeMatcher("dead"))
+			_builders.add(result)
+			result
+		}
 
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newEffect(ModifierType it, double percentActivation,
@@ -1232,13 +1400,14 @@ interface Modifier extends Entity {
 			if ((targetEntity == null) || SystemUtils.isAssignableFrom(targetEntity, target.class)) {
 				val attrs = target.attrs
 				val rnd = Skills.RANDOM
-				if (cause.canApply(it, turn, rnd)) {
+				if (cause.canApply(it, turn, rnd) && target.canReceive(it, turn, rnd)) {
 					for (b : type._builders) {
 						for (a : attrs) {
-							if (b.matcher.matches(target, a)
+							if (b.matches(target, a)
 								&& (rnd.nextDouble < b.type.percentActivation.defaultValue)) {
 								val effect = b.type.get
-								if (cause.canApply(effect, turn, rnd)) {
+								if (cause.canApply(effect, turn, rnd)
+									&& target.canReceive(effect, turn, rnd)) {
 									a += effect
 									result = true
 								}
@@ -1317,6 +1486,9 @@ interface CharacterType extends EntityType {
 			newPercentAttr("visibleToFriends", AttributeCategory.Special).defaultValue = 1.0
 			newPercentAttr("visibleToFoes", AttributeCategory.Special).defaultValue = 1.0
 			newPercentAttr("confused", AttributeCategory.Special).moreIsBetter = false
+			newPercentAttr("skilled", AttributeCategory.Special).defaultValue = 1.0
+			newPercentAttr("paralyzed", AttributeCategory.Special).moreIsBetter = false
+			newBooleanAttr("dead", AttributeCategory.Special).moreIsBetter = false
 			newPercentAttr("xpGainRate", AttributeCategory.Special).defaultValue = 1.0
 			newPercentAttr("moneyGainRate", AttributeCategory.Special).defaultValue = 1.0
 			newPercentAttr("lootGainRate", AttributeCategory.Special).defaultValue = 1.0
@@ -1334,9 +1506,6 @@ interface CharacterType extends EntityType {
 			newAttr("level")
 			newAttr("xp")
 			newAttr("money")
-
-			newPercentAttr("skilled", AttributeCategory.Special).defaultValue = 1.0
-			newPercentAttr("paralyzed", AttributeCategory.Special).moreIsBetter = false
 		}
 		/** Creates a new Character */
 		static def Character get(CharacterType it) {
@@ -1472,6 +1641,8 @@ interface Character extends ModifierCause, ModifierTarget {
 		static def Attribute skilled(Character it) { attr("skilled") }
 		/** Is this Character paralyzed (unable to do anything), as a probability? */
 		static def Attribute paralyzed(Character it) { attr("paralyzed") }
+		/** Is the character "dead" (through a "Death" effect)? */
+		static def Attribute dead(Character it) { attr("dead") }
 	}
 
 	/** The player name */

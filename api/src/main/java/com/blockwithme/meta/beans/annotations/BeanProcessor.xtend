@@ -104,8 +104,6 @@ annotation ValidatorDef {
  * Specifies any number of Property Validators for a Bean.
  *
  * TODO New annotations validate @NN(not-null/not-negative)
- *
- * TODO We must be able to specify "exact type" for a Property, as this has an effect on serialization. It could be verified by the Validator.
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.CLASS)
@@ -157,6 +155,15 @@ annotation Range {
 	 */
 	String softMax = ""
 }
+
+/**
+ * Marks a Property as having a "fixed type", that is, only the exact type
+ * specified in the property is accepted as value. This has only meaning
+ * for Object properties.
+ */
+@Target(ElementType.FIELD)
+@Retention(RetentionPolicy.CLASS)
+annotation FixedType {}
 
 /**
  * A ValidationException is thrown, when one or more validators
@@ -331,6 +338,7 @@ package class PropertyInfo {
   boolean nullAllowed
   /** Virtual Property? Then the implementation is generated as part of the "Impl methods" */
   boolean virtualProp
+  boolean fixedType
   String min
   String max
   String softMin
@@ -510,7 +518,7 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
   static val BP_NON_BEAN_TODO = "BP_NON_BEAN_TODO"
   static val INIT = "_init_()"
   static val BEAN_FILTER = and(isInterface,withAnnotation(Bean))
-  static val PROP_INFO_FIELDS = 11
+  static val PROP_INFO_FIELDS = 12
 
   /** Returns true, if the type is/should be a Bean */
   private def boolean isBean(org.eclipse.xtend.lib.macro.declaration.Type type) {
@@ -975,6 +983,7 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
 	  // Collections can also be defined the old-fashioned way.
 	  val oldStyleCol = (("java.util.List" == nameNoGen) || ("java.util.Set" == nameNoGen))
 	  val isMap = ("java.util.Map" == nameNoGen)
+	  val fixedTypeAnnot = (f.findAnnotation(findTypeGlobally(FixedType)) !== null)
 	  val doc = if (f.docComment === null) "" else f.docComment
 	  val unorderedSetAnnot = f.findAnnotation(findTypeGlobally(UnorderedSetProperty))
 	  val orderedSetAnnot = f.findAnnotation(findTypeGlobally(OrderedSetProperty))
@@ -1063,14 +1072,14 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
 	    properties.set(index, new PropertyInfo(
 	        requireNonNull(simpleName, "f.simpleName"),
 	        requireNonNull(typeName, "typeName"), doc, collType, fixedSize,
-	        nullAllowed, virtualProp, min, max, softMin, softMax))
+	        nullAllowed, virtualProp, fixedTypeAnnot, min, max, softMin, softMax))
 	  } else if (isMap) {
 	  	// A Map property!
 	  	val String typeName = MapBean.name+ftypeName.substring(start)
 	    properties.set(index, new PropertyInfo(
 	        requireNonNull(simpleName, "f.simpleName"),
 	        requireNonNull(typeName, "typeName"), doc, null, -1,
-	        true, virtualProp, min, max, softMin, softMax))
+	        true, virtualProp, fixedTypeAnnot, min, max, softMin, softMax))
 	  } else {
 	  	  if (isCollProp) {
 	  		// NOT a collection property!
@@ -1079,7 +1088,7 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
 	      properties.set(index, new PropertyInfo(
 	        requireNonNull(simpleName, "f.simpleName"),
 	        requireNonNull(ftypeName, "ftypeName"),
-	        doc, null, -1, false, virtualProp, min, max, softMin, softMax))
+	        doc, null, -1, false, virtualProp, fixedTypeAnnot, min, max, softMin, softMax))
 	  }
 	  if (!validPropertyType(processingContext, ftype, td)) {
 	    result.validity.add("Property "+simpleName+" is not valid")
@@ -1536,9 +1545,10 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
       	if (index > 0) {
       		propTypeName = propTypeName.substring(0, index)
       	}
+      	val exactType = propInfo.fixedType
         // TODO Work out the real value for the boolean flags!
         '''BUILDER.new«propName»(«simpleName».class, "«propInfo.name»", «propTypeName».class,
-        true, true, false, new «accessorName»(), «isVirtual»)'''
+        true, true, «exactType», new «accessorName»(), «isVirtual»)'''
       } else {
         '''BUILDER.new«propName»(«simpleName».class, "«propInfo.name»", new «accessorName»(), «isVirtual»)'''
       }
@@ -2082,11 +2092,26 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
 				(impl.findMethod(setter, valueType) == null)
 			}
 			if (genSetter) {
-				val bodyText0 = '''«propInfo.name» = «castForColProp(propInfo)»interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», newValue);
+				val defaultBodyText = '''«propInfo.name» = «castForColProp(propInfo)»interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», newValue);
 return this;'''
-				val bodyText = if (isVirtual) "throw new UnsupportedOperationException();" else if (!colOrMap) bodyText0 else
+//FixedType
+				val bodyText = if (isVirtual)
+					"throw new UnsupportedOperationException();"
+				else if (!colOrMap) {
+					if (propInfo.fixedType) {
+						val dot = propInfo.type.lastIndexOf('.')
+						val pkgName = propInfo.type.substring(0, dot)
+						val simpleName = propInfo.type.substring(dot+1)
+						val implName = implName(pkgName, simpleName)
+						'''if ((newValue != null) && !(newValue.getClass() == «implName».class)) {
+throw new IllegalArgumentException("Type should be «propTypeRef.name» but was "+newValue.getClass().getName());
+}
+'''+defaultBodyText
+					} else
+						defaultBodyText
+				} else
 			'''checkNullOrImmutable(newValue);
-'''+bodyText0
+'''+defaultBodyText
 				onMethodAdded(impl.addMethod(setter) [
 					visibility = Visibility.PUBLIC
 					static = false
@@ -2282,6 +2307,8 @@ return result;'''
 						i = i + 1
 						props.set(i, String.valueOf(p.virtualProp))
 						i = i + 1
+						props.set(i, String.valueOf(p.fixedType))
+						i = i + 1
 						props.set(i, p.min)
 						i = i + 1
 						props.set(i, p.max)
@@ -2352,12 +2379,13 @@ return result;'''
 			val fixedSize = Integer.parseInt(_props.get(i+4))
 			val nullAllowed = Boolean.parseBoolean(_props.get(i+5))
 			val virtualProp = Boolean.parseBoolean(_props.get(i+6))
-		  	val min = _props.get(i+7)
-		  	val max = _props.get(i+8)
-		  	val softMin = _props.get(i+9)
-		  	val softMax = _props.get(i+10)
+			val fixedType = Boolean.parseBoolean(_props.get(i+7))
+		  	val min = _props.get(i+8)
+		  	val max = _props.get(i+9)
+		  	val softMin = _props.get(i+10)
+		  	val softMax = _props.get(i+11)
 			properties.set(i/PROP_INFO_FIELDS, new PropertyInfo(name, type, comment, colType,
-				fixedSize, nullAllowed, virtualProp, min, max, softMin, softMax))
+				fixedSize, nullAllowed, virtualProp, fixedType, min, max, softMin, softMax))
 			i = i + PROP_INFO_FIELDS
 		}
 		val innerImplObj = new InnerImpl(innerImpl.get(0))
