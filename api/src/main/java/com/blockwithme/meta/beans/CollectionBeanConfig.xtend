@@ -29,26 +29,46 @@ class CollectionBeanConfig {
 	private static val ConcurrentHashMap<Integer,CollectionBeanConfig> FIXED_SIZE_CACHE = new ConcurrentHashMap
 
 	/** A list, without null */
-	public static val LIST = new CollectionBeanConfig(-1, false, false, false, false, false, false, false, true)
+	public static val LIST = new CollectionBeanConfig("LIST", -1, false, false, false, false, false, false, false, true)
 
 	/** A list, with null allowed */
-	public static val NULL_LIST = new CollectionBeanConfig(-1, true, false, false, false, false, false, false, true)
+	public static val NULL_LIST = new CollectionBeanConfig("NULL_LIST", -1, true, false, false, false, false, false, false, true)
 
 	/** A sorted-set, without null */
-	public static val SORTED_SET = new CollectionBeanConfig(-1, false, false, true, false, false, false, true, false)
+	public static val SORTED_SET = new CollectionBeanConfig("SORTED_SET", -1, false, false, true, false, false, false, true, false)
 
 	/** An ordered-set, without null */
-	public static val ORDERED_SET = new CollectionBeanConfig(-1, false, false, false, true, false, false, true, false)
+	public static val ORDERED_SET = new CollectionBeanConfig("ORDERED_SET", -1, false, false, false, true, false, false, true, false)
 
 	/** An unordered-set, without null */
-	public static val UNORDERED_SET = new CollectionBeanConfig(-1, false, false, false, false, true, false, true, false)
+	public static val UNORDERED_SET = new CollectionBeanConfig("UNORDERED_SET", -1, false, false, false, false, true, false, true, false)
 
 	/** An hash-set, without null */
-	public static val HASH_SET = new CollectionBeanConfig(-1, false, false, false, false, false, true, true, false)
+	public static val HASH_SET = new CollectionBeanConfig("HASH_SET", -1, false, false, false, false, false, true, true, false)
+
+	/** A list, without null */
+	public static val EXACT_LIST = new CollectionBeanConfig("EXACT_LIST", -1, false, true, false, false, false, false, false, true)
+
+	/** A list, with null allowed */
+	public static val EXACT_NULL_LIST = new CollectionBeanConfig("EXACT_NULL_LIST", -1, true, true, false, false, false, false, false, true)
+
+	/** A sorted-set, without null */
+	public static val EXACT_SORTED_SET = new CollectionBeanConfig("EXACT_SORTED_SET", -1, false, true, true, false, false, false, true, false)
+
+	/** An ordered-set, without null */
+	public static val EXACT_ORDERED_SET = new CollectionBeanConfig("EXACT_ORDERED_SET", -1, false, true, false, true, false, false, true, false)
+
+	/** An unordered-set, without null */
+	public static val EXACT_UNORDERED_SET = new CollectionBeanConfig("EXACT_UNORDERED_SET", -1, false, true, false, false, true, false, true, false)
+
+	/** An hash-set, without null */
+	public static val EXACT_HASH_SET = new CollectionBeanConfig("EXACT_HASH_SET", -1, false, true, false, false, false, true, true, false)
 
 	/** The default type, for collections */
 	public static val DEFAULT = UNORDERED_SET
 
+	/** The String description */
+	String name
 	/** Either -1, or the "fixed-size" of the collection */
 	int fixedSize
 	/** Do we allow null values? (Must be true for fixed-size) */
@@ -69,23 +89,7 @@ class CollectionBeanConfig {
 	boolean list
 
 	override toString() {
-		if (this === LIST) {
-			"LIST"
-		} else if (this === NULL_LIST) {
-			"NULL_LIST"
-		} else if (this === SORTED_SET) {
-			"SORTED_SET"
-		} else if (this === ORDERED_SET) {
-			"ORDERED_SET"
-		} else if (this === UNORDERED_SET) {
-			"UNORDERED_SET"
-		} else if (this === HASH_SET) {
-			"HASH_SET"
-		} else if (onlyExactType) {
-			"FIXED("+fixedSize+",true)"
-		} else {
-			"FIXED("+fixedSize+",false)"
-		}
+		name
 	}
 	/** Are we some kind of unordered set? */
 	def boolean pseudoUnorderedSet() {
@@ -134,7 +138,12 @@ class CollectionBeanConfig {
 		val Integer key = if (onlyExactType) fixedSize else (-1 - fixedSize)
 		var result = FIXED_SIZE_CACHE.get(key)
 		if (result === null) {
-			result = new CollectionBeanConfig(fixedSize, true, onlyExactType, false, false, false, false, false, true)
+			val name = if (onlyExactType) {
+				"FIXED("+fixedSize+",true)"
+			} else {
+				"FIXED("+fixedSize+",false)"
+			}
+			result = new CollectionBeanConfig(name, fixedSize, true, onlyExactType, false, false, false, false, false, true)
 			val cached = FIXED_SIZE_CACHE.putIfAbsent(key, result)
 			if (cached !== null) {
 				result = cached

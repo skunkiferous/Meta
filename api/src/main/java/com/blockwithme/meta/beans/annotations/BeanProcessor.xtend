@@ -2142,28 +2142,48 @@ throw new IllegalArgumentException("Type should be «propTypeRef.name» but was 
 		if (!isVirtual && (colType !== null)) {
 			val creator = "get"+tfu
 			if (impl.findDeclaredMethod(creator) === null) {
-				// TODO Verify if we should match "exact type" for the values, and specify
-				// it in the call to newFixedSizeList() and possibly use different config constants
 				val propType = propInfo.type
 				val index = propType.indexOf("<")
 				val componentType = propType.substring(index+1, propType.length-1)
 				val config = if (propInfo.fixedSize > 0) {
-					CollectionBeanConfig.name+".newFixedSizeList("+propInfo.fixedSize+", false)"
+					if (propInfo.fixedType)
+						CollectionBeanConfig.name+".newFixedSizeList("+propInfo.fixedSize+", true)"
+					else
+						CollectionBeanConfig.name+".newFixedSizeList("+propInfo.fixedSize+", false)"
 				} else {
 					// Generated code does not compile *in Maven* if I use a switch!
 					if (CollectionPropertyType.unorderedSet == colType) {
-						CollectionBeanConfig.name+".UNORDERED_SET"
-					} else if (CollectionPropertyType.orderedSet == colType) {
-						CollectionBeanConfig.name+".ORDERED_SET"
-					} else if (CollectionPropertyType.sortedSet == colType) {
-						CollectionBeanConfig.name+".SORTED_SET"
-					} else if (CollectionPropertyType.hashSet == colType) {
-						CollectionBeanConfig.name+".HASH_SET"
-					} else if (CollectionPropertyType.list == colType) {
-						if (propInfo.nullAllowed)
-							CollectionBeanConfig.name+".NULL_LIST"
+						if (propInfo.fixedType)
+							CollectionBeanConfig.name+".EXACT_UNORDERED_SET"
 						else
-							CollectionBeanConfig.name+".LIST"
+							CollectionBeanConfig.name+".UNORDERED_SET"
+					} else if (CollectionPropertyType.orderedSet == colType) {
+						if (propInfo.fixedType)
+							CollectionBeanConfig.name+".EXACT_ORDERED_SET"
+						else
+							CollectionBeanConfig.name+".ORDERED_SET"
+					} else if (CollectionPropertyType.sortedSet == colType) {
+						if (propInfo.fixedType)
+							CollectionBeanConfig.name+".EXACT_SORTED_SET"
+						else
+							CollectionBeanConfig.name+".SORTED_SET"
+					} else if (CollectionPropertyType.hashSet == colType) {
+						if (propInfo.fixedType)
+							CollectionBeanConfig.name+".EXACT_HASH_SET"
+						else
+							CollectionBeanConfig.name+".HASH_SET"
+					} else if (CollectionPropertyType.list == colType) {
+						if (propInfo.nullAllowed) {
+							if (propInfo.fixedType)
+								CollectionBeanConfig.name+".EXACT_NULL_LIST"
+							else
+								CollectionBeanConfig.name+".NULL_LIST"
+						} else {
+							if (propInfo.fixedType)
+								CollectionBeanConfig.name+".EXACT_LIST"
+							else
+								CollectionBeanConfig.name+".LIST"
+						}
 					} else {
 						throw new IllegalStateException(""+colType)
 					}
