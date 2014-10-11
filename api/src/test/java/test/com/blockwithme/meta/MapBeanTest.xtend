@@ -650,4 +650,14 @@ class MapBeanTest extends BaseTst {
     	assertEquals("iter.next", 2L, iter.next)
 		assertFalse("iter.hasNext", iter.hasNext)
 	}
+
+	@Test
+	public def void testMapFixedKey() {
+		assertTrue("test fixed key type", false)
+	}
+
+	@Test
+	public def void testMapFixedValue() {
+		assertTrue("test fixed value type", false)
+	}
 }

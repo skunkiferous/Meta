@@ -192,11 +192,17 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
     /** Is the Type of the keys a Bean? */
     private final boolean keyTypeIsBean;
 
+    /** Is the Type of the keys fixed? */
+    private final boolean keyTypeIsFixed;
+
     /** The Type of the values. */
     private final Type<V> valueType;
 
     /** Is the Type of the values a Bean? */
     private final boolean valueTypeIsBean;
+
+    /** Is the Type of the values fixed? */
+    private final boolean valueTypeIsFixed;
 
     /** The collection size */
     private int size;
@@ -295,7 +301,8 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
      * @param theValueType
      */
     public MapBeanImpl(final Type<?> metaType, final Type<K> theKeyType,
-            final Type<V> theValueType) {
+            final boolean theKeyTypeIsFixed, final Type<V> theValueType,
+            final boolean theValueTypeIsFixed) {
         super(metaType);
         interceptor = DefaultObjectObjectMapInterceptor.INSTANCE;
         keyType = Objects.requireNonNull(theKeyType, "theKeyType");
@@ -305,6 +312,8 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
                 valueType.type);
         keys = theKeyType.empty;
         values = theValueType.empty;
+        keyTypeIsFixed = theKeyTypeIsFixed;
+        valueTypeIsFixed = theValueTypeIsFixed;
     }
 
     /* (non-Javadoc)
@@ -463,17 +472,54 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
         return result;
     }
 
+    /** Validate the new key and value, based on the expected types. */
+    private void validateNewKeyAndValue(final K key, final V value) {
+        if (key == null) {
+            throw new NullPointerException("key");
+        }
+        final Class<?> keyClass = key.getClass();
+        final Class<?> expectedKeyClass = keyType.type;
+        if (keyTypeIsFixed) {
+            if (keyClass != expectedKeyClass) {
+                throw new IllegalArgumentException("Expected key type: "
+                        + expectedKeyClass + " Actual key type: " + keyClass);
+            }
+        } else {
+            // Just to be safe ...
+            if (!expectedKeyClass.isAssignableFrom(keyClass)) {
+                throw new IllegalArgumentException("Expected key type: "
+                        + expectedKeyClass + " Actual key type: " + keyClass);
+            }
+        }
+        if (value != null) {
+            final Class<?> valueClass = value.getClass();
+            final Class<?> expectedValueClass = valueType.type;
+            if (valueTypeIsFixed) {
+                if (valueClass != expectedValueClass) {
+                    throw new IllegalArgumentException("Expected value type: "
+                            + expectedValueClass + " Actual value type: "
+                            + valueClass);
+                }
+            } else {
+                // Just to be safe ...
+                if (!expectedValueClass.isAssignableFrom(valueClass)) {
+                    throw new IllegalArgumentException("Expected value type: "
+                            + expectedValueClass + " Actual value type: "
+                            + valueClass);
+                }
+            }
+        }
+    }
+
     /* (non-Javadoc)
      * @see java.util.Map#put(java.lang.Object, java.lang.Object)
      */
     @Override
     public V put(final K key, final V value) {
-        if (key == null) {
-            throw new NullPointerException("key");
-        }
         if (isImmutable()) {
             throw new UnsupportedOperationException(this + " is immutable!");
         }
+        validateNewKeyAndValue(key, value);
         final K[] array = keys;
         final int length = array.length;
         if (length > 0) {
@@ -704,7 +750,8 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
     /** Make a new instance of the same type as self. */
     @Override
     protected _BeanImpl newInstance() {
-        return new MapBeanImpl<K, V>(metaType, keyType, valueType);
+        return new MapBeanImpl<K, V>(metaType, keyType, keyTypeIsFixed,
+                valueType, valueTypeIsFixed);
     }
 
     /* (non-Javadoc)

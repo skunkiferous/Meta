@@ -156,7 +156,7 @@ class MyCollectionType {
 
 class MyMapType {
   /** MapBean Property*/
-  package var map = new MapBeanImpl<String,Long>(Meta.MAP_BEAN, JavaMeta.STRING, JavaMeta.LONG)
+  package var map = new MapBeanImpl<String,Long>(Meta.MAP_BEAN, JavaMeta.STRING, false, JavaMeta.LONG, false)
 }
 
 class TestMeta {
