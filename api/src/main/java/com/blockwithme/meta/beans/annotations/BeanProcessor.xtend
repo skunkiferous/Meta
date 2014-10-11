@@ -2094,7 +2094,6 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
 			if (genSetter) {
 				val defaultBodyText = '''«propInfo.name» = «castForColProp(propInfo)»interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», newValue);
 return this;'''
-//FixedType
 				val bodyText = if (isVirtual)
 					"throw new UnsupportedOperationException();"
 				else if (!colOrMap) {
@@ -2236,12 +2235,14 @@ return result;'''
 	          	val keyTypeBeanInfo = beanInfo(processingContext, keyTypeName)
       			val keyTypeType = beanInfoToTypeCode(keyTypeBeanInfo, beanInfo.pkgName)
       			val keyTypeType2 = checkComponentType(impl, beanInfo, propInfo, keyTypeType, keyTypeName, keyTypeBeanInfo)
+      			val fixedKey = propInfo.fixedType
       			val valueTypeBeanInfo = beanInfo(processingContext, valueTypeName)
       			val valueTypeType = beanInfoToTypeCode(valueTypeBeanInfo, beanInfo.pkgName)
       			val valueTypeType2 = checkComponentType(impl, beanInfo, propInfo, valueTypeType, valueTypeName, valueTypeBeanInfo)
+      			val fixedValue = propInfo.fixedType
       			val bodyText = '''«propTypeRef» result = «getter»();
 if (result == null) {
-	«propInfo.name» = «castForColProp(propInfo)»interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», new «MapBeanImpl.name»<«keyTypeName»,«valueTypeName»>(«Meta.name».MAP_BEAN, «keyTypeType2»,«valueTypeType2»));
+	«propInfo.name» = «castForColProp(propInfo)»interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», new «MapBeanImpl.name»<«keyTypeName»,«valueTypeName»>(«Meta.name».MAP_BEAN, «keyTypeType2»,«fixedKey»,«valueTypeType2»,«fixedValue»));
 	result = «getter»();
 }
 return result;'''

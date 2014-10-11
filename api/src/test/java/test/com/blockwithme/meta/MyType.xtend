@@ -155,8 +155,14 @@ class MyCollectionType {
 }
 
 class MyMapType {
-  /** MapBean Property*/
+  /** MapBean Property */
   package var map = new MapBeanImpl<String,Long>(Meta.MAP_BEAN, JavaMeta.STRING, false, JavaMeta.LONG, false)
+  /** MapBean "non-fixed" Property */
+  package var nonfixed = new MapBeanImpl<CharSequence,CharSequence>(Meta.MAP_BEAN, JavaMeta.CHAR_SEQUENCE, false, JavaMeta.CHAR_SEQUENCE, false)
+  /** MapBean "fixed key" Property */
+  package var fixedKey = new MapBeanImpl<CharSequence,CharSequence>(Meta.MAP_BEAN, JavaMeta.CHAR_SEQUENCE, true, JavaMeta.CHAR_SEQUENCE, false)
+  /** MapBean "fixed value" Property */
+  package var fixedValue = new MapBeanImpl<CharSequence,CharSequence>(Meta.MAP_BEAN, JavaMeta.CHAR_SEQUENCE, false, JavaMeta.CHAR_SEQUENCE, true)
 }
 
 class TestMeta {

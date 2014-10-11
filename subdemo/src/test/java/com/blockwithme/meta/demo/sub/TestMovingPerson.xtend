@@ -25,6 +25,7 @@ import java.util.Arrays
 import java.util.Collections
 import com.blockwithme.meta.demo.impl.DemoTypeChildProvider
 import com.blockwithme.meta.demo.impl.DemoTypeChildImpl
+import com.blockwithme.meta.demo.impl.PersonProvider
 
 /**
  * @author monster
@@ -65,6 +66,12 @@ class TestMovingPerson extends BaseTst {
 	def testFixedType() {
 		val dtc = new DemoTypeChildProvider().get as DemoTypeChildImpl
 		var failed = false
+		try {
+			dtc.childProp = new PersonProvider().get
+		} catch(RuntimeException e) {
+			failed = true
+		}
+		Assert.assertFalse("DemoTypeChild.childProp does not accepted a Person", failed)
 		try {
 			dtc.childProp = new MovingPersonProvider().get
 		} catch(RuntimeException e) {

@@ -653,11 +653,41 @@ class MapBeanTest extends BaseTst {
 
 	@Test
 	public def void testMapFixedKey() {
-		assertTrue("test fixed key type", false)
+    	val mmt = new MyMapType
+    	assertNotNull("nonfixed", mmt.nonfixed)
+    	assertNotNull("fixedKey", mmt.fixedKey)
+    	var failed = false
+    	try {
+    		mmt.nonfixed.put("key", null)
+    	} catch (RuntimeException e) {
+    		failed = true
+    	}
+		assertFalse("nonfixed key must accept subtype", failed)
+    	try {
+    		mmt.fixedKey.put("key", null)
+    	} catch (RuntimeException e) {
+    		failed = true
+    	}
+		assertTrue("fixedKey key must NOT accept subtype", failed)
 	}
 
 	@Test
 	public def void testMapFixedValue() {
-		assertTrue("test fixed value type", false)
+    	val mmt = new MyMapType
+    	assertNotNull("nonfixed", mmt.nonfixed)
+    	assertNotNull("fixedValue", mmt.fixedValue)
+    	var failed = false
+    	try {
+    		mmt.nonfixed.put("key", "value")
+    	} catch (RuntimeException e) {
+    		failed = true
+    	}
+		assertFalse("nonfixed value must accept subtype", failed)
+    	try {
+    		mmt.fixedValue.put("key", "value")
+    	} catch (RuntimeException e) {
+    		failed = true
+    	}
+		assertTrue("fixed value must NOT accept subtype", failed)
 	}
 }
