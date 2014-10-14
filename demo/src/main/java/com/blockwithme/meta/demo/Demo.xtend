@@ -30,6 +30,7 @@ import com.blockwithme.meta.beans.annotations.SortedSetProperty
 import com.blockwithme.meta.beans.annotations.HashSetProperty
 import com.blockwithme.meta.beans.annotations.ListProperty
 import com.blockwithme.meta.beans.annotations.FixedType
+import com.blockwithme.meta.beans.annotations.NotNull
 
 /**
  * Hierarchy "root".
@@ -146,6 +147,7 @@ interface Named extends Salutable {
 		}
 	}
 	/** name of something */
+	@NotNull
 	String name
 }
 

@@ -690,4 +690,16 @@ class MapBeanTest extends BaseTst {
     	}
 		assertTrue("fixed value must NOT accept subtype", failed)
 	}
+
+    @Test
+    public def void testNullValueNotAllowed() {
+    	val mmt = new MyMapType
+    	var failed = false
+    	try {
+	    	mmt.nonNullValueMap.put("one", null)
+    	} catch (RuntimeException e) {
+    		failed = true
+    	}
+		assertTrue("value cannot be null", failed)
+	}
 }

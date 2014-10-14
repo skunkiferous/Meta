@@ -299,4 +299,17 @@ class BeanTest extends BaseTst {
     	Assert.assertEquals("iter.next", "John", iter.next)
 		Assert.assertFalse("iter.hasNext", iter.hasNext)
 	}
+
+	/** Test that name cannot be set to null */
+	@Test
+	def void testNotNull() {
+		val person = new PersonProvider().get
+		var exception = false
+		try {
+			person.name = null
+		} catch(Throwable t) {
+			exception = true
+		}
+		Assert.assertTrue("person allows null name", exception)
+	}
 }

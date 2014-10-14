@@ -646,7 +646,7 @@ final class ListenersMap {
  * we can have any number of parents.
  *
  * The Type instance should be created like this:
- *     public final static Type<XXX> TYPE = Hierarchy.postCreateType(new Type(...));
+ *     public final static Type<ABC> TYPE = Hierarchy.postCreateType(new Type(...));
  * or like this, if you use a sub-class:
  *     public final static MyType TYPE = Hierarchy.postCreateType(new MyType(...));
  * To make sure it is correctly registered.
@@ -995,8 +995,6 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> implements PropertyMatcher {
       throw new IllegalStateException(theType
         +": all properties must be either ObjectProperty or PrimitiveProperty")
     }
-    // TODO We should verify that Properties can only depend on "accepted types"
-    // (From modules we depend on)
 
     // Merge all properties in allProperties
     validators = if (validatorsMap === null) Collections.emptyMap else validatorsMap.get
@@ -1626,7 +1624,7 @@ extends MetaBase<Type<OWNER_TYPE>> implements IProperty<OWNER_TYPE, PROPERTY_TYP
    * given type. -1 when not found.
    */
   override final int inheritedPropertyId(Type<?> type) {
-    // TODO This can probably be improved ...
+    // TODO inheritedPropertyId() can probably be improved ...
     val typeID = requireNonNull(type, "type").typeId
     val oldArray = inheritedIndex.get
     var array = oldArray
@@ -1701,6 +1699,9 @@ interface ObjectPropertyValidator<OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE> {
 	/** Empty array of Validators */
 	ObjectPropertyValidator[] EMPTY = newArrayOfSize(0)
 
+	/** The Not-Null validator */
+	ObjectPropertyValidator NOT_NULL = new NotNullObjectPropertyValidator
+
 	/**
 	 * Validates Property change events, returning non-null on error.
 	 * Warnings should be logged on the bean logger instead.
@@ -1729,6 +1730,12 @@ interface ObjectPropertyListener<OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE> {
 	)
 }
 
+final class NotNullObjectPropertyValidator implements ObjectPropertyValidator<Object,Object,Object> {
+	override beforeObjectPropertyChange(Object instance,
+		ObjectProperty<Object, Object, Object, ?> prop, Object oldValue, Object newValue) {
+		if (newValue === null) prop.fullName+" cannot be null" else null
+	}
+}
 
 /**
  * Base-class for a data object, which contains the ObjectProperty-related
@@ -1777,6 +1784,9 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
     /** Is only the exact declared type accepted? (No subclass?) */
     public val boolean exactType
 
+    /** Can this value be set to null? */
+    public val boolean nullAllowed
+
     /** The Getter Functor */
     public val ObjectFuncObject<PROPERTY_TYPE,OWNER_TYPE> getter
 
@@ -1788,7 +1798,7 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
 
   /** Constructor */
   package new(PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> theData,
-    boolean theShared, boolean theActualInstance, boolean theExactType,
+    boolean theShared, boolean theActualInstance, boolean theExactType, boolean theNullAllowed,
     ObjectFuncObject<PROPERTY_TYPE,OWNER_TYPE> theGetter,
     ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> theSetter) {
     super(theData)
@@ -1796,6 +1806,7 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
     shared = theShared
     actualInstance = theActualInstance
     exactType = theExactType
+    nullAllowed = theNullAllowed
     getter = theGetter
     setter = theSetter
     converter = theData.converter
@@ -1804,23 +1815,23 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
   /** Constructor */
   protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
     Class<PROPERTY_TYPE> theContentType, boolean theShared, boolean theActualInstance,
-    boolean theExactType, ObjectFuncObject<PROPERTY_TYPE,OWNER_TYPE> theGetter,
+    boolean theExactType, boolean theNullAllowed, ObjectFuncObject<PROPERTY_TYPE,OWNER_TYPE> theGetter,
     ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> theSetter, boolean theVirtual) {
     this(builder.preRegisterProperty(theOwner, theSimpleName,
       new NOPObjectConverter(theContentType) as ObjectConverter as CONVERTER,
       PropertyType::OBJECT, -1, theContentType, theVirtual), theShared, theActualInstance,
-      theExactType, requireNonNull(theGetter, "theGetter"),
+      theExactType, theNullAllowed, requireNonNull(theGetter, "theGetter"),
       theSetter)
   }
 
   /** Constructor */
   protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
     CONVERTER theConverter, Class<PROPERTY_TYPE> theContentType, boolean theShared, boolean theActualInstance,
-    boolean theExactType, ObjectFuncObject<PROPERTY_TYPE,OWNER_TYPE> theGetter,
+    boolean theExactType, boolean theNullAllowed, ObjectFuncObject<PROPERTY_TYPE,OWNER_TYPE> theGetter,
     ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> theSetter, boolean theVirtual) {
     this(builder.preRegisterProperty(theOwner, theSimpleName, theConverter,
       PropertyType::OBJECT, -1, theContentType, theVirtual), theShared, theActualInstance,
-      theExactType, requireNonNull(theGetter, "theGetter"),
+      theExactType, theNullAllowed, requireNonNull(theGetter, "theGetter"),
       theSetter)
   }
 
@@ -1950,9 +1961,6 @@ implements ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> {
  * be primitive properties, we provide a "default value", to eliminate the
  * possibility of getting "null" as value.
  *
- * TODO If we use an *array* to store the meta-property values, then we really must have a specific
- * meta-property-ID, rather then use the global ID, as that makes the array much too big!
- *
  * @author monster
  */
 class MetaProperty<OWNER_TYPE extends MetaBase<?>, PROPERTY_TYPE>
@@ -1970,10 +1978,10 @@ ObjectConverter<OWNER_TYPE,PROPERTY_TYPE,PROPERTY_TYPE>> {
     theOwner
   }
 
-  /** Constructor */
+  /** Constructor. */
   private new(PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, ObjectConverter<OWNER_TYPE,PROPERTY_TYPE,PROPERTY_TYPE>> theData,
     PROPERTY_TYPE theDefaultValue) {
-    super(theData, true, true, false,
+    super(theData, true, true, false, true,
       new MetaGetter<OWNER_TYPE,PROPERTY_TYPE>(theData.globalMetaPropertyId, theDefaultValue),
       new MetaSetter<OWNER_TYPE,PROPERTY_TYPE>(theData.globalMetaPropertyId))
     if (theDefaultValue != null) {
@@ -2834,10 +2842,10 @@ extends ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, String, EnumStringConverter<OW
 implements IEnumProperty<OWNER_TYPE, PROPERTY_TYPE, EnumStringConverter<OWNER_TYPE, PROPERTY_TYPE>> {
   /** Constructor */
   protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
-    Class<PROPERTY_TYPE> dataType, ObjectFuncObject<PROPERTY_TYPE, OWNER_TYPE> theGetter,
+    Class<PROPERTY_TYPE> dataType, boolean theNullAllowed, ObjectFuncObject<PROPERTY_TYPE, OWNER_TYPE> theGetter,
     ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> theSetter, boolean theVirtual) {
     super(builder, theOwner, theSimpleName,
-      new EnumStringConverter<OWNER_TYPE, PROPERTY_TYPE>(dataType), dataType, true, true, true,
+      new EnumStringConverter<OWNER_TYPE, PROPERTY_TYPE>(dataType), dataType, true, true, true, theNullAllowed,
       theGetter, theSetter, theVirtual
     )
   }
@@ -4605,16 +4613,19 @@ public interface JavaMeta {
   /** The Hierarchy of Java's Runtime Types */
   public static val BUILDER = HierarchyBuilderFactory.getHierarchyBuilder(Object.name)
 
-  /** The primitive Serializable Type */
+  /** The Class Type */
+  public static val CLASS = BUILDER.newType(Class, null, Kind.Data, null, null)
+
+  /** The Serializable Type */
   public static val SERIALIZABLE = BUILDER.newType(Serializable, null, Kind.Trait, null, null)
 
-  /** The primitive Object Type */
+  /** The Object Type */
   public static val OBJECT = BUILDER.newType(Object, ObjectProvider.INSTANCE, Kind.Data, null, null)
 
-  /** The primitive Comparable Type */
+  /** The Comparable Type */
   public static val COMPARABLE = BUILDER.newType(Comparable, null, Kind.Trait, null, null)
 
-  /** The primitive Number Type */
+  /** The Number Type */
   public static val NUMBER = BUILDER.newType(Number, null, Kind.Data, null, null, #[SERIALIZABLE])
 
   /** The primitive Void Type */
@@ -4644,10 +4655,10 @@ public interface JavaMeta {
   /** The primitive Double Type */
   public static val DOUBLE = BUILDER.newType(Double, new ConstantProvider(0.0), Kind.Data, null, null, #[NUMBER, COMPARABLE])
 
-  /** The primitive CharSequence Type */
+  /** The CharSequence Type */
   public static val CHAR_SEQUENCE = BUILDER.newType(CharSequence, null, Kind.Trait, null, null)
 
-  /** The primitive String Type */
+  /** The String Type */
   public static val STRING = BUILDER.newType(String,
     new ConstantProvider(""), Kind.Data, null, null, #[SERIALIZABLE, CHAR_SEQUENCE, COMPARABLE])
 
@@ -4657,7 +4668,7 @@ public interface JavaMeta {
 
   /** The iterator virtual property of the Iterables */
     public static val ITERABLE_ITERATOR_PROP = BUILDER.newObjectProperty(
-      Iterable, "iterator", Iterator, false, false, false, [iterator], null, true)
+      Iterable, "iterator", Iterator, false, false, false, false, [iterator], null, true)
 
   /** The Iterable Type */
   public static val ITERABLE = BUILDER.newType(Iterable, new ConstantProvider(Collections.emptyList),
@@ -4665,7 +4676,7 @@ public interface JavaMeta {
 
   /** The content/toArray "property" of the collections */
     public static val COLLECTION_CONTENT_PROP = BUILDER.newObjectProperty(
-      Collection, "content", typeof(Object[]), false, false, false,
+      Collection, "content", typeof(Object[]), false, false, false, false,
       [ if(it instanceof ContentOwner) content else toArray],
       [obj,value|obj.clear;obj.addAll(Arrays.asList(value));obj], false)
 
@@ -4693,7 +4704,7 @@ public interface JavaMeta {
 
   /** The content/toArray "property" of the Maps */
     public static val MAP_CONTENT_PROP = BUILDER.newObjectProperty(
-      Map, "content", typeof(Map.Entry[]), false, false, false,
+      Map, "content", typeof(Map.Entry[]), false, false, false, false,
       [ if(it instanceof ContentOwner) content else entrySet.toArray(<Map.Entry<?,?>>newArrayOfSize(size))],
       [obj,value|obj.clear;for (v : value) { val e = v as Map.Entry<?,?>; obj.put(e.key, e.value)};obj], false)
 
@@ -4707,14 +4718,14 @@ public interface JavaMeta {
 
   /** The iterator virtual property of the Map.entrySet */
     public static val MAP_ITERATOR_PROP = BUILDER.newObjectProperty(
-      Map, "iterator", Iterator, false, false, false, [entrySet.iterator], null, true)
+      Map, "iterator", Iterator, false, false, false, false, [entrySet.iterator], null, true)
 
   /** The Map Type */
   public static val MAP = BUILDER.newType(Map, MapProvider.INSTANCE, Kind.Trait, null, null,
     Type.NO_TYPE, <Property>newArrayList(MAP_CONTENT_PROP, MAP_EMPTY_PROP, MAP_SIZE_PROP), TWO_NULL_OBJECT_PROPS)
 
   /** The java.lang package */
-  public static val JAVA_LANG_PACKAGE = BUILDER.newTypePackage(OBJECT, VOID,
+  public static val JAVA_LANG_PACKAGE = BUILDER.newTypePackage(CLASS, OBJECT, VOID,
     COMPARABLE, NUMBER, BOOLEAN, BYTE, CHARACTER, SHORT, INTEGER, LONG,
     FLOAT, DOUBLE, CHAR_SEQUENCE, STRING, ITERABLE
   )

@@ -156,13 +156,24 @@ class MyCollectionType {
 
 class MyMapType {
   /** MapBean Property */
-  package var map = new MapBeanImpl<String,Long>(Meta.MAP_BEAN, JavaMeta.STRING, false, JavaMeta.LONG, false)
+  package var map = new MapBeanImpl<String,Long>(
+  	Meta.MAP_BEAN, JavaMeta.STRING, false, JavaMeta.LONG, false, true
+  )
+  package var nonNullValueMap = new MapBeanImpl<String,Long>(
+  	Meta.MAP_BEAN, JavaMeta.STRING, false, JavaMeta.LONG, false, false
+  )
   /** MapBean "non-fixed" Property */
-  package var nonfixed = new MapBeanImpl<CharSequence,CharSequence>(Meta.MAP_BEAN, JavaMeta.CHAR_SEQUENCE, false, JavaMeta.CHAR_SEQUENCE, false)
+  package var nonfixed = new MapBeanImpl<CharSequence,CharSequence>(
+  	Meta.MAP_BEAN, JavaMeta.CHAR_SEQUENCE, false, JavaMeta.CHAR_SEQUENCE, false, true
+  )
   /** MapBean "fixed key" Property */
-  package var fixedKey = new MapBeanImpl<CharSequence,CharSequence>(Meta.MAP_BEAN, JavaMeta.CHAR_SEQUENCE, true, JavaMeta.CHAR_SEQUENCE, false)
+  package var fixedKey = new MapBeanImpl<CharSequence,CharSequence>(
+  	Meta.MAP_BEAN, JavaMeta.CHAR_SEQUENCE, true, JavaMeta.CHAR_SEQUENCE, false, true
+  )
   /** MapBean "fixed value" Property */
-  package var fixedValue = new MapBeanImpl<CharSequence,CharSequence>(Meta.MAP_BEAN, JavaMeta.CHAR_SEQUENCE, false, JavaMeta.CHAR_SEQUENCE, true)
+  package var fixedValue = new MapBeanImpl<CharSequence,CharSequence>(
+  	Meta.MAP_BEAN, JavaMeta.CHAR_SEQUENCE, false, JavaMeta.CHAR_SEQUENCE, true, true
+  )
 }
 
 class TestMeta {
@@ -214,7 +225,7 @@ class TestMeta {
 
   public static val OBJECT_PROP = BUILDER.newObjectProperty(
     MyType, "objectProp",
-    String, true, true, true,
+    String, true, true, true, true,
     [objectProp], [obj,value|obj.objectProp = value;obj], false
   )
 
@@ -251,27 +262,27 @@ class TestMeta {
 
   public static val UNORDERED_SET_PROP = BUILDER.newObjectProperty(
     MyCollectionType, "unorderedSet",
-    CollectionBean, true, true, true,
+    CollectionBean, true, true, true, false,
     [unorderedSet], [obj,value|obj.unorderedSet = value;obj], false)
 
   public static val ORDERED_SET_PROP = BUILDER.newObjectProperty(
     MyCollectionType, "orderedSet",
-    CollectionBean, true, true, true,
+    CollectionBean, true, true, true, false,
     [orderedSet], [obj,value|obj.orderedSet = value;obj], false)
 
   public static val SORTED_SET_PROP = BUILDER.newObjectProperty(
     MyCollectionType, "sortedSet",
-    CollectionBean, true, true, true,
+    CollectionBean, true, true, true, false,
     [sortedSet], [obj,value|obj.sortedSet = value;obj], false)
 
   public static val LIST_PROP = BUILDER.newObjectProperty(
     MyCollectionType, "list",
-    CollectionBean, true, true, true,
+    CollectionBean, true, true, true, false,
     [list], [obj,value|obj.list = value;obj], false)
 
   public static val FIXED_SIZE_LIST_PROP = BUILDER.newObjectProperty(
     MyCollectionType, "fixedSizeList",
-    CollectionBean, true, true, true,
+    CollectionBean, true, true, true, false,
     [fixedSizeList], [obj,value|obj.fixedSizeList = value;obj], false)
 
   public static val Type<MyCollectionType> MY_COLLECTION_TYPE

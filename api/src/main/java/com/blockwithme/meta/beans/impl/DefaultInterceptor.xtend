@@ -302,16 +302,18 @@ class DefaultInterceptor implements Interceptor {
             if (error !== null) {
             	throw new ValidationException(error)
             }
-        }
-		val result = objectPropertyChanged(instance, prop.fullName,
-			instance.indexOfProperty(prop), oldValue, newValue)
-		if (oldValue !== newValue) {
-            val metaType = instance.metaType as Type
+			val result = objectPropertyChanged(instance, prop.fullName,
+				instance.indexOfProperty(prop), oldValue, newValue)
             for (l : prop.getListeners(metaType)) {
-            	l.afterObjectPropertyChangeValidation(instance, prop, oldValue, newValue)
+            	l.afterObjectPropertyChangeValidation(instance, prop, oldValue, result)
             }
+	        result
+        } else {
+        	if ((newValue == null) && !prop.nullAllowed) {
+        		throw new ValidationException(prop.fullName+" cannot be null")
+        	}
+        	newValue
         }
-        result
 	}
 
 	protected def <E> objectPropertyChanged(_Bean instance, Object propId,

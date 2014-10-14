@@ -756,14 +756,14 @@ class HierarchyBuilder {
 	? extends ObjectConverter<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE>> newObjectProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		Class<?> theContentType, boolean theShared, boolean theActualInstance,
-		boolean theExactType, ObjectFuncObject<PROPERTY_TYPE,OWNER_TYPE> theGetter,
+		boolean theExactType, boolean theNullAllowed, ObjectFuncObject<PROPERTY_TYPE,OWNER_TYPE> theGetter,
 		ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> theSetter, boolean theVirtual) {
 		// theContentType is not typesafe on purpose, as this makes the code
 		// generation much easier for object properties
 		new ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE,
 			ObjectConverter<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE>>(this, theOwner, theSimpleName,
 			theContentType as Class<PROPERTY_TYPE>, theShared, theActualInstance, theExactType,
-			theGetter, theSetter, theVirtual)
+			theNullAllowed, theGetter, theSetter, theVirtual)
 	}
 
 	/** Creates a Object Property */
@@ -771,13 +771,14 @@ class HierarchyBuilder {
 	? extends ObjectConverter<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE>> newObjectProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		Class<?> theContentType, boolean theShared, boolean theActualInstance,
-		boolean theExactType, ObjectPropertyAccessor<OWNER_TYPE,PROPERTY_TYPE> theAccessor, boolean theVirtual) {
+		boolean theExactType, boolean theNullAllowed,
+		ObjectPropertyAccessor<OWNER_TYPE,PROPERTY_TYPE> theAccessor, boolean theVirtual) {
 		// theContentType is not typesafe on purpose, as this makes the code
 		// generation much easier for object properties
 		new ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE,
 			ObjectConverter<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE>>(this, theOwner, theSimpleName,
 			theContentType as Class<PROPERTY_TYPE>, theShared, theActualInstance, theExactType,
-			theAccessor, theAccessor, theVirtual)
+			theNullAllowed, theAccessor, theAccessor, theVirtual)
 	}
 
 	/** Creates a Object Property */
@@ -786,13 +787,13 @@ class HierarchyBuilder {
 		ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE, CONVERTER> newObjectProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName, CONVERTER theConverter,
 		Class<?> theContentType, boolean theShared, boolean theActualInstance,
-		boolean theExactType, ObjectFuncObject<PROPERTY_TYPE,OWNER_TYPE> theGetter,
+		boolean theExactType, boolean theNullAllowed, ObjectFuncObject<PROPERTY_TYPE,OWNER_TYPE> theGetter,
 		ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> theSetter, boolean theVirtual) {
 		// theContentType is not typesafe on purpose, as this makes the code
 		// generation much easier for object properties
 		new ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE, CONVERTER>(this, theOwner, theSimpleName,
 			theConverter, theContentType as Class<PROPERTY_TYPE>, theShared, theActualInstance, theExactType,
-			theGetter, theSetter, theVirtual)
+			theNullAllowed, theGetter, theSetter, theVirtual)
 	}
 
 	/** Creates a Object Property */
@@ -801,12 +802,13 @@ class HierarchyBuilder {
 		ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE, CONVERTER> newObjectProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName, CONVERTER theConverter,
 		Class<?> theContentType, boolean theShared, boolean theActualInstance,
-		boolean theExactType, ObjectPropertyAccessor<OWNER_TYPE,PROPERTY_TYPE> theAccessor, boolean theVirtual) {
+		boolean theExactType, boolean theNullAllowed,
+		ObjectPropertyAccessor<OWNER_TYPE,PROPERTY_TYPE> theAccessor, boolean theVirtual) {
 		// theContentType is not typesafe on purpose, as this makes the code
 		// generation much easier for object properties
 		new ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE, CONVERTER>(this, theOwner, theSimpleName,
 			theConverter, theContentType as Class<PROPERTY_TYPE>, theShared, theActualInstance, theExactType,
-			theAccessor, theAccessor, theVirtual)
+			theNullAllowed, theAccessor, theAccessor, theVirtual)
 	}
 
 	/** Creates a new Type */
@@ -900,6 +902,25 @@ class HierarchyBuilder {
 		val dependencies = if ((Object.name == name) || (class == MetaHierarchyBuilder)) newArrayOfSize(0) else findDependencies(registered)
 		hierarchy = new Hierarchy(this, registered, dependencies)
 		close()
+		for (pkg : registered) {
+			for (type : pkg.types) {
+				for (prop : type.allProperties) {
+					if ((prop.contentTypeClass !== null)
+						&& !prop.contentTypeClass.array) {
+						try {
+							val h = prop.contentType.hierarchy()
+							if ((h !== hierarchy) && !dependencies.contains(h)) {
+								LOG.error("Property "+prop.fullName+" has contentType "
+									+prop.contentType.fullName+" which is not part of "+type.fullName
+									+" Hierarchy's dependencies")
+							}
+						} catch (RuntimeException e) {
+							LOG.error("Property "+prop.fullName+" contentType could not be validated", e)
+						}
+					}
+				}
+			}
+		}
 		hierarchy
 	}
 

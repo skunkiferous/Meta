@@ -77,6 +77,7 @@ import com.blockwithme.meta.IntegerPropertyRangeValidator
 import com.blockwithme.meta.FloatPropertyRangeValidator
 import com.blockwithme.meta.LongPropertyRangeValidator
 import com.blockwithme.meta.DoublePropertyRangeValidator
+import com.blockwithme.meta.ObjectPropertyValidator
 
 /**
  * Specifies a Validator for a Property.
@@ -102,8 +103,6 @@ annotation ValidatorDef {
 
 /**
  * Specifies any number of Property Validators for a Bean.
- *
- * TODO New annotations validate @NN(not-null/not-negative)
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.CLASS)
@@ -115,6 +114,10 @@ annotation Validators {
  * Specifies a "range" for some Properties.
  *
  * The range is validated by instantiating an appropriate validator.
+ *
+ * TODO This should be used also to specify collection/map size limits
+ *
+ * TODO We need a TEST CASE for @Range
  */
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.CLASS)
@@ -166,6 +169,14 @@ annotation Range {
 annotation FixedType {}
 
 /**
+ * Marks a Property as not accepting null. This has only meaning for Object
+ * properties. Note that it has limited use, if the default value in null.
+ */
+@Target(ElementType.FIELD)
+@Retention(RetentionPolicy.CLASS)
+annotation NotNull {}
+
+/**
  * A ValidationException is thrown, when one or more validators
  * find problems with the new value of a Property.
  */
@@ -194,7 +205,7 @@ class ValidationException extends RuntimeException {
  * check at compile time if they are of the right type.
  *
  * TODO Until retro-fitting is available, it would be good to be able
- * to declare listeners or "other" types, for example a type you depend
+ * to declare listeners on "other" types, for example a type you depend
  * on from a base project.
  */
 @Retention(RetentionPolicy.CLASS)
@@ -335,6 +346,13 @@ package class PropertyInfo {
   String comment
   /*CollectionPropertyType*/String colType
   int fixedSize
+  /**
+   * Default true for anything except collections.
+   * Default false for collection (but not for maps).
+   * Collections has it's own annotation field to set this.
+   * Can be set to false by using NotNull on non-collection property.
+   * Has no effect on primitive property.
+   */
   boolean nullAllowed
   /** Virtual Property? Then the implementation is generated as part of the "Impl methods" */
   boolean virtualProp
@@ -750,6 +768,11 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
   	propInfo.type.startsWith(ListBean.name+"<") || propInfo.type.startsWith(SetBean.name+"<")
   }
 
+  private static def isPrimitive(PropertyInfo propInfo) {
+  	propertyMethodName(propInfo) !== "ObjectProperty"
+  }
+
+
   /** Extract virtual properties from the optional Impl class */
   private def void extractVirtualProperties(Map<String,Object> processingContext, BeanInfo result,
   	TypeDeclaration td, ClassDeclaration innerImplClass, ArrayList<PropertyInfo> properties,
@@ -784,7 +807,7 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
 	private def void preDefineDefaultedMethods(Map<String,Object> processingContext,
 		TypeDeclaration td, ClassDeclaration innerImplClass,
 		HashMap<String,String> ownInnerMethods, MethodDeclaration m) {
-		// TODO
+		// TODO preDefineDefaultedMethods()
 	}
 
   // STEP 1/2
@@ -1007,8 +1030,10 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
 	  	softMin = rangeAnn.getStringValue("softMin")
 	  	softMax = rangeAnn.getStringValue("softMax")
 	  }
+	  var nullAllowed = (f.findAnnotation(findTypeGlobally(NotNull)) === null)
 	  if (ftype.array || oldStyleCol) {
 	  	// A collection property!
+  		nullAllowed = false
 	  	val componentTypeName0 = if (oldStyleCol) {
 	  		ftypeName.substring(start+1, ftypeName.length - 1)
 		} else {
@@ -1017,8 +1042,8 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
 	  	val componentTypeName = wrapperOrObject(componentTypeName0)
 	  	var String collType = null
 	  	var fixedSize = -1
-	  	var nullAllowed = false
 	  	if (isCollProp) {
+	  		// @NotNull is implicitly default for collections
 	  		if (oldStyleCol) {
 	  				throw new IllegalStateException(
 	  					"'old-style' collection types do not support collection annotations on "
@@ -1079,7 +1104,7 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
 	    properties.set(index, new PropertyInfo(
 	        requireNonNull(simpleName, "f.simpleName"),
 	        requireNonNull(typeName, "typeName"), doc, null, -1,
-	        true, virtualProp, fixedTypeAnnot, min, max, softMin, softMax))
+	        nullAllowed, virtualProp, fixedTypeAnnot, min, max, softMin, softMax))
 	  } else {
 	  	  if (isCollProp) {
 	  		// NOT a collection property!
@@ -1088,7 +1113,7 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
 	      properties.set(index, new PropertyInfo(
 	        requireNonNull(simpleName, "f.simpleName"),
 	        requireNonNull(ftypeName, "ftypeName"),
-	        doc, null, -1, false, virtualProp, fixedTypeAnnot, min, max, softMin, softMax))
+	        doc, null, -1, nullAllowed, virtualProp, fixedTypeAnnot, min, max, softMin, softMax))
 	  }
 	  if (!validPropertyType(processingContext, ftype, td)) {
 	    result.validity.add("Property "+simpleName+" is not valid")
@@ -1501,7 +1526,7 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
   }
 
   /** Returns the property creation method name */
-  private def String propertyMethodName(PropertyInfo propInfo) {
+  private static def String propertyMethodName(PropertyInfo propInfo) {
     switch (propInfo.type) {
       case "boolean": "BooleanProperty"
       case "byte": "ByteProperty"
@@ -1546,9 +1571,10 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
       		propTypeName = propTypeName.substring(0, index)
       	}
       	val exactType = propInfo.fixedType
+      	val nullAllowed = propInfo.nullAllowed
         // TODO Work out the real value for the boolean flags!
         '''BUILDER.new«propName»(«simpleName».class, "«propInfo.name»", «propTypeName».class,
-        true, true, «exactType», new «accessorName»(), «isVirtual»)'''
+        true, true, «exactType», «nullAllowed», new «accessorName»(), «isVirtual»)'''
       } else {
         '''BUILDER.new«propName»(«simpleName».class, "«propInfo.name»", new «accessorName»(), «isVirtual»)'''
       }
@@ -1620,7 +1646,7 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
   }
 
   /** Generates an appropriate Validator instantiation */
-  private def String genValidatorFor(PropertyInfo propInfo) {
+  private def String genRangeValidatorFor(PropertyInfo propInfo) {
   	var min = ""
   	var max = ""
   	var softMin = ""
@@ -1750,8 +1776,9 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
    /** Finds and returns the Validators, if any. */
    private def String findPropertyValidators(TypeDeclaration intf, BeanInfo beanInfo) {
 	   	val ranges = beanInfo.properties.filter[(min!=""||max!=""||softMin!=""||softMax!="")].iterator
+	   	val notNulls = beanInfo.properties.filter[(!nullAllowed && !isCol(it) && !isMap(it) && !isPrimitive(it))].iterator
 	  	val validatorsAnn = intf.findAnnotation(findTypeGlobally(Validators))
-	  	if ((validatorsAnn !== null) || ranges.hasNext) {
+	  	if ((validatorsAnn !== null) || notNulls.hasNext || ranges.hasNext) {
 		   	val buf = new StringBuilder('''new «ValidatorsMap.name»()''')
 		   	if (validatorsAnn !== null) {
 		  		for (a : validatorsAnn.getAnnotationArrayValue("value")) {
@@ -1774,7 +1801,12 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
 	  		while (ranges.hasNext) {
 	  			val r = ranges.next
 	  			val propName = r.name
-	  			buf.append('.add("').append(propName).append('", new ').append(genValidatorFor(r)).append(")")
+	  			buf.append('.add("').append(propName).append('", new ').append(genRangeValidatorFor(r)).append(")")
+	  		}
+	  		while (notNulls.hasNext) {
+	  			val nn = notNulls.next
+	  			val propName = nn.name
+	  			buf.append('.add("').append(propName).append('", ').append(ObjectPropertyValidator.name).append(".NOT_NULL)")
 	  		}
 		   	buf.toString
 	  	} else {
@@ -2242,7 +2274,7 @@ return result;'''
       			val fixedValue = propInfo.fixedType
       			val bodyText = '''«propTypeRef» result = «getter»();
 if (result == null) {
-	«propInfo.name» = «castForColProp(propInfo)»interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», new «MapBeanImpl.name»<«keyTypeName»,«valueTypeName»>(«Meta.name».MAP_BEAN, «keyTypeType2»,«fixedKey»,«valueTypeType2»,«fixedValue»));
+	«propInfo.name» = «castForColProp(propInfo)»interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», new «MapBeanImpl.name»<«keyTypeName»,«valueTypeName»>(«Meta.name».MAP_BEAN, «keyTypeType2»,«fixedKey»,«valueTypeType2»,«fixedValue», «propInfo.nullAllowed»));
 	result = «getter»();
 }
 return result;'''
@@ -2582,7 +2614,7 @@ return result;'''
 		}
 	}
 
-  /** Allows another Processor to add the Type field to Meta */
+  /** Add the Type field to Meta */
   private def void addTypeField(Map<String,Object> processingContext, TypeDeclaration type) {
 	// STEP 30
     // Non-Beans types, which should have been registered in Meta, but could not.

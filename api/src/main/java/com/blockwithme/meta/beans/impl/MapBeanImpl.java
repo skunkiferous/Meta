@@ -204,6 +204,9 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
     /** Is the Type of the values fixed? */
     private final boolean valueTypeIsFixed;
 
+    /** Can values be null? */
+    private final boolean nullValueAllowed;
+
     /** The collection size */
     private int size;
 
@@ -302,7 +305,7 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
      */
     public MapBeanImpl(final Type<?> metaType, final Type<K> theKeyType,
             final boolean theKeyTypeIsFixed, final Type<V> theValueType,
-            final boolean theValueTypeIsFixed) {
+            final boolean theValueTypeIsFixed, final boolean theNullValueAllowed) {
         super(metaType);
         interceptor = DefaultObjectObjectMapInterceptor.INSTANCE;
         keyType = Objects.requireNonNull(theKeyType, "theKeyType");
@@ -314,6 +317,7 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
         values = theValueType.empty;
         keyTypeIsFixed = theKeyTypeIsFixed;
         valueTypeIsFixed = theValueTypeIsFixed;
+        nullValueAllowed = theNullValueAllowed;
     }
 
     /* (non-Javadoc)
@@ -508,6 +512,8 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
                             + valueClass);
                 }
             }
+        } else if (!nullValueAllowed) {
+            throw new NullPointerException("value");
         }
     }
 
@@ -751,7 +757,7 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
     @Override
     protected _BeanImpl newInstance() {
         return new MapBeanImpl<K, V>(metaType, keyType, keyTypeIsFixed,
-                valueType, valueTypeIsFixed);
+                valueType, valueTypeIsFixed, nullValueAllowed);
     }
 
     /* (non-Javadoc)

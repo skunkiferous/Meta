@@ -176,6 +176,9 @@ interface _Bean extends Bean, BeanVisitable {
 /**
  * The Bean visitor.
  *
+ * TODO THIS IS TOTALLY WRONG! The main point of "Meta" is that you can define meta-info
+ * for *any* type. So the "Visitor" should NOT be Bean-specific!!!
+ *
  * TODO We must have not only JSON serialization, but also TSV, XML, "Properties" and "binary".
  * We need all those serializations, so we know our Visitor API is "complete".
  */
@@ -721,15 +724,15 @@ interface Meta {
 
 	/** The parent virtual Bean property */
     val _BEAN__PARENT_BEAN = BUILDER.newObjectProperty(
-    	_Bean, "parentBean", _Bean, true, true, false, [parentBean], null, true)
+    	_Bean, "parentBean", _Bean, true, true, false, false, [parentBean], null, true)
 
 	/** The parent "key" virtual Bean property */
     val _BEAN__PARENT_KEY = BUILDER.newObjectProperty(
-    	_Bean, "parentKey", Object, true, true, false, [parentKey], null, true)
+    	_Bean, "parentKey", Object, true, true, false, false, [parentKey], null, true)
 
 	/** The root virtual Bean property */
     val _BEAN__ROOT_BEAN = BUILDER.newObjectProperty(
-    	_Bean, "rootBean", _Bean, true, true, false, [rootBean], null, true)
+    	_Bean, "rootBean", _Bean, true, true, false, false, [rootBean], null, true)
 
 	/** The _Bean Type */
 	val _BEAN = BUILDER.newType(_Bean, null, Kind.Trait, null, null, #[BEAN],
@@ -749,11 +752,11 @@ interface Meta {
 
 	/** The configuration property of the collection beans */
     val COLLECTION_BEAN__CONFIG = BUILDER.newObjectProperty(
-    	CollectionBean, "config", CollectionBeanConfig, true, true, true, [config], null, false)
+    	CollectionBean, "config", CollectionBeanConfig, true, true, true, false, [config], null, false)
 
 	/** The value-type property of the collection beans */
     val COLLECTION_BEAN__VALUE_TYPE = BUILDER.newObjectProperty(
-    	CollectionBean, "valueType", Type, true, true, true, [valueType], null, false)
+    	CollectionBean, "valueType", Type, true, true, true, false, [valueType], null, false)
 
 	/** The CollectionBean Type */
 	val COLLECTION_BEAN = BUILDER.newType(CollectionBean, null, Kind.Trait, null, null,
@@ -787,11 +790,11 @@ interface Meta {
 
 	/** The key-type property of the Map beans */
     val MAP_BEAN__KEY_TYPE = BUILDER.newObjectProperty(
-    	MapBean, "keyType", Type, true, true, true, [keyType], null, false)
+    	MapBean, "keyType", Type, true, true, true, false, [keyType], null, false)
 
 	/** The value-type property of the Map beans */
     val MAP_BEAN__VALUE_TYPE = BUILDER.newObjectProperty(
-    	MapBean, "valueType", Type, true, true, true, [valueType], null, false)
+    	MapBean, "valueType", Type, true, true, true, false, [valueType], null, false)
 
 	/** The MapBean Type */
 	val MAP_BEAN = BUILDER.newType(MapBean, null, Kind.Trait, null, null,
