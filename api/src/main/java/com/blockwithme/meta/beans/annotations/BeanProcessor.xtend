@@ -463,7 +463,7 @@ annotation _BeanInfo {
  * Stores in the implementation class-file the directly implemented interface
  */
 @Target(ElementType.TYPE)
-@Retention(RetentionPolicy.CLASS)
+@Retention(RetentionPolicy.RUNTIME)
 annotation BeanImplemented {
     Class<?> implemented
 }

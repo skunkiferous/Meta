@@ -73,6 +73,8 @@ import static com.blockwithme.util.shared.Preconditions.*
 import static java.util.Objects.*
 
 import static extension com.blockwithme.util.xtend.JavaUtilLoggingExtension.*
+import java.math.BigInteger
+import java.math.BigDecimal
 
 /**
  * Hierarchy represents a Type hierarchy. It is not limited to types in the
@@ -130,6 +132,16 @@ public class Hierarchy implements Comparable<Hierarchy> {
   /** The depth of the Hierarchy. */
   public val int depth
 
+	/** Returns the "full name" of a type */
+	private static def String fullNameOf(Class<?> theType) {
+		requireNonNull(theType, "theType")
+		if (theType.array) {
+			theType.simpleName
+		} else {
+			theType.name
+		}
+	}
+
     /** All the *currently initialized* Hierarchies */
     static def getHierarchies() {
     synchronized (Hierarchy) {
@@ -169,7 +181,7 @@ public class Hierarchy implements Comparable<Hierarchy> {
       requireNonNull(hierarchy, "hierarchy")
     for (p : hierarchy.allPackages) {
       LOG.info("Setting Hierarchy "+hierarchy+" in Package "+p)
-      p.hierarchy = hierarchy
+      p._hierarchy = hierarchy
     }
         for (listener : listeners) {
           postCreateHierarchy(hierarchy, listener)
@@ -354,6 +366,12 @@ public class Hierarchy implements Comparable<Hierarchy> {
           }
         }
       }
+	    if (result === null) {
+		  	val isArray = name.endsWith("[]")
+		  	if (isArray) {
+		  		return JavaMeta.OBJECT_ARRAY
+		  	}
+	  	}
     }
     result
   }
@@ -363,7 +381,7 @@ public class Hierarchy implements Comparable<Hierarchy> {
    * Also delegates to dependencies.
    */
   final def <E> Type<E> findType(Class<E> clazz) {
-    findType(requireNonNull(clazz, "clazz").name, new HashSet<Hierarchy>()) as Type<E>
+    findType(fullNameOf(clazz), new HashSet<Hierarchy>()) as Type<E>
   }
 
   /**
@@ -371,7 +389,7 @@ public class Hierarchy implements Comparable<Hierarchy> {
    * Does not delegate to dependencies.
    */
   final def <E> Type<E> findTypeDirect(Class<E> clazz) {
-    getAllTypesByName().get(requireNonNull(clazz, "clazz").name) as Type<E>
+    getAllTypesByName().get(fullNameOf(clazz)) as Type<E>
   }
 
   override int compareTo(Hierarchy o) {
@@ -440,7 +458,7 @@ abstract class MetaBase<PARENT> implements Comparable<MetaBase<?>> {
     /** Parent object. */
     package volatile var PARENT parent
     /** Hierarchy */
-    package volatile var Hierarchy hierarchy
+    package volatile var Hierarchy _hierarchy
 
   /** Checks no null is in array */
   protected static def <E> E[] checkArray(E[] array, String name) {
@@ -450,6 +468,16 @@ abstract class MetaBase<PARENT> implements Comparable<MetaBase<?>> {
     }
     array
   }
+
+	/** Returns the "full name" of a type */
+	protected static def String fullNameOf(Class<?> theType) {
+		requireNonNull(theType, "theType")
+		if (theType.array) {
+			theType.simpleName
+		} else {
+			theType.name
+		}
+	}
 
   /** Constructor */
   package new(String theFullName, String theSimpleName, int theGlobalId) {
@@ -490,18 +518,18 @@ abstract class MetaBase<PARENT> implements Comparable<MetaBase<?>> {
 
     /** The Hierarchy */
     def final Hierarchy hierarchy() {
-      if (hierarchy == null) {
+      if (_hierarchy == null) {
         if (parent instanceof MetaBase<?>) {
-          hierarchy = (parent as MetaBase<?>).hierarchy()
+          _hierarchy = (parent as MetaBase<?>).hierarchy()
         }
-        if (hierarchy == null) {
+        if (_hierarchy == null) {
           // Fail!
           val prt = if (parent === null) "null" else parent.class.name+" "+parent
           throw new IllegalStateException(class.name+" "+fullName+": hierarchy is null; parent="+prt)
         }
-        requireNonNull(hierarchy, "hierarchy")
+        requireNonNull(_hierarchy, "hierarchy")
       }
-      hierarchy
+      _hierarchy
     }
 }
 
@@ -577,7 +605,11 @@ package class NoConstructor<JAVA_TYPE> implements Provider<JAVA_TYPE> {
     type = requireNonNull(theTypeName, "theTypeName")
   }
   new(Class<JAVA_TYPE> theType) {
-    type = requireNonNull(theType, "theType").name
+  	var name = requireNonNull(theType, "theType").name
+  	if (theType.array) {
+  		name = theType.simpleName
+  	}
+    type = name
   }
   override get() {
     throw new UnsupportedOperationException("Instances of type "+type
@@ -894,7 +926,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> implements PropertyMatcher {
 	ValidatorsMap validatorsMap, ListenersMap listenersMap,
     Type<?>[] theParents, Property<JAVA_TYPE,?>[] theProperties,
     ObjectProperty<JAVA_TYPE,Type<?>,?,?>[] componentTypes) {
-    super(requireNonNull(theType, "theType").name,
+    super(fullNameOf(theType),
       theType.simpleName, requireNonNull(registration, "registration").globalId)
     if (theType.primitive) {
       throw new IllegalArgumentException("Primitive TYPE "
@@ -1223,6 +1255,11 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> implements PropertyMatcher {
 	override final IProperty<?,?>[] listProperty(Object obj) {
 		allInheritedProperties
 	}
+
+	/** Returns true, if the current Type is the Type of the given instance. */
+	final def isExactTypeOf(Object obj) {
+		(obj !== null) && (obj.class === type)
+	}
 }
 
 
@@ -1230,6 +1267,9 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> implements PropertyMatcher {
  * The Property visitor
  */
 interface PropertyVisitor {
+  /** Visits an Object instance. */
+  def void visit(Type<?> type, Object instance)
+
   /** Visits a Boolean Property */
   def void visit(BooleanProperty<?,?,?> prop)
 
@@ -1610,13 +1650,17 @@ extends MetaBase<Type<OWNER_TYPE>> implements IProperty<OWNER_TYPE, PROPERTY_TYP
     parent
   }
 
-  /** The content/data Type of this property */
-  override final Type<PROPERTY_TYPE> contentType() {
+  /** Search for the content/data Type of this property */
+  def final Type<PROPERTY_TYPE> findContentType() {
     if (contentType === null) {
       contentType = hierarchy().findType(contentTypeClass)
-      requireNonNull(contentType, contentTypeClass.name)
     }
     contentType
+  }
+
+  /** The content/data Type of this property */
+  override final Type<PROPERTY_TYPE> contentType() {
+    requireNonNull(findContentType(), contentTypeClass.name)
   }
 
   /**
@@ -4560,6 +4604,18 @@ package final class ObjectProvider implements Provider<Object> {
   public static val INSTANCE = new ObjectProvider
 }
 
+/** A Provider that returns an empty Object[] */
+package final class ObjectArrayProvider implements Provider<Object[]> {
+	val empty = newArrayOfSize(0)
+  /** Returns the constant */
+  override get() {
+    empty
+  }
+
+  /** The singleton instance */
+  public static val INSTANCE = new ObjectArrayProvider
+}
+
 /** A Provider that returns Lists */
 package final class ListProvider implements Provider<List> {
   /** Returns the constant */
@@ -4616,11 +4672,14 @@ public interface JavaMeta {
   /** The Class Type */
   public static val CLASS = BUILDER.newType(Class, null, Kind.Data, null, null)
 
-  /** The Serializable Type */
-  public static val SERIALIZABLE = BUILDER.newType(Serializable, null, Kind.Trait, null, null)
-
   /** The Object Type */
   public static val OBJECT = BUILDER.newType(Object, ObjectProvider.INSTANCE, Kind.Data, null, null)
+
+  /** The Object[] Type */
+  public static val OBJECT_ARRAY = BUILDER.newType(typeof(Object[]), ObjectArrayProvider.INSTANCE, Kind.Array, null, null)
+
+  /** The Serializable Type */
+  public static val SERIALIZABLE = BUILDER.newType(Serializable, null, Kind.Trait, null, null)
 
   /** The Comparable Type */
   public static val COMPARABLE = BUILDER.newType(Comparable, null, Kind.Trait, null, null)
@@ -4654,6 +4713,12 @@ public interface JavaMeta {
 
   /** The primitive Double Type */
   public static val DOUBLE = BUILDER.newType(Double, new ConstantProvider(0.0), Kind.Data, null, null, #[NUMBER, COMPARABLE])
+
+  /** The primitive BigInteger Type */
+  public static val BIG_INTEGER = BUILDER.newType(BigInteger, new ConstantProvider(BigInteger.ZERO), Kind.Data, null, null, #[NUMBER, COMPARABLE])
+
+  /** The primitive BigDecimal Type */
+  public static val BIG_DECIMAL = BUILDER.newType(BigDecimal, new ConstantProvider(BigDecimal.ZERO), Kind.Data, null, null, #[NUMBER, COMPARABLE])
 
   /** The CharSequence Type */
   public static val CHAR_SEQUENCE = BUILDER.newType(CharSequence, null, Kind.Trait, null, null)
@@ -4724,6 +4789,9 @@ public interface JavaMeta {
   public static val MAP = BUILDER.newType(Map, MapProvider.INSTANCE, Kind.Trait, null, null,
     Type.NO_TYPE, <Property>newArrayList(MAP_CONTENT_PROP, MAP_EMPTY_PROP, MAP_SIZE_PROP), TWO_NULL_OBJECT_PROPS)
 
+  /** The array (empty) package */
+  public static val ARRAY_PACKAGE = BUILDER.newTypePackage(OBJECT_ARRAY)
+
   /** The java.lang package */
   public static val JAVA_LANG_PACKAGE = BUILDER.newTypePackage(CLASS, OBJECT, VOID,
     COMPARABLE, NUMBER, BOOLEAN, BYTE, CHARACTER, SHORT, INTEGER, LONG,
@@ -4736,8 +4804,12 @@ public interface JavaMeta {
   /** The java.util package */
   public static val JAVA_UTIL_PACKAGE = BUILDER.newTypePackage(ITERATOR, COLLECTION, LIST, SET, MAP)
 
+  /** The java.math package */
+  public static val JAVA_MATH_PACKAGE = BUILDER.newTypePackage(BIG_INTEGER, BIG_DECIMAL)
+
   /** The Hierarchy of Java's Runtime Types */
-  public static val HIERARCHY = BUILDER.newHierarchy(JAVA_LANG_PACKAGE, JAVA_IO_PACKAGE, JAVA_UTIL_PACKAGE)
+  public static val HIERARCHY = BUILDER.newHierarchy(JAVA_LANG_PACKAGE, JAVA_IO_PACKAGE,
+  	JAVA_UTIL_PACKAGE, JAVA_MATH_PACKAGE, ARRAY_PACKAGE)
 
 }
 

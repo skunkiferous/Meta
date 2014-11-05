@@ -15,13 +15,12 @@
  */
 package com.blockwithme.meta.beans.impl
 
+import com.blockwithme.meta.AbstractPropertyVisitor
 import com.blockwithme.meta.BooleanProperty
 import com.blockwithme.meta.IIntegralPrimitiveProperty
 import com.blockwithme.meta.IRealPrimitiveProperty
 import com.blockwithme.meta.ObjectProperty
-import com.blockwithme.meta.Property
 import com.blockwithme.meta.beans._Bean
-import com.blockwithme.meta.beans._Entity
 import com.fasterxml.jackson.core.JsonEncoding
 import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.core.JsonGenerator
@@ -33,13 +32,17 @@ import java.math.BigDecimal
 import java.math.BigInteger
 import java.util.IdentityHashMap
 import java.util.Objects
+import com.blockwithme.meta.Type
+import com.blockwithme.meta.beans.Bean
+import com.blockwithme.meta.Kind
+import com.blockwithme.meta.JavaMeta
 
 /**
  * A PropertyVisitor that produces a Jackson (normally JSON) output for beans.
  *
  * @author monster
  */
-class JacksonSerializer extends AbstractBeanVisitor {
+class JacksonSerializer extends AbstractPropertyVisitor {
 
 	/** JsonFactory */
 	public static val FACTORY = new JsonFactory()
@@ -68,6 +71,37 @@ class JacksonSerializer extends AbstractBeanVisitor {
 		this.output = output
 	}
 
+    /**
+     * Called before visiting an Object instance.
+     * @param type The type of the instance.
+     * @param instance The instance.
+     */
+    protected override beforeVisitInstance(Type<?> type, Object instance) {
+    	if (instance !== null) {
+    		if (instance instanceof Bean) {
+    			appendObjectStart(instance)
+			} else {
+				visitNonBeanValue(instance)
+				false
+			}
+		} else {
+			false
+		}
+    }
+
+    /**
+     * Called after visiting an Object instance.
+     * @param type The type of the instance.
+     * @param instance The instance.
+     */
+    protected override void afterVisitInstance(Type<?> type, Object instance, boolean visited) {
+		if (visited)
+			appendObjectEnd
+		else if (instance === null) {
+    		generator.writeNull
+    	}
+    }
+
 	/** Append Object start. Returns true if this is a new Object */
 	protected def boolean appendObjectStart(Object obj) {
 		generator.writeStartObject()
@@ -94,35 +128,6 @@ class JacksonSerializer extends AbstractBeanVisitor {
 	protected def void appendObjectEnd() {
 		generator.writeEndObject()
 	}
-
-	/** Called for beans */
-	override void visit(_Bean bean) {
-		if (bean !== null) {
-			if (appendObjectStart(bean)) {
-				super.visit(bean)
-			}
-			appendObjectEnd()
-		} else {
-			generator.writeNull
-		}
-	}
-
-  /**
-   * Defines the start of the visit of a non-Bean.
-   *
-   * If it returns true, then the non-Bean should also write it's properties.
-   * In all case, it should then call endVisitNonBean()
-   */
-  override boolean startVisitNonBean(Object nonBean) {
-  	appendObjectStart(nonBean)
-  }
-
-  /**
-   * Defines the end of the visit of a non-Bean.
-   */
-  override void endVisitNonBean(Object nonBean) {
-  	appendObjectEnd()
-  }
 
 	/** Called for all properties */
 	protected override void visitProperty(String propName) {
@@ -154,7 +159,7 @@ class JacksonSerializer extends AbstractBeanVisitor {
 	 *
 	 * All Object properties end up delegating here.
 	 */
-	protected override void visitNonBeanValue(ObjectProperty prop, Object value) {
+	private def void visitNonBeanValue(Object value) {
 		if (value === null) {
 			generator.writeNull
 		} else if (value instanceof String) {
@@ -274,8 +279,12 @@ class JacksonSerializer extends AbstractBeanVisitor {
 				val array = value as Object[]
 				if (array.length > 0) {
 					generator.writeArrayFieldStart(CONTENT)
+					val contentType = tryResolveType(compomentType)
 					for (v : array) {
-						visitValue(null as ObjectProperty, v)
+						if (v === null)
+							generator.writeNull
+						else
+							visitNonNullValueByContentType(contentType, v)
 					}
 					generator.writeEndArray
 				}

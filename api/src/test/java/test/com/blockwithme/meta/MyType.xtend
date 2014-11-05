@@ -17,6 +17,7 @@ import com.blockwithme.meta.beans.Bean
 import test.com.blockwithme.MyBean
 import com.blockwithme.util.shared.converters.IntConverterBase
 import com.blockwithme.meta.beans.impl.MapBeanImpl
+import com.blockwithme.meta.beans.annotations.BeanImplemented
 
 enum MyEnum {
   A,
@@ -95,6 +96,7 @@ class MySubType extends MyType {
     package var intProp2 = 0
 }
 
+@BeanImplemented(implemented=MyBean)
 class MyBeanImpl extends _BeanImpl implements MyBean {
 	new() {
 		super(TestMyBeanMeta.MY_BEAN_TYPE)

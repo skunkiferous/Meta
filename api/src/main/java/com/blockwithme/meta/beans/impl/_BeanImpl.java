@@ -596,7 +596,7 @@ public abstract class _BeanImpl implements _Bean {
         try {
             final JacksonSerializer j = JacksonSerializer
                     .newSerializer(appendable);
-            j.visit(this);
+            j.visit(getMetaType(), this);
             j.generator.flush();
             j.generator.close();
         } catch (final IOException e) {
