@@ -32,16 +32,15 @@ import com.blockwithme.meta.IProperty;
 import com.blockwithme.meta.JavaMeta;
 import com.blockwithme.meta.Property;
 import com.blockwithme.meta.Type;
+import com.blockwithme.meta.TypeOwner;
 import com.blockwithme.meta.beans.Bean;
-import com.blockwithme.meta.beans.BeanVisitable;
-import com.blockwithme.meta.beans.BeanVisitor;
 import com.blockwithme.meta.beans.ObjectObjectMapInterceptor;
 import com.blockwithme.meta.beans._Bean;
 import com.blockwithme.meta.beans._MapBean;
 import com.blockwithme.util.base.SystemUtils;
 import com.blockwithme.util.shared.MurmurHash;
 
-class MapBeanEntry<K, V> implements Map.Entry<K, V>, BeanVisitable {
+class MapBeanEntry<K, V> implements Map.Entry<K, V>, TypeOwner {
     private final K key;
     private final V value;
     private final MapBeanImpl<K, V> map;
@@ -72,13 +71,12 @@ class MapBeanEntry<K, V> implements Map.Entry<K, V>, BeanVisitable {
         return "{\"key\":" + key + ",\"value\":" + value + "}";
     }
 
+    /* (non-Javadoc)
+     * @see com.blockwithme.meta.TypeOwner#getMetaType()
+     */
     @Override
-    public void accept(final BeanVisitor visitor) {
-        if (visitor.startVisitNonBean(this)) {
-            visitor.visitNonBeanProperty("key", key);
-            visitor.visitNonBeanProperty("value", value);
-        }
-        visitor.endVisitNonBean(this);
+    public Type<?> getMetaType() {
+        return JavaMeta.MAP_ENTRY;
     }
 }
 

@@ -42,6 +42,7 @@ import java.util.logging.Logger
 import com.blockwithme.util.shared.AnyAccessor
 import static com.blockwithme.util.shared.Preconditions.*
 import com.blockwithme.fn1.ProcObject
+import com.blockwithme.meta.TypeOwner
 
 /** Base for all data/bean objects */
 interface Bean {
@@ -66,10 +67,7 @@ interface Bean {
  *
  * The "selected" state is usually used to keep track of the "dirty" state.
  */
-interface _Bean extends Bean, BeanVisitable {
-	/** Returns the Type of the instance */
-    def Type<?> getMetaType()
-
+interface _Bean extends Bean, TypeOwner {
 	/** Returns the current value of the change counter */
 	def int getChangeCounter()
 
@@ -170,68 +168,6 @@ interface _Bean extends Bean, BeanVisitable {
     def Object resolvePath(Property ... props)
 
     // TODO Create standard Immutable-Static-Reference @Data object, with working serialization.
-}
-
-
-/**
- * The Bean visitor.
- *
- * TODO THIS IS TOTALLY WRONG! The main point of "Meta" is that you can define meta-info
- * for *any* type. So the "Visitor" should NOT be Bean-specific!!!
- *
- * TODO We must have not only JSON serialization, but also TSV, XML, "Properties" and "binary".
- * We need all those serializations, so we know our Visitor API is "complete".
- */
-interface BeanVisitor extends PropertyVisitor {
-  /** Visits a _Bean */
-  def void visit(_Bean bean)
-
-  /**
-   * Defines the start of the visit of a non-Bean.
-   *
-   * If it returns true, then the non-Bean should also write it's properties.
-   * In all case, it should then call endVisitNonBean()
-   */
-  def boolean startVisitNonBean(Object nonBean)
-
-  /**
-   * Defines the end of the visit of a non-Bean.
-   */
-  def void endVisitNonBean(Object nonBean)
-
-	/** Visit non-Bean boolean properties with their value */
-	def void visitNonBeanProperty(String propName, boolean value)
-
-	/** Visit non-Bean byte properties with their value */
-	def void visitNonBeanProperty(String propName, byte value)
-
-	/** Visit non-Bean char properties with their value */
-	def void visitNonBeanProperty(String propName, char value)
-
-	/** Visit non-Bean short properties with their value */
-	def void visitNonBeanProperty(String propName, short value)
-
-	/** Visit non-Bean int properties with their value */
-	def void visitNonBeanProperty(String propName, int value)
-
-	/** Visit non-Bean long properties with their value */
-	def void visitNonBeanProperty(String propName, long value)
-
-	/** Visit non-Bean float properties with their value */
-	def void visitNonBeanProperty(String propName, float value)
-
-	/** Visit non-Bean double properties with their value */
-	def void visitNonBeanProperty(String propName, double value)
-
-	/** Visit non-Bean Object properties with their value */
-	def void visitNonBeanProperty(String propName, Object obj)
-}
-
-
-/** Interface for Objects that support the BeanVisitor explicitly. */
-interface BeanVisitable {
-  /** Accepts the visitor */
-	def void accept(BeanVisitor visitor)
 }
 
 
@@ -612,7 +548,7 @@ interface _MapBean<K,V> extends MapBean<K,V>, _Bean {
 
 /** An immutable Reference to an immutable Bean. */
 @Data
-class Ref<E extends Bean> implements BeanVisitable {
+class Ref<E extends Bean> {
 	E value
 	new(E e) {
 		if ((e != null) && !e.immutable) {
@@ -623,13 +559,6 @@ class Ref<E extends Bean> implements BeanVisitable {
 
     override String toString() {
         return "{\"value\":" + value + "}";
-    }
-
-    override void accept(BeanVisitor visitor) {
-        if (visitor.startVisitNonBean(this)) {
-            visitor.visitNonBeanProperty("value", value);
-        }
-        visitor.endVisitNonBean(this);
     }
 }
 

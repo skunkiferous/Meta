@@ -16,13 +16,11 @@
 package com.blockwithme.meta
 
 import java.util.ArrayList
-import com.blockwithme.meta.beans.annotations.BeanImplemented
-import com.blockwithme.meta.beans._Bean
 
 /**
- * A base class for BeanVisitors.
+ * A base class for PropertyVisitors.
  *
- * Visiting a Bean causes all it's inheritedProperties to be visited.
+ * Visiting a "Typed" object causes all it's inheritedProperties to be visited.
  *
  * @author monster
  */
@@ -206,7 +204,7 @@ abstract class AbstractPropertyVisitor implements PropertyVisitor {
 			contentType
 		} else {
 			recordHierarchy(contentType)
-			if (value instanceof _Bean) {
+			if (value instanceof TypeOwner) {
 				val result = value.metaType
 				if (contentType !== result) {
 					recordHierarchy(result)
@@ -251,7 +249,7 @@ abstract class AbstractPropertyVisitor implements PropertyVisitor {
 				return result
 			}
 		}
-		val ann = valueType.getAnnotation(BeanImplemented)
+		val ann = valueType.getAnnotation(TypeImplemented)
 		if (ann !== null) {
 			val implemented = ann.implemented
 			for (h : hierarchies) {

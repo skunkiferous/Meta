@@ -72,9 +72,15 @@ import javax.inject.Provider
 import static com.blockwithme.util.shared.Preconditions.*
 import static java.util.Objects.*
 
+import com.google.common.collect.AbstractMapEntry
+
 import static extension com.blockwithme.util.xtend.JavaUtilLoggingExtension.*
 import java.math.BigInteger
 import java.math.BigDecimal
+import java.lang.annotation.Target
+import java.lang.annotation.Retention
+import java.lang.annotation.RetentionPolicy
+import java.lang.annotation.ElementType
 
 /**
  * Hierarchy represents a Type hierarchy. It is not limited to types in the
@@ -483,6 +489,10 @@ abstract class MetaBase<PARENT> implements Comparable<MetaBase<?>> {
   package new(String theFullName, String theSimpleName, int theGlobalId) {
     fullName = requireNonNull(theFullName, "theFullName")
     simpleName = requireNonNull(theSimpleName, "theSimpleName")
+    if (theFullName.startsWith("[L")) {
+      throw new IllegalArgumentException("theFullName("+theFullName
+        +") is not a valid package name!")
+    }
     if (!theFullName.equals(theSimpleName) &&
       !theFullName.endsWith("."+theSimpleName)) {
       throw new IllegalArgumentException("theFullName("+theFullName
@@ -920,6 +930,15 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> implements PropertyMatcher {
     tmp as Provider<JAVA_TYPE>
   }
 
+  /** Extract the simple name */
+  private static def String extractSimpleName(Class<?> theType) {
+  	var result = theType.simpleName
+  	if (theType.enclosingClass !== null) {
+  		result = extractSimpleName(theType.enclosingClass) + '$' + result
+  	}
+  	result
+  }
+
   /** Constructor */
   protected new(TypeRegistration registration, Class<JAVA_TYPE> theType,
     Provider<JAVA_TYPE> theConstructor, Kind theKind,
@@ -927,7 +946,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> implements PropertyMatcher {
     Type<?>[] theParents, Property<JAVA_TYPE,?>[] theProperties,
     ObjectProperty<JAVA_TYPE,Type<?>,?,?>[] componentTypes) {
     super(fullNameOf(theType),
-      theType.simpleName, requireNonNull(registration, "registration").globalId)
+      extractSimpleName(theType), requireNonNull(registration, "registration").globalId)
     if (theType.primitive) {
       throw new IllegalArgumentException("Primitive TYPE "
         +theType+" not supported; use the Wrapper instead")
@@ -1260,6 +1279,23 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> implements PropertyMatcher {
 	final def isExactTypeOf(Object obj) {
 		(obj !== null) && (obj.class === type)
 	}
+}
+
+
+/** Identifies an Object that can provide it's own Type. */
+interface TypeOwner {
+	/** Returns the Type of the instance */
+    def Type<?> getMetaType()
+}
+
+
+/**
+ * Stores in the implementation class-file the directly implemented interface
+ */
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+annotation TypeImplemented {
+    Class<?> implemented
 }
 
 
@@ -4649,6 +4685,34 @@ package final class MapProvider implements Provider<Map> {
   public static val INSTANCE = new MapProvider
 }
 
+/** A Provider that returns Map.Entries */
+package final class MapEntryProvider implements Provider<Map.Entry> {
+	private static final class DummyMapEntry implements Map.Entry {
+		override getKey() {
+			throw new UnsupportedOperationException()
+		}
+
+		override getValue() {
+			throw new UnsupportedOperationException()
+		}
+
+		override setValue(Object value) {
+			throw new UnsupportedOperationException()
+		}
+
+	}
+
+	private val DUMMY = new DummyMapEntry
+
+  /** Returns the constant */
+  override get() {
+    DUMMY
+  }
+
+  /** The singleton instance */
+  public static val INSTANCE = new MapEntryProvider
+}
+
 /** Implemented by Collections that want a different "content" the toArray */
 public interface ContentOwner<E> {
   /** Returns the content */
@@ -4787,29 +4851,38 @@ public interface JavaMeta {
 
   /** The Map Type */
   public static val MAP = BUILDER.newType(Map, MapProvider.INSTANCE, Kind.Trait, null, null,
-    Type.NO_TYPE, <Property>newArrayList(MAP_CONTENT_PROP, MAP_EMPTY_PROP, MAP_SIZE_PROP), TWO_NULL_OBJECT_PROPS)
+    Type.NO_TYPE, <Property>newArrayList(MAP_CONTENT_PROP, MAP_EMPTY_PROP, MAP_SIZE_PROP, MAP_ITERATOR_PROP), TWO_NULL_OBJECT_PROPS)
 
-  /** The array (empty) package */
-  public static val ARRAY_PACKAGE = BUILDER.newTypePackage(OBJECT_ARRAY)
+  /** The key property of the Map.Entry */
+    public static val MAP_ENTRY_KEY_PROP = BUILDER.newObjectProperty(
+      Map.Entry, "key", Object, false, true, true, true, [key], null, false)
+
+  /** The value property of the Map.Entry */
+    public static val MAP_ENTRY_VALUE_PROP = BUILDER.newObjectProperty(
+      Map.Entry, "value", Object, false, true, true, true, [value], [obj,value|obj.value = value;obj], false)
+
+  /** The Map Type */
+  public static val MAP_ENTRY = BUILDER.newType(Map.Entry, MapEntryProvider.INSTANCE, Kind.Trait, null, null,
+    Type.NO_TYPE, <Property>newArrayList(MAP_ENTRY_KEY_PROP, MAP_ENTRY_VALUE_PROP), TWO_NULL_OBJECT_PROPS)
 
   /** The java.lang package */
   public static val JAVA_LANG_PACKAGE = BUILDER.newTypePackage(CLASS, OBJECT, VOID,
     COMPARABLE, NUMBER, BOOLEAN, BYTE, CHARACTER, SHORT, INTEGER, LONG,
-    FLOAT, DOUBLE, CHAR_SEQUENCE, STRING, ITERABLE
+    FLOAT, DOUBLE, OBJECT_ARRAY, CHAR_SEQUENCE, STRING, ITERABLE
   )
 
   /** The java.io package */
   public static val JAVA_IO_PACKAGE = BUILDER.newTypePackage(SERIALIZABLE)
 
   /** The java.util package */
-  public static val JAVA_UTIL_PACKAGE = BUILDER.newTypePackage(ITERATOR, COLLECTION, LIST, SET, MAP)
+  public static val JAVA_UTIL_PACKAGE = BUILDER.newTypePackage(ITERATOR, COLLECTION, LIST, SET, MAP, MAP_ENTRY)
 
   /** The java.math package */
   public static val JAVA_MATH_PACKAGE = BUILDER.newTypePackage(BIG_INTEGER, BIG_DECIMAL)
 
   /** The Hierarchy of Java's Runtime Types */
   public static val HIERARCHY = BUILDER.newHierarchy(JAVA_LANG_PACKAGE, JAVA_IO_PACKAGE,
-  	JAVA_UTIL_PACKAGE, JAVA_MATH_PACKAGE, ARRAY_PACKAGE)
+  	JAVA_UTIL_PACKAGE, JAVA_MATH_PACKAGE)
 
 }
 

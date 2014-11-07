@@ -78,6 +78,7 @@ import com.blockwithme.meta.FloatPropertyRangeValidator
 import com.blockwithme.meta.LongPropertyRangeValidator
 import com.blockwithme.meta.DoublePropertyRangeValidator
 import com.blockwithme.meta.ObjectPropertyValidator
+import com.blockwithme.meta.TypeImplemented
 
 /**
  * Specifies a Validator for a Property.
@@ -457,15 +458,6 @@ annotation _BeanInfo {
     boolean isBean
     boolean isInstance
     String[] innerImpl
-}
-
-/**
- * Stores in the implementation class-file the directly implemented interface
- */
-@Target(ElementType.TYPE)
-@Retention(RetentionPolicy.RUNTIME)
-annotation BeanImplemented {
-    Class<?> implemented
 }
 
 /**
@@ -1275,7 +1267,7 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
     private def BeanInfo findParentBeanInfo(Map<String,Object> processingContext, MutableClassDeclaration impl) {
 		if (impl.extendedClass?.type instanceof ClassDeclaration) {
 			val pt = impl.extendedClass.type as ClassDeclaration
-			val beanImplAnn = findTypeGlobally(BeanImplemented)
+			val beanImplAnn = findTypeGlobally(TypeImplemented)
 			val beanImpl = pt?.findAnnotation(beanImplAnn)
 			val implemented = beanImpl?.getClassValue("implemented")
 			val parentImplementedInerfaceName = implemented?.name
@@ -1972,7 +1964,7 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
     }
     // STEP 25
     // Add _BeanImpl annotation to the implementation class.
-    impl.addAnnotation(newAnnotationReference(BeanImplemented, [
+    impl.addAnnotation(newAnnotationReference(TypeImplemented, [
     	set("implemented", newTypeReference(mtd))
 	]))
     impl

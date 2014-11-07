@@ -5,19 +5,18 @@ import com.blockwithme.meta.HierarchyBuilderFactory
 import com.blockwithme.meta.JavaMeta
 import com.blockwithme.meta.Kind
 import com.blockwithme.meta.Type
+import com.blockwithme.meta.TypeImplemented
 import com.blockwithme.meta.beans.CollectionBean
+import com.blockwithme.meta.beans.CollectionBeanConfig
 import com.blockwithme.meta.beans.Meta
 import com.blockwithme.meta.beans.impl.CollectionBeanImpl
+import com.blockwithme.meta.beans.impl.MapBeanImpl
+import com.blockwithme.meta.beans.impl._BeanImpl
 import com.blockwithme.util.shared.converters.IntConverter
+import com.blockwithme.util.shared.converters.IntConverterBase
+import test.com.blockwithme.MyBean
 
 import static java.util.Objects.*
-import com.blockwithme.meta.beans.CollectionBeanConfig
-import com.blockwithme.meta.beans.impl._BeanImpl
-import com.blockwithme.meta.beans.Bean
-import test.com.blockwithme.MyBean
-import com.blockwithme.util.shared.converters.IntConverterBase
-import com.blockwithme.meta.beans.impl.MapBeanImpl
-import com.blockwithme.meta.beans.annotations.BeanImplemented
 
 enum MyEnum {
   A,
@@ -96,7 +95,7 @@ class MySubType extends MyType {
     package var intProp2 = 0
 }
 
-@BeanImplemented(implemented=MyBean)
+@TypeImplemented(implemented=MyBean)
 class MyBeanImpl extends _BeanImpl implements MyBean {
 	new() {
 		super(TestMyBeanMeta.MY_BEAN_TYPE)

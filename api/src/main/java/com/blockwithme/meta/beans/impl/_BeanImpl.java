@@ -33,7 +33,6 @@ import com.blockwithme.meta.Property;
 import com.blockwithme.meta.Type;
 import com.blockwithme.meta.beans.Bean;
 import com.blockwithme.meta.beans.BeanPath;
-import com.blockwithme.meta.beans.BeanVisitor;
 import com.blockwithme.meta.beans.Entity;
 import com.blockwithme.meta.beans.Interceptor;
 import com.blockwithme.meta.beans._Bean;
@@ -990,10 +989,5 @@ public abstract class _BeanImpl implements _Bean {
             }
         }
         return result;
-    }
-
-    @Override
-    public void accept(final BeanVisitor visitor) {
-        visitor.visit(this);
     }
 }

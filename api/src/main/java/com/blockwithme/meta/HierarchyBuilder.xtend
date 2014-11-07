@@ -242,6 +242,7 @@ class HierarchyBuilder {
 			}
 		}
 
+		LOG.debug("PROPERTY "+theSimpleName+" OF "+name+" IS GETTING GLOBAL PROPERTY ID "+globalPropertyId)
 		new PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(this, theOwner, theSimpleName,
 			theConverter, thePropType, theMeta, theVirtual, dataType, globalId, globalPropertyId,
 			globalMetaPropertyId, propertyId, specificTypePropId, virtualPropertyId, theBits,
@@ -267,7 +268,7 @@ class HierarchyBuilder {
 		}
 		list.set(prop.globalPropertyId, prop)
 		allProperties = list
-		LOG.info("Property "+prop.fullName+" registered in Hierarchy "+this.name)
+		LOG.info("Property "+prop.fullName+" with ID "+prop.globalPropertyId+" registered in Hierarchy "+this.name)
 	}
 
 	/**
@@ -338,7 +339,7 @@ class HierarchyBuilder {
 			if (c != null) {
 				if (clazz == null) {
 					clazz = c
-				} else if (clazz.package != c.package) {
+				} else if (getPackageName(clazz) != getPackageName(c)) {
 					throw new IllegalArgumentException(
 						"theTypes are using multiple packages (for example: "
 						+clazz+" and "+c)
@@ -362,7 +363,8 @@ class HierarchyBuilder {
 		requireNonNull(theClass, "theClass")
 		val name = theClass.name
 		val index = name.lastIndexOf('.')
-		if (index < 0) name else name.substring(0,index)
+		val name2 = if (index < 0) name else name.substring(0,index)
+		if (name2.startsWith("[L")) name2.substring(2) else name2
 	}
 
 
@@ -417,17 +419,17 @@ class HierarchyBuilder {
 
 	/** All types of this hierarchy */
 	synchronized def allTypes() {
-		requireContainsNoNull(allTypes, "allTypes")
+		requireContainsNoNull(allTypes, name+".allTypes")
 	}
 
 	/** All properties of this hierarchy */
 	synchronized def allProperties() {
-		requireContainsNoNull(allProperties, "allProperties")
+		requireContainsNoNull(allProperties, name+".allProperties")
 	}
 
 	/** All packages of this hierarchy */
 	synchronized def allPackages() {
-		requireContainsNoNull(allPackages, "allPackages")
+		requireContainsNoNull(allPackages, name+".allPackages")
 	}
 
 	/** We're done! */
