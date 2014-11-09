@@ -17,6 +17,8 @@ import com.blockwithme.util.shared.converters.IntConverterBase
 import test.com.blockwithme.MyBean
 
 import static java.util.Objects.*
+import com.blockwithme.util.base.SystemUtils
+import com.blockwithme.util.server.DefaultSystemUtilsImpl
 
 enum MyEnum {
   A,
@@ -177,9 +179,14 @@ class MyMapType {
   )
 }
 
-class TestMeta {
+class MetaTestHelper {
+	private static def getHierarchyBuilder() {
+		SystemUtils.setImplementation(new DefaultSystemUtilsImpl)
+		HierarchyBuilderFactory.getHierarchyBuilder(MyType.name)
+	}
+
   /** Test Hierarchy Builder */
-  public static val BUILDER = HierarchyBuilderFactory.getHierarchyBuilder(MyType.name)
+  public static val BUILDER = getHierarchyBuilder()
 
   public static val ENUM_TYPE = BUILDER.newType(MyEnum, null, Kind::Data, null, null)
 

@@ -21,6 +21,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import javax.inject.Provider
+import com.blockwithme.fn1.ObjectFuncObject
 
 /**
  * Provides HierarchyBuilder instances.
@@ -28,13 +30,64 @@ import java.util.Objects;
  * @author monster
  */
 public class HierarchyBuilderFactory {
-    /** The cache. */
+	/** Creates instances of HierarchyBuilder */
+	private static class DefaultHierarchyBuilderFactory
+	implements ObjectFuncObject<HierarchyBuilder,String> {
+		override apply(String key) {
+			new HierarchyBuilder(key)
+		}
+	}
+
+    /** The hierarchy name to HierarchyBuilder cache. */
     static val CACHE = new HashMap<String, HierarchyBuilder>();
+
+    /** The package name to hierarchy name mapping. */
+    static val PKG2HIERARCHY = new HashMap<String, String>();
+
+    /** The HierarchyBuilder Factory */
+    static var ObjectFuncObject<HierarchyBuilder,String> HIERARCHY_BUILDER_FACTORY;
+
+    /** Creates a new HierarchyBuilder */
+    private static def HierarchyBuilder newHierarchyBuilder(String key) {
+    	if (HIERARCHY_BUILDER_FACTORY === null) {
+    		HIERARCHY_BUILDER_FACTORY = new DefaultHierarchyBuilderFactory()
+    	}
+    	HIERARCHY_BUILDER_FACTORY.apply(key)
+    }
+
+    /** Sets the HierarchyBuilder factory */
+    static def void setHierarchyBuilderFactory(ObjectFuncObject<HierarchyBuilder,String> factory) {
+    	synchronized (CACHE) {
+	    	if ((HIERARCHY_BUILDER_FACTORY !== null) && (HIERARCHY_BUILDER_FACTORY !== factory)) {
+	    		throw new IllegalStateException("HierarchyBuilderFactory is already set to "
+	    			+HIERARCHY_BUILDER_FACTORY)
+	    	}
+	    	HIERARCHY_BUILDER_FACTORY == Objects.requireNonNull(factory, "factory")
+    	}
+    }
+
+    /**
+     * Associate a package with a specific hierarchy name.
+     * Only needed when the package name differs from the hierarchy name.
+     */
+    def static void bindPackageToHierarchy(String thePackageName, String theHierarchyName) {
+    	synchronized (CACHE) {
+    		val current = PKG2HIERARCHY.get(Objects.requireNonNull(thePackageName, "thePackageName"))
+    		if ((current !== null) && (current != theHierarchyName)) {
+    			throw new IllegalArgumentException("Package "+thePackageName
+    				+" currently mapped to "+current+" and cannot be changed to "+theHierarchyName)
+    		}
+    		PKG2HIERARCHY.put(thePackageName, Objects.requireNonNull(theHierarchyName, "theHierarchyName"))
+    	}
+    }
 
     /** Maps a package name to a hierarchy name. */
     private static def String package2hierarchy(String thePackageName) {
-        // TODO Define package-to-hierarchy mapping
-        return thePackageName;
+        var result = PKG2HIERARCHY.get(thePackageName)
+        if (result === null) {
+        	result = thePackageName
+        }
+        result
     }
 
     /** Returns the desired HierarchyBuilder instance. */
@@ -44,7 +97,7 @@ public class HierarchyBuilderFactory {
             val key = package2hierarchy(thePackageName);
             var result = CACHE.get(key);
             if (result == null) {
-                result = new HierarchyBuilder(key);
+                result = newHierarchyBuilder(key);
                 CACHE.put(key, result);
             }
             return result;

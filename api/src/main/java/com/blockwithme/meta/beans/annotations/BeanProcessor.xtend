@@ -116,9 +116,9 @@ annotation Validators {
  *
  * The range is validated by instantiating an appropriate validator.
  *
- * TODO This should be used also to specify collection/map size limits
+ * TODO *** This should be used also to specify collection/map size limits
  *
- * TODO We need a TEST CASE for @Range
+ * TODO *** We need a TEST CASE for @Range
  */
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.CLASS)
@@ -653,7 +653,7 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
     		// Enum == Immutable!
     		return true
     	}
-    	// TODO Stop using @Data because *we cannot persist it*. Once done, update BeanVisitable and BeanVisitor.
+    	// TODO *** Stop using @Data because *we cannot persist it*. Once done, update BeanVisitable and BeanVisitor.
 	    val dataAnnot = findTypeGlobally(Data)
     	if (type.findAnnotation(dataAnnot) !== null) {
     		// @Data == Immutable!

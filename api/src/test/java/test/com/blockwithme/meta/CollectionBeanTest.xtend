@@ -38,7 +38,7 @@ class CollectionBeanTest extends BaseTst {
 	@BeforeClass
 	public static def void classSetup() {
 		// Force full init
-		TestMeta::TEST.findType(CollectionBean)
+		MetaTestHelper::TEST.findType(CollectionBean)
 	}
 
     @Test
@@ -360,7 +360,7 @@ class CollectionBeanTest extends BaseTst {
     	assertTrue("orderedSet.empty", cb.orderedSet.empty)
     	assertTrue("sortedSet.empty", cb.sortedSet.empty)
     	assertTrue("unorderedSet.empty", cb.unorderedSet.empty)
-    	// TODO hashSet don't shrink!
+    	// TODO *** hashSet don't shrink!
 //    	assertTrue("hashSet.empty", cb.hashSet.empty)
 	}
 

@@ -34,7 +34,7 @@ class MapBeanTest extends BaseTst {
 	@BeforeClass
 	public static def void classSetup() {
 		// Force full init
-		TestMeta::TEST.findType(MapBean)
+		MetaTestHelper::TEST.findType(MapBean)
 	}
 
     @Test

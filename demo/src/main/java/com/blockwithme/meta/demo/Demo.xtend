@@ -112,7 +112,6 @@ interface Salutable extends Root {
 	class Impl {
 		/** Returns a salutation. */
 		static def String getHello(Salutable it) {
-			// TODO Add support for "abstract" virtual properties.
 			throw new UnsupportedOperationException
 		}
 	}

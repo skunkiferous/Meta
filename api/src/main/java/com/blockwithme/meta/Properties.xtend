@@ -1892,16 +1892,9 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
     converter = theData.converter
   }
 
-  /** Constructor */
-  protected new(HierarchyBuilder builder, Class<OWNER_TYPE> theOwner, String theSimpleName,
-    Class<PROPERTY_TYPE> theContentType, boolean theShared, boolean theActualInstance,
-    boolean theExactType, boolean theNullAllowed, ObjectFuncObject<PROPERTY_TYPE,OWNER_TYPE> theGetter,
-    ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> theSetter, boolean theVirtual) {
-    this(builder.preRegisterProperty(theOwner, theSimpleName,
-      new NOPObjectConverter(theContentType) as ObjectConverter as CONVERTER,
-      PropertyType::OBJECT, -1, theContentType, theVirtual), theShared, theActualInstance,
-      theExactType, theNullAllowed, requireNonNull(theGetter, "theGetter"),
-      theSetter)
+  /** Creates a NOP Converter lazily. */
+  private static def ObjectConverter getConverter(ObjectConverter theConverter, Class theContentType) {
+  	if (theConverter === null) new NOPObjectConverter(theContentType) else theConverter
   }
 
   /** Constructor */
@@ -1909,7 +1902,7 @@ extends Property<OWNER_TYPE, PROPERTY_TYPE> {
     CONVERTER theConverter, Class<PROPERTY_TYPE> theContentType, boolean theShared, boolean theActualInstance,
     boolean theExactType, boolean theNullAllowed, ObjectFuncObject<PROPERTY_TYPE,OWNER_TYPE> theGetter,
     ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> theSetter, boolean theVirtual) {
-    this(builder.preRegisterProperty(theOwner, theSimpleName, theConverter,
+    this(builder.preRegisterProperty(theOwner, theSimpleName, getConverter(theConverter, theContentType) as CONVERTER,
       PropertyType::OBJECT, -1, theContentType, theVirtual), theShared, theActualInstance,
       theExactType, theNullAllowed, requireNonNull(theGetter, "theGetter"),
       theSetter)
@@ -2070,12 +2063,6 @@ ObjectConverter<OWNER_TYPE,PROPERTY_TYPE,PROPERTY_TYPE>> {
       }
     }
     defaultValue = theDefaultValue
-  }
-
-  /** Constructor */
-  protected new(HierarchyBuilder builder, Type<OWNER_TYPE> theOwner, String theSimpleName,
-    Class<PROPERTY_TYPE> theContentType, boolean theVirtual) {
-    this(builder, theOwner, theSimpleName, theContentType, null, theVirtual)
   }
 
   /** Constructor */

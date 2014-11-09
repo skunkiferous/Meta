@@ -35,8 +35,6 @@ import com.blockwithme.meta.beans.annotations.ValidationException
  * Singleton, used for all normal "beans".
  * Simply delegates back to the bean, marking it as dirty if needed.
  *
- * TODO Add validators to all properties, and call the in setXXX
- *
  * @author monster
  */
 class DefaultInterceptor implements Interceptor {

@@ -50,6 +50,7 @@ import com.blockwithme.util.shared.converters.DoubleConverter
 import com.blockwithme.util.shared.converters.LongConverter
 import javax.inject.Provider
 import com.blockwithme.util.shared.converters.ObjectConverter
+import com.blockwithme.util.base.SystemUtils
 
 /**
  * HierarchyBuilder records the temporary information needed to construct
@@ -99,10 +100,10 @@ class HierarchyBuilder {
 	var closed = false
 
 	/** The Hierarchy; the HierarchyBuilder is closed after creating it. */
-	var Hierarchy hierarchy = null
+	var Hierarchy _hierarchy = null
 
 	/** Increments a counter, and returns the value before the increment. */
-	protected def incCounter(Map<String,Integer> counters, String name) {
+	protected static def incCounter(Map<String,Integer> counters, String name) {
 		var result = counters.get(name)
 		if (result == null) {
 			result = 0
@@ -114,11 +115,6 @@ class HierarchyBuilder {
 	/** Constructor. Takes the hierarchy name as parameter. */
 	new(String theName) {
 		name = requireNonEmpty(theName, "theName")
-	}
-
-	/** Constructor. Takes a type specifying the hierarchy name as parameter. */
-	new(Class<?> theRoot) {
-		this(requireNonNull(theRoot, "theRoot").name)
 	}
 
 	/**
@@ -369,13 +365,13 @@ class HierarchyBuilder {
 
 
 	/** Returns the pre-type-registration info */
-	synchronized def preRegisterType(Class<?> theType) {
+	synchronized final def preRegisterType(Class<?> theType) {
 		checkNotClosed()
 		doPreRegisterType(theType)
 	}
 
 	/** Creates and returns the property creation parameters */
-	synchronized def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<?,PROPERTY_TYPE>>
+	synchronized final def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<?,PROPERTY_TYPE>>
 	PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> preRegisterProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, PropertyType thePropType,
@@ -386,7 +382,7 @@ class HierarchyBuilder {
 	}
 
 	/** Creates and returns the property creation parameters (and computes meta flag) */
-	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<?,PROPERTY_TYPE>>
+	def final <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends Converter<?,PROPERTY_TYPE>>
 	PropertyRegistration<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> preRegisterProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, PropertyType thePropType,
@@ -397,19 +393,19 @@ class HierarchyBuilder {
 	}
 
 	/** Registers a property */
-	synchronized def registerMetaProperty(MetaProperty<?,?> prop) {
+	synchronized final def registerMetaProperty(MetaProperty<?,?> prop) {
 		checkNotClosed()
 		doRegisterProperty(prop)
 	}
 
 	/** Returns the pre-package-registration info */
-	synchronized def preRegisterPackage(Type<?>[] theTypes) {
+	synchronized final def preRegisterPackage(Type<?>[] theTypes) {
 		checkNotClosed()
 		doPreRegisterTypePackage(theTypes)
 	}
 
 	/** Registers a Package */
-	synchronized def registerPackage(TypePackage ... theTypePackages) {
+	synchronized final def registerPackage(TypePackage ... theTypePackages) {
 		checkNotClosed()
 		for (p : theTypePackages) {
 			doRegisterTypePackage(p)
@@ -418,22 +414,22 @@ class HierarchyBuilder {
 	}
 
 	/** All types of this hierarchy */
-	synchronized def allTypes() {
+	synchronized final def allTypes() {
 		requireContainsNoNull(allTypes, name+".allTypes")
 	}
 
 	/** All properties of this hierarchy */
-	synchronized def allProperties() {
+	synchronized final def allProperties() {
 		requireContainsNoNull(allProperties, name+".allProperties")
 	}
 
 	/** All packages of this hierarchy */
-	synchronized def allPackages() {
+	synchronized final def allPackages() {
 		requireContainsNoNull(allPackages, name+".allPackages")
 	}
 
 	/** We're done! */
-	synchronized def close() {
+	synchronized final def close() {
 		closed = true
 	}
 
@@ -442,12 +438,10 @@ class HierarchyBuilder {
 		val pkg = requireNonNull(interfaze, "interfaze").package.name
 		val name = interfaze.simpleName
 		val providerName = pkg+".impl."+name+"ImplProvider"
-		val impl = Class.forName(providerName)
-		impl.newInstance as Provider<JAVA_TYPE>
+		SystemUtils.newInstance(SystemUtils.forName(providerName)) as Provider<JAVA_TYPE>
 	}
 
 	// Now comes the factory methods
-	// TODO These should delegate to a *user-configurable* Factory
 
 	/** Creates a Boolean Property */
 	def <OWNER_TYPE> TrueBooleanProperty<OWNER_TYPE> newBooleanProperty(
@@ -458,20 +452,19 @@ class HierarchyBuilder {
 	}
 
 	/** Creates a Boolean Property */
-	def <OWNER_TYPE> TrueBooleanProperty<OWNER_TYPE> newBooleanProperty(
+	final def <OWNER_TYPE> TrueBooleanProperty<OWNER_TYPE> newBooleanProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		BooleanPropertyAccessor<OWNER_TYPE> theAccessor, boolean theVirtual) {
-		new TrueBooleanProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theAccessor, theAccessor, theVirtual)
+		newBooleanProperty(theOwner, theSimpleName, theAccessor, theAccessor, theVirtual)
 	}
 
 	/** Creates a Boolean Property */
-	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends BooleanConverter<OWNER_TYPE, PROPERTY_TYPE>>
+	final def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends BooleanConverter<OWNER_TYPE, PROPERTY_TYPE>>
 		BooleanProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> newBooleanProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, Class<PROPERTY_TYPE> dataType,
 		BooleanPropertyAccessor<OWNER_TYPE> theAccessor, boolean theVirtual) {
-		new BooleanProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(
-			this, theOwner, theSimpleName, theConverter, dataType,
+		newBooleanProperty(theOwner, theSimpleName, theConverter, dataType,
 			theAccessor, theAccessor, theVirtual)
 	}
 
@@ -496,20 +489,19 @@ class HierarchyBuilder {
 	}
 
 	/** Creates a Byte Property */
-	def <OWNER_TYPE> TrueByteProperty<OWNER_TYPE> newByteProperty(
+	final def <OWNER_TYPE> TrueByteProperty<OWNER_TYPE> newByteProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		BytePropertyAccessor<OWNER_TYPE> theAccessor, boolean theVirtual) {
-		new TrueByteProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theAccessor, theAccessor, theVirtual)
+		newByteProperty(theOwner, theSimpleName, theAccessor, theAccessor, theVirtual)
 	}
 
 	/** Creates a Byte Property */
-	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends ByteConverter<OWNER_TYPE, PROPERTY_TYPE>>
+	final def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends ByteConverter<OWNER_TYPE, PROPERTY_TYPE>>
 		ByteProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> newByteProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
 		BytePropertyAccessor<OWNER_TYPE> theAccessor, boolean theVirtual) {
-		new ByteProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(
-			this, theOwner, theSimpleName, theConverter, theBits, dataType,
+		newByteProperty(theOwner, theSimpleName, theConverter, theBits, dataType,
 			theAccessor, theAccessor, theVirtual)
 	}
 
@@ -534,20 +526,19 @@ class HierarchyBuilder {
 	}
 
 	/** Creates a Character Property */
-	def <OWNER_TYPE> TrueCharacterProperty<OWNER_TYPE> newCharacterProperty(
+	final def <OWNER_TYPE> TrueCharacterProperty<OWNER_TYPE> newCharacterProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CharPropertyAccessor<OWNER_TYPE> theAccessor, boolean theVirtual) {
-		new TrueCharacterProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theAccessor, theAccessor, theVirtual)
+		newCharacterProperty(theOwner, theSimpleName, theAccessor, theAccessor, theVirtual)
 	}
 
 	/** Creates a Character Property */
-	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends CharConverter<OWNER_TYPE, PROPERTY_TYPE>>
+	final def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends CharConverter<OWNER_TYPE, PROPERTY_TYPE>>
 		CharacterProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> newCharacterProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
 		CharPropertyAccessor<OWNER_TYPE> theAccessor, boolean theVirtual) {
-		new CharacterProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(
-			this, theOwner, theSimpleName, theConverter, theBits, dataType,
+		newCharacterProperty(theOwner, theSimpleName, theConverter, theBits, dataType,
 			theAccessor, theAccessor, theVirtual)
 	}
 
@@ -572,20 +563,19 @@ class HierarchyBuilder {
 	}
 
 	/** Creates a Short Property */
-	def <OWNER_TYPE> TrueShortProperty<OWNER_TYPE> newShortProperty(
+	final def <OWNER_TYPE> TrueShortProperty<OWNER_TYPE> newShortProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		ShortPropertyAccessor<OWNER_TYPE> theAccessor, boolean theVirtual) {
-		new TrueShortProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theAccessor, theAccessor, theVirtual)
+		newShortProperty(theOwner, theSimpleName, theAccessor, theAccessor, theVirtual)
 	}
 
 	/** Creates a Short Property */
-	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends ShortConverter<OWNER_TYPE, PROPERTY_TYPE>>
+	final def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends ShortConverter<OWNER_TYPE, PROPERTY_TYPE>>
 		ShortProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> newShortProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
 		ShortPropertyAccessor<OWNER_TYPE> theAccessor, boolean theVirtual) {
-		new ShortProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(
-			this, theOwner, theSimpleName, theConverter, theBits, dataType,
+		newShortProperty(theOwner, theSimpleName, theConverter, theBits, dataType,
 			theAccessor, theAccessor, theVirtual)
 	}
 
@@ -613,17 +603,16 @@ class HierarchyBuilder {
 	def <OWNER_TYPE> TrueFloatProperty<OWNER_TYPE> newFloatProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		FloatPropertyAccessor<OWNER_TYPE> theAccessor, boolean theVirtual) {
-		new TrueFloatProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theAccessor, theAccessor, theVirtual)
+		newFloatProperty(theOwner, theSimpleName, theAccessor, theAccessor, theVirtual)
 	}
 
 	/** Creates a Float Property */
-	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends FloatConverter<OWNER_TYPE, PROPERTY_TYPE>>
+	final def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends FloatConverter<OWNER_TYPE, PROPERTY_TYPE>>
 		FloatProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> newFloatProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, Class<PROPERTY_TYPE> dataType,
 		FloatPropertyAccessor<OWNER_TYPE> theAccessor, boolean theVirtual) {
-		new FloatProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(
-			this, theOwner, theSimpleName, theConverter, dataType,
+		newFloatProperty(theOwner, theSimpleName, theConverter, dataType,
 			theAccessor, theAccessor, theVirtual)
 	}
 
@@ -648,20 +637,19 @@ class HierarchyBuilder {
 	}
 
 	/** Creates a Integer Property */
-	def <OWNER_TYPE> TrueIntegerProperty<OWNER_TYPE> newIntegerProperty(
+	final def <OWNER_TYPE> TrueIntegerProperty<OWNER_TYPE> newIntegerProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		IntPropertyAccessor<OWNER_TYPE> theAccessor, boolean theVirtual) {
-		new TrueIntegerProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theAccessor, theAccessor, theVirtual)
+		newIntegerProperty(theOwner, theSimpleName, theAccessor, theAccessor, theVirtual)
 	}
 
 	/** Creates a Integer Property */
-	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends IntConverter<OWNER_TYPE, PROPERTY_TYPE>>
+	final def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends IntConverter<OWNER_TYPE, PROPERTY_TYPE>>
 		IntegerProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> newIntegerProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
 		IntPropertyAccessor<OWNER_TYPE> theAccessor, boolean theVirtual) {
-		new IntegerProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(
-			this, theOwner, theSimpleName, theConverter, theBits, dataType,
+		newIntegerProperty(theOwner, theSimpleName, theConverter, theBits, dataType,
 			theAccessor, theAccessor, theVirtual)
 	}
 
@@ -686,20 +674,19 @@ class HierarchyBuilder {
 	}
 
 	/** Creates a Double Property */
-	def <OWNER_TYPE> TrueDoubleProperty<OWNER_TYPE> newDoubleProperty(
+	final def <OWNER_TYPE> TrueDoubleProperty<OWNER_TYPE> newDoubleProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		DoublePropertyAccessor<OWNER_TYPE> theAccessor, boolean theVirtual) {
-		new TrueDoubleProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theAccessor, theAccessor, theVirtual)
+		newDoubleProperty(theOwner, theSimpleName, theAccessor, theAccessor, theVirtual)
 	}
 
 	/** Creates a Double Property */
-	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends DoubleConverter<OWNER_TYPE, PROPERTY_TYPE>>
+	final def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends DoubleConverter<OWNER_TYPE, PROPERTY_TYPE>>
 		DoubleProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> newDoubleProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, Class<PROPERTY_TYPE> dataType,
 		DoublePropertyAccessor<OWNER_TYPE> theAccessor, boolean theVirtual) {
-		new DoubleProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(
-			this, theOwner, theSimpleName, theConverter, dataType,
+		newDoubleProperty(theOwner, theSimpleName, theConverter, dataType,
 			theAccessor, theAccessor, theVirtual)
 	}
 
@@ -724,20 +711,19 @@ class HierarchyBuilder {
 	}
 
 	/** Creates a Long Property */
-	def <OWNER_TYPE> TrueLongProperty<OWNER_TYPE> newLongProperty(
+	final def <OWNER_TYPE> TrueLongProperty<OWNER_TYPE> newLongProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		LongPropertyAccessor<OWNER_TYPE> theAccessor, boolean theVirtual) {
-		new TrueLongProperty<OWNER_TYPE>(this, theOwner, theSimpleName, theAccessor, theAccessor, theVirtual)
+		newLongProperty(theOwner, theSimpleName, theAccessor, theAccessor, theVirtual)
 	}
 
 	/** Creates a Long Property */
-	def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends LongConverter<OWNER_TYPE, PROPERTY_TYPE>>
+	final def <OWNER_TYPE, PROPERTY_TYPE, CONVERTER extends LongConverter<OWNER_TYPE, PROPERTY_TYPE>>
 		LongProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER> newLongProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		CONVERTER theConverter, int theBits, Class<PROPERTY_TYPE> dataType,
 		LongPropertyAccessor<OWNER_TYPE> theAccessor, boolean theVirtual) {
-		new LongProperty<OWNER_TYPE, PROPERTY_TYPE, CONVERTER>(
-			this, theOwner, theSimpleName, theConverter, theBits, dataType,
+		newLongProperty(theOwner, theSimpleName, theConverter, theBits, dataType,
 			theAccessor, theAccessor, theVirtual)
 	}
 
@@ -754,7 +740,7 @@ class HierarchyBuilder {
 	}
 
 	/** Creates a Object Property */
-	def <OWNER_TYPE, PROPERTY_TYPE> ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE,
+	final def <OWNER_TYPE, PROPERTY_TYPE> ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE,
 	? extends ObjectConverter<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE>> newObjectProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		Class<?> theContentType, boolean theShared, boolean theActualInstance,
@@ -762,14 +748,13 @@ class HierarchyBuilder {
 		ObjectFuncObjectObject<OWNER_TYPE,OWNER_TYPE,PROPERTY_TYPE> theSetter, boolean theVirtual) {
 		// theContentType is not typesafe on purpose, as this makes the code
 		// generation much easier for object properties
-		new ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE,
-			ObjectConverter<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE>>(this, theOwner, theSimpleName,
-			theContentType as Class<PROPERTY_TYPE>, theShared, theActualInstance, theExactType,
+		newObjectProperty(theOwner, theSimpleName,
+			null, theContentType as Class<PROPERTY_TYPE>, theShared, theActualInstance, theExactType,
 			theNullAllowed, theGetter, theSetter, theVirtual)
 	}
 
 	/** Creates a Object Property */
-	def <OWNER_TYPE, PROPERTY_TYPE> ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE,
+	final def <OWNER_TYPE, PROPERTY_TYPE> ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE,
 	? extends ObjectConverter<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE>> newObjectProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName,
 		Class<?> theContentType, boolean theShared, boolean theActualInstance,
@@ -777,9 +762,8 @@ class HierarchyBuilder {
 		ObjectPropertyAccessor<OWNER_TYPE,PROPERTY_TYPE> theAccessor, boolean theVirtual) {
 		// theContentType is not typesafe on purpose, as this makes the code
 		// generation much easier for object properties
-		new ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE,
-			ObjectConverter<OWNER_TYPE, PROPERTY_TYPE, PROPERTY_TYPE>>(this, theOwner, theSimpleName,
-			theContentType as Class<PROPERTY_TYPE>, theShared, theActualInstance, theExactType,
+		newObjectProperty(theOwner, theSimpleName,
+			null, theContentType as Class<PROPERTY_TYPE>, theShared, theActualInstance, theExactType,
 			theNullAllowed, theAccessor, theAccessor, theVirtual)
 	}
 
@@ -799,7 +783,7 @@ class HierarchyBuilder {
 	}
 
 	/** Creates a Object Property */
-	def <OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE,
+	final def <OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE,
 		CONVERTER extends ObjectConverter<OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE>>
 		ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE, CONVERTER> newObjectProperty(
 		Class<OWNER_TYPE> theOwner, String theSimpleName, CONVERTER theConverter,
@@ -808,13 +792,13 @@ class HierarchyBuilder {
 		ObjectPropertyAccessor<OWNER_TYPE,PROPERTY_TYPE> theAccessor, boolean theVirtual) {
 		// theContentType is not typesafe on purpose, as this makes the code
 		// generation much easier for object properties
-		new ObjectProperty<OWNER_TYPE, PROPERTY_TYPE, INTERNAL_TYPE, CONVERTER>(this, theOwner, theSimpleName,
+		newObjectProperty(theOwner, theSimpleName,
 			theConverter, theContentType as Class<PROPERTY_TYPE>, theShared, theActualInstance, theExactType,
 			theNullAllowed, theAccessor, theAccessor, theVirtual)
 	}
 
 	/** Creates a new Type */
-	def <JAVA_TYPE> Type<JAVA_TYPE> newType(Class<JAVA_TYPE> theType,
+	final def <JAVA_TYPE> Type<JAVA_TYPE> newType(Class<JAVA_TYPE> theType,
 		Provider<JAVA_TYPE> theConstructor, Kind theKind,
 		ValidatorsMap validatorsMap, ListenersMap listenersMap,
 		Property<JAVA_TYPE,?> ... theProperties) {
@@ -822,7 +806,7 @@ class HierarchyBuilder {
 	}
 
 	/** Creates a new Type with parents */
-	def <JAVA_TYPE> Type<JAVA_TYPE> newType(Class<JAVA_TYPE> theType,
+	final def <JAVA_TYPE> Type<JAVA_TYPE> newType(Class<JAVA_TYPE> theType,
 		Provider<JAVA_TYPE> theConstructor, Kind theKind,
 		ValidatorsMap validatorsMap, ListenersMap listenersMap,
 		Type<?>[] theParents, Property<JAVA_TYPE,?> ... theProperties) {
@@ -863,7 +847,7 @@ class HierarchyBuilder {
 						if (!pkgAsList.contains(pkgName)) {
 							// Force initialization of Meta...
 							try {
-								Class.forName(pkgName+".Meta").declaredFields
+								SystemUtils.forName(pkgName+".Meta").declaredFields
 							} catch (Throwable ex) {
 								// NOP
 								ex.printStackTrace
@@ -899,10 +883,15 @@ class HierarchyBuilder {
 	}
 
 	/** Creates a new Hierarchy */
-	def Hierarchy newHierarchy(TypePackage... packages) {
+	protected def Hierarchy newHierarchy(TypePackage[] thePackages, Hierarchy[] theDependencies) {
+		new Hierarchy(this, thePackages, theDependencies)
+	}
+
+	/** Creates a new Hierarchy */
+	final def Hierarchy newHierarchy(TypePackage... packages) {
 		val registered = registerPackage(packages)
 		val dependencies = if ((Object.name == name) || (class == MetaHierarchyBuilder)) newArrayOfSize(0) else findDependencies(registered)
-		hierarchy = new Hierarchy(this, registered, dependencies)
+		_hierarchy = newHierarchy(registered, dependencies)
 		close()
 		for (pkg : registered) {
 			for (type : pkg.types) {
@@ -911,7 +900,7 @@ class HierarchyBuilder {
 						&& !prop.contentTypeClass.array) {
 						try {
 							val h = prop.contentType.hierarchy()
-							if ((h !== hierarchy) && !dependencies.contains(h)) {
+							if ((h !== _hierarchy) && !dependencies.contains(h)) {
 								LOG.error("Property "+prop.fullName+" has contentType "
 									+prop.contentType.fullName+" which is not part of "+type.fullName
 									+" Hierarchy's dependencies")
@@ -923,12 +912,12 @@ class HierarchyBuilder {
 				}
 			}
 		}
-		hierarchy
+		_hierarchy
 	}
 
 	/** The Hierarchy; the HierarchyBuilder is closed after creating it. */
-	def hierarchy() {
-		hierarchy
+	final def hierarchy() {
+		_hierarchy
 	}
 
 	/**
