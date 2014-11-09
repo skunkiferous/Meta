@@ -312,4 +312,50 @@ class BeanTest extends BaseTst {
 		}
 		Assert.assertTrue("person allows null name", exception)
 	}
+
+	/** Test that @Range on a field is respected */
+	@Test
+	def void testRange() {
+		val dtc = new DemoTypeChildProvider().get as DemoTypeChildImpl
+
+		var exception = false
+		try {
+			dtc._childAge = -1
+		} catch(Throwable t) {
+			exception = true
+		}
+		Assert.assertFalse("DemoTypeChild must allow -1 for _childAge", exception)
+
+		exception = false
+		try {
+			dtc._childAge = 10
+		} catch(Throwable t) {
+			exception = true
+		}
+		Assert.assertFalse("DemoTypeChild must allow 10 for _childAge", exception)
+
+		exception = false
+		try {
+			dtc._childAge = 99
+		} catch(Throwable t) {
+			exception = true
+		}
+		Assert.assertFalse("DemoTypeChild must allow 99 for _childAge", exception)
+
+		exception = false
+		try {
+			dtc._childAge = -2
+		} catch(Throwable t) {
+			exception = true
+		}
+		Assert.assertTrue("DemoTypeChild must NOT allow -2 for _childAge", exception)
+
+		exception = false
+		try {
+			dtc._childAge = 100
+		} catch(Throwable t) {
+			exception = true
+		}
+		Assert.assertTrue("DemoTypeChild must NOT allow 100 for _childAge", exception)
+	}
 }

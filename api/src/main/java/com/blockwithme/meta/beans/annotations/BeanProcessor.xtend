@@ -79,6 +79,7 @@ import com.blockwithme.meta.LongPropertyRangeValidator
 import com.blockwithme.meta.DoublePropertyRangeValidator
 import com.blockwithme.meta.ObjectPropertyValidator
 import com.blockwithme.meta.TypeImplemented
+import com.blockwithme.meta.StringRangePropertyValidator
 
 /**
  * Specifies a Validator for a Property.
@@ -115,10 +116,6 @@ annotation Validators {
  * Specifies a "range" for some Properties.
  *
  * The range is validated by instantiating an appropriate validator.
- *
- * TODO *** This should be used also to specify collection/map size limits
- *
- * TODO *** We need a TEST CASE for @Range
  */
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.CLASS)
@@ -1740,6 +1737,24 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
 	  		softMax = _softMax
 	  	}
   		type = LongPropertyRangeValidator.name
+  	} else if (propInfo.type == "float") {
+	  	min = "java.lang.Float.MIN_VALUE"
+	  	max = "java.lang.Float.MAX_VALUE"
+	  	softMin = min
+	  	softMax = max
+	  	if (_min != "") {
+	  		min = _min
+	  	}
+	  	if (_max != "") {
+	  		max = _max
+	  	}
+	  	if (_softMin != "") {
+	  		softMin = _softMin
+	  	}
+	  	if (_softMax != "") {
+	  		softMax = _softMax
+	  	}
+  		type = FloatPropertyRangeValidator.name
   	} else if (propInfo.type == "double") {
 	  	min = "java.lang.Double.MIN_VALUE"
 	  	max = "java.lang.Double.MAX_VALUE"
@@ -1758,10 +1773,60 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
 	  		softMax = _softMax
 	  	}
   		type = DoublePropertyRangeValidator.name
+  	} else if (propInfo.type == "boolean") {
+  		throw new IllegalStateException("Does not know how to create validator for boolean")
+  	} else {
+  		// Must be object type
+  		return genObjectRangeValidatorFor(propInfo)
   	}
+  	type+"("+min+","+max+","+softMin+","+softMax+")"
+  }
+
+  /** Generates an appropriate Validator instantiation for an Object Property */
+  private def String genObjectRangeValidatorFor(PropertyInfo propInfo) {
+  	var min = ""
+  	var max = ""
+  	var softMin = ""
+  	var softMax = ""
+  	var type = ""
+
+  	val _min = propInfo.min
+  	val _max = propInfo.max
+  	val _softMin = propInfo.softMin
+  	val _softMax = propInfo.softMax
+
+  	if (propInfo.type == String.name) {
+  		min = null
+	  	max = null
+	  	softMin = min
+	  	softMax = max
+	  	if (_min != "") {
+	  		min = _min
+	  	} else {
+	  		min = null
+	  	}
+	  	if (_max != "") {
+	  		max = _max
+	  	} else {
+	  		max = null
+	  	}
+	  	if (_softMin != "") {
+	  		softMin = _softMin
+	  	} else {
+	  		softMin = null
+	  	}
+	  	if (_softMax != "") {
+	  		softMax = _softMax
+	  	} else {
+	  		softMax = null
+	  	}
+  		type = StringRangePropertyValidator.name
+	}
+
   	if (type == "") {
   		throw new IllegalStateException("Does not know how to create validator for "+propInfo.type)
   	}
+
   	type+"("+min+","+max+","+softMin+","+softMax+")"
   }
 
@@ -1792,8 +1857,10 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
 	  		}
 	  		while (ranges.hasNext) {
 	  			val r = ranges.next
-	  			val propName = r.name
-	  			buf.append('.add("').append(propName).append('", new ').append(genRangeValidatorFor(r)).append(")")
+	  			if (!isCol(r) && !isMap(r)) {
+		  			val propName = r.name
+		  			buf.append('.add("').append(propName).append('", new ').append(genRangeValidatorFor(r)).append(")")
+	  			}
 	  		}
 	  		while (notNulls.hasNext) {
 	  			val nn = notNulls.next
@@ -2211,13 +2278,21 @@ throw new IllegalArgumentException("Type should be «propTypeRef.name» but was 
 						throw new IllegalStateException(""+colType)
 					}
 				}
+				var softMax = "Integer.MAX_VALUE"
+				var max = "Integer.MAX_VALUE"
+				if ((propInfo.max !== null) && (propInfo.max != "")) {
+					max = softMax = propInfo.max
+				}
+				if ((propInfo.softMax !== null) && (propInfo.softMax != "")) {
+					softMax = propInfo.softMax
+				}
 				val componentTypeBeanInfo = beanInfo(processingContext, componentType)
       			val componentTypeType = beanInfoToTypeCode(componentTypeBeanInfo, beanInfo.pkgName)
       			val componentTypeType2 = checkComponentType(impl, beanInfo, propInfo,
       				componentTypeType, componentType, componentTypeBeanInfo)
       			val bodyText = '''«propTypeRef» result = «getter»();
 if (result == null) {
-	«propInfo.name» = «castForColProp(propInfo)»interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», new «CollectionBeanImpl.name»<«componentType»>(«Meta.name».COLLECTION_BEAN, «componentTypeType2»,«config»));
+	«propInfo.name» = «castForColProp(propInfo)»interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», new «CollectionBeanImpl.name»<«componentType»>(«Meta.name».COLLECTION_BEAN, «componentTypeType2»,«config»,«softMax»,«max»));
 	result = «getter»();
 }
 return result;'''
@@ -2264,9 +2339,17 @@ return result;'''
       			val valueTypeType = beanInfoToTypeCode(valueTypeBeanInfo, beanInfo.pkgName)
       			val valueTypeType2 = checkComponentType(impl, beanInfo, propInfo, valueTypeType, valueTypeName, valueTypeBeanInfo)
       			val fixedValue = propInfo.fixedType
+				var softMax = "Integer.MAX_VALUE"
+				var max = "Integer.MAX_VALUE"
+				if ((propInfo.softMax !== null) && (propInfo.softMax != "")) {
+					softMax = propInfo.softMax
+				}
+				if ((propInfo.max !== null) && (propInfo.max != "")) {
+					max = propInfo.max
+				}
       			val bodyText = '''«propTypeRef» result = «getter»();
 if (result == null) {
-	«propInfo.name» = «castForColProp(propInfo)»interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», new «MapBeanImpl.name»<«keyTypeName»,«valueTypeName»>(«Meta.name».MAP_BEAN, «keyTypeType2»,«fixedKey»,«valueTypeType2»,«fixedValue», «propInfo.nullAllowed»));
+	«propInfo.name» = «castForColProp(propInfo)»interceptor.set«propertyMethodName»(this, «propertyFieldName», «propInfo.name», new «MapBeanImpl.name»<«keyTypeName»,«valueTypeName»>(«Meta.name».MAP_BEAN, «keyTypeType2»,«fixedKey»,«valueTypeType2»,«fixedValue», «propInfo.nullAllowed»,«softMax»,«max»));
 	result = «getter»();
 }
 return result;'''

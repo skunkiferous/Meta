@@ -31,6 +31,7 @@ import com.blockwithme.meta.beans.annotations.HashSetProperty
 import com.blockwithme.meta.beans.annotations.ListProperty
 import com.blockwithme.meta.beans.annotations.FixedType
 import com.blockwithme.meta.beans.annotations.NotNull
+import com.blockwithme.meta.beans.annotations.Range
 
 /**
  * Hierarchy "root".
@@ -96,7 +97,8 @@ interface DemoTypeChild extends DemoType {
   /** Internal property */
   int _secret
 
-  /** Cache Property */
+  /** Manually Cached Property. -1 is for null child, therefore valid. */
+  @Range(min="-1",max="99",softMin="12",softMax="18")
   int _childAge
 
   /** Child Object property */
@@ -266,6 +268,7 @@ interface CollectionOwner extends Root {
 
   Set<String> realSet
 
+	@Range(softMax="90",max="99")
   int[] integerSet
 
   Map<String,Integer> map

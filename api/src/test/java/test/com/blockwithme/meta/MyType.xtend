@@ -130,52 +130,52 @@ class TestMyBeanMeta {
 class MyCollectionType {
   /** unorderedSet CollectionBean Property*/
   package var unorderedSet = new CollectionBeanImpl<String>(
-  	Meta.COLLECTION_BEAN, JavaMeta.STRING, CollectionBeanConfig.UNORDERED_SET)
+  	Meta.COLLECTION_BEAN, JavaMeta.STRING, CollectionBeanConfig.UNORDERED_SET, Integer.MAX_VALUE, Integer.MAX_VALUE)
 
   /** orderedSet CollectionBean Property*/
   package var orderedSet = new CollectionBeanImpl<String>(
-  	Meta.COLLECTION_BEAN, JavaMeta.STRING, CollectionBeanConfig.ORDERED_SET)
+  	Meta.COLLECTION_BEAN, JavaMeta.STRING, CollectionBeanConfig.ORDERED_SET, Integer.MAX_VALUE, Integer.MAX_VALUE)
 
   /** sortedSet CollectionBean Property*/
   package var sortedSet = new CollectionBeanImpl<String>(
-  	Meta.COLLECTION_BEAN, JavaMeta.STRING, CollectionBeanConfig.SORTED_SET)
+  	Meta.COLLECTION_BEAN, JavaMeta.STRING, CollectionBeanConfig.SORTED_SET, Integer.MAX_VALUE, Integer.MAX_VALUE)
 
   /** hashSet CollectionBean Property*/
   package var hashSet = new CollectionBeanImpl<String>(
-  	Meta.COLLECTION_BEAN, JavaMeta.STRING, CollectionBeanConfig.HASH_SET)
+  	Meta.COLLECTION_BEAN, JavaMeta.STRING, CollectionBeanConfig.HASH_SET, Integer.MAX_VALUE, Integer.MAX_VALUE)
 
   /** list CollectionBean Property*/
   package var list = new CollectionBeanImpl<String>(
-  	Meta.COLLECTION_BEAN, JavaMeta.STRING, CollectionBeanConfig.LIST)
+  	Meta.COLLECTION_BEAN, JavaMeta.STRING, CollectionBeanConfig.LIST, Integer.MAX_VALUE, Integer.MAX_VALUE)
 
   /** fixedSize list CollectionBean Property*/
   package var fixedSizeList = new CollectionBeanImpl<String>(
-  	Meta.COLLECTION_BEAN, JavaMeta.STRING, CollectionBeanConfig.newFixedSizeList(10,true))
+  	Meta.COLLECTION_BEAN, JavaMeta.STRING, CollectionBeanConfig.newFixedSizeList(10,true), Integer.MAX_VALUE, Integer.MAX_VALUE)
 
   /** Bean list CollectionBean Property*/
   package var beanList = new CollectionBeanImpl<MyBean>(
-  	Meta.COLLECTION_BEAN, TestMyBeanMeta.MY_BEAN_TYPE, CollectionBeanConfig.LIST)
+  	Meta.COLLECTION_BEAN, TestMyBeanMeta.MY_BEAN_TYPE, CollectionBeanConfig.LIST, Integer.MAX_VALUE, Integer.MAX_VALUE)
 }
 
 class MyMapType {
   /** MapBean Property */
   package var map = new MapBeanImpl<String,Long>(
-  	Meta.MAP_BEAN, JavaMeta.STRING, false, JavaMeta.LONG, false, true
+  	Meta.MAP_BEAN, JavaMeta.STRING, false, JavaMeta.LONG, false, true, Integer.MAX_VALUE, Integer.MAX_VALUE
   )
   package var nonNullValueMap = new MapBeanImpl<String,Long>(
-  	Meta.MAP_BEAN, JavaMeta.STRING, false, JavaMeta.LONG, false, false
+  	Meta.MAP_BEAN, JavaMeta.STRING, false, JavaMeta.LONG, false, false, Integer.MAX_VALUE, Integer.MAX_VALUE
   )
   /** MapBean "non-fixed" Property */
   package var nonfixed = new MapBeanImpl<CharSequence,CharSequence>(
-  	Meta.MAP_BEAN, JavaMeta.CHAR_SEQUENCE, false, JavaMeta.CHAR_SEQUENCE, false, true
+  	Meta.MAP_BEAN, JavaMeta.CHAR_SEQUENCE, false, JavaMeta.CHAR_SEQUENCE, false, true, Integer.MAX_VALUE, Integer.MAX_VALUE
   )
   /** MapBean "fixed key" Property */
   package var fixedKey = new MapBeanImpl<CharSequence,CharSequence>(
-  	Meta.MAP_BEAN, JavaMeta.CHAR_SEQUENCE, true, JavaMeta.CHAR_SEQUENCE, false, true
+  	Meta.MAP_BEAN, JavaMeta.CHAR_SEQUENCE, true, JavaMeta.CHAR_SEQUENCE, false, true, Integer.MAX_VALUE, Integer.MAX_VALUE
   )
   /** MapBean "fixed value" Property */
   package var fixedValue = new MapBeanImpl<CharSequence,CharSequence>(
-  	Meta.MAP_BEAN, JavaMeta.CHAR_SEQUENCE, false, JavaMeta.CHAR_SEQUENCE, true, true
+  	Meta.MAP_BEAN, JavaMeta.CHAR_SEQUENCE, false, JavaMeta.CHAR_SEQUENCE, true, true, Integer.MAX_VALUE, Integer.MAX_VALUE
   )
 }
 

@@ -486,4 +486,28 @@ class CollectionTest extends BaseTst {
 		assertEquals("copy_co.everyone", co.everyone, copy_co.everyone)
 		assertEquals("copy_co", co, copy_co)
 	}
+
+	/** Test that @Range on a field is respected */
+	@Test
+	def void testRange() {
+		val co = new CollectionOwnerProvider().get
+		val ints = co.integerSet
+		var exception = false
+		try {
+			var i = 0
+			while (i < 99) {
+				ints.add(i++)
+			}
+		} catch(Throwable t) {
+			exception = true
+		}
+		assertFalse("co.integerSet.add(i<99)", exception)
+		exception = false
+		try {
+			ints.add(99)
+		} catch(Throwable t) {
+			exception = true
+		}
+		assertTrue("co.integerSet.add(99)", exception)
+	}
 }

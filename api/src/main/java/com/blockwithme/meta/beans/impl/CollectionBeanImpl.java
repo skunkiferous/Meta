@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.logging.Logger;
 
 import com.blockwithme.meta.IProperty;
 import com.blockwithme.meta.JavaMeta;
@@ -36,6 +37,7 @@ import com.blockwithme.meta.beans.ObjectCollectionInterceptor;
 import com.blockwithme.meta.beans._Bean;
 import com.blockwithme.meta.beans._ListBean;
 import com.blockwithme.meta.beans._SetBean;
+import com.blockwithme.meta.beans.annotations.ValidationException;
 import com.blockwithme.util.base.SystemUtils;
 import com.blockwithme.util.shared.MurmurHash;
 
@@ -278,6 +280,12 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
     /** Is the Type of the values a Bean? */
     private final boolean valueTypeIsBean;
 
+    /** The collection "soft" maximum size */
+    private final int softMax;
+
+    /** The collection "hard" maximum size */
+    private final int max;
+
     /** The collection size */
     private int size;
 
@@ -336,7 +344,7 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
      */
     @SuppressWarnings("unchecked")
     public CollectionBeanImpl(final Type<?> metaType, final Type<E> valueType,
-            final CollectionBeanConfig config) {
+            final CollectionBeanConfig config, final int softMax, final int max) {
         super(metaType);
         interceptor = DefaultCollectionInterceptor.INSTANCE;
         this.valueType = Objects.requireNonNull(valueType, "valueType");
@@ -347,8 +355,24 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
         final int fixedSize = config.getFixedSize();
         if (fixedSize != -1) {
             size = fixedSize;
+            this.softMax = fixedSize;
+            this.max = fixedSize;
             data = newArray(fixedSize);
         } else {
+            if (softMax < 0) {
+                throw new IllegalArgumentException("softMax(" + softMax
+                        + ") cannot be less then 0");
+            }
+            if (max < 0) {
+                throw new IllegalArgumentException("max(" + max
+                        + ") cannot be less then 0");
+            }
+            if (max < softMax) {
+                throw new IllegalArgumentException("max(" + max
+                        + ") cannot be less then softMax(" + softMax + ")");
+            }
+            this.softMax = softMax;
+            this.max = max;
             data = (E[]) metaType.empty;
         }
     }
@@ -374,6 +398,25 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
     @Override
     protected final int getSelectionCount() {
         return size;
+    }
+
+    /** Sets the size. */
+    private void setSize(final int newSize) {
+        if (newSize > max) {
+            throw new ValidationException("newSize(" + newSize + ") > max("
+                    + max + ")");
+        }
+        if (newSize > softMax) {
+            final _Bean parent = getParentBean();
+            final Object key = getParentKey();
+            final String logger = ((parent == null) ? "null" : parent
+                    .getMetaType().toString())
+                    + "."
+                    + ((key == null) ? "null" : key.toString());
+            Logger.getLogger(logger).warning(
+                    "newSize(" + newSize + ") < softMax(" + softMax + ")");
+        }
+        size = newSize;
     }
 
     /* (non-Javadoc)
@@ -729,7 +772,7 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
                     }
                     oci.removeObjectAtIndex(this, index, result, true);
                 }
-                size--;
+                setSize(size - 1);
                 array[size] = null;
             }
             return result;
@@ -757,7 +800,7 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
                         }
                     }
                 }
-                size = 0;
+                setSize(0);
                 data = getValueType().empty;
                 clearSelectionArray();
                 clearSelection(false, false);
@@ -818,7 +861,7 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
             while (true) {
                 clear();
                 ensureCapacityInternal(newSize);
-                size = newSize;
+                setSize(newSize);
                 for (final E e : content) {
                     if (!hashSetAdd2(-indexOf(e) - 1, e)) {
                         newSize *= 2;
@@ -842,13 +885,13 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
                 for (int j = size; j > i; j--) {
                     array[j] = oci.getObjectAtIndex(this, j - 1, array[j - 1]);
                 }
-                size++;
+                setSize(size + 1);
                 array[i] = oci.addObjectAtIndex(this, i, element, true);
                 added = true;
             }
         }
         if (!added) {
-            size++;
+            setSize(size + 1);
             array[index] = oci.addObjectAtIndex(this, index, element, false);
         }
     }
@@ -876,7 +919,7 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
                             hashSetAdd(-pos - 1, element);
                         } else {
                             ensureCapacityInternal(size + 1);
-                            size++;
+                            setSize(size + 1);
                             data[index] = oci.addObjectAtIndex(this, index,
                                     element, false);
                         }
@@ -889,7 +932,7 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
                 }
             } else {
                 ensureCapacityInternal(size + 1);
-                size++;
+                setSize(size + 1);
                 data[index] = oci.addObjectAtIndex(this, index, element, false);
             }
         } else {
@@ -902,7 +945,7 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
             for (int i = size; i > index; i--) {
                 array[i] = oci.getObjectAtIndex(this, i - 1, array[i - 1]);
             }
-            size++;
+            setSize(size + 1);
             array[index] = oci.addObjectAtIndex(this, index, element, true);
         }
         return true;
@@ -949,7 +992,8 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
     /** Make a new instance of the same type as self. */
     @Override
     protected _BeanImpl newInstance() {
-        return new CollectionBeanImpl<E>(metaType, valueType, config);
+        return new CollectionBeanImpl<E>(metaType, valueType, config, softMax,
+                max);
     }
 
     /* (non-Javadoc)

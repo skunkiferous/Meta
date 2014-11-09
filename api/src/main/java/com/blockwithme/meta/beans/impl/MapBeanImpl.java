@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
+import java.util.logging.Logger;
 
 import com.blockwithme.meta.IProperty;
 import com.blockwithme.meta.JavaMeta;
@@ -37,6 +38,7 @@ import com.blockwithme.meta.beans.Bean;
 import com.blockwithme.meta.beans.ObjectObjectMapInterceptor;
 import com.blockwithme.meta.beans._Bean;
 import com.blockwithme.meta.beans._MapBean;
+import com.blockwithme.meta.beans.annotations.ValidationException;
 import com.blockwithme.util.base.SystemUtils;
 import com.blockwithme.util.shared.MurmurHash;
 
@@ -205,6 +207,12 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
     /** Can values be null? */
     private final boolean nullValueAllowed;
 
+    /** The collection "soft" maximum size */
+    private final int softMax;
+
+    /** The collection "hard" maximum size */
+    private final int max;
+
     /** The collection size */
     private int size;
 
@@ -303,7 +311,9 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
      */
     public MapBeanImpl(final Type<?> metaType, final Type<K> theKeyType,
             final boolean theKeyTypeIsFixed, final Type<V> theValueType,
-            final boolean theValueTypeIsFixed, final boolean theNullValueAllowed) {
+            final boolean theValueTypeIsFixed,
+            final boolean theNullValueAllowed, final int theSoftMax,
+            final int theMax) {
         super(metaType);
         interceptor = DefaultObjectObjectMapInterceptor.INSTANCE;
         keyType = Objects.requireNonNull(theKeyType, "theKeyType");
@@ -316,6 +326,20 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
         keyTypeIsFixed = theKeyTypeIsFixed;
         valueTypeIsFixed = theValueTypeIsFixed;
         nullValueAllowed = theNullValueAllowed;
+        if (theSoftMax < 0) {
+            throw new IllegalArgumentException("softMax(" + theSoftMax
+                    + ") cannot be less then 0");
+        }
+        if (theMax < 0) {
+            throw new IllegalArgumentException("max(" + theMax
+                    + ") cannot be less then 0");
+        }
+        if (theMax < theSoftMax) {
+            throw new IllegalArgumentException("max(" + theMax
+                    + ") cannot be less then softMax(" + theSoftMax + ")");
+        }
+        softMax = theSoftMax;
+        max = theMax;
     }
 
     /* (non-Javadoc)
@@ -340,6 +364,25 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
     @Override
     public int size() {
         return size;
+    }
+
+    /** Sets the size. */
+    private void setSize(final int newSize) {
+        if (newSize > max) {
+            throw new ValidationException("newSize(" + newSize + ") > max("
+                    + max + ")");
+        }
+        if (newSize > softMax) {
+            final _Bean parent = getParentBean();
+            final Object key = getParentKey();
+            final String logger = ((parent == null) ? "null" : parent
+                    .getMetaType().toString())
+                    + "."
+                    + ((key == null) ? "null" : key.toString());
+            Logger.getLogger(logger).warning(
+                    "newSize(" + newSize + ") < softMax(" + softMax + ")");
+        }
+        size = newSize;
     }
 
     /* (non-Javadoc)
@@ -434,7 +477,7 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
                     }
                 }
             }
-            size = 0;
+            setSize(0);
             keys = getKeyType().empty;
             values = getValueType().empty;
             clearSelectionArray();
@@ -459,7 +502,7 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
             keys[index] = oomi.setKeyAtIndex(this, index, (K) key, null);
             values[index] = oomi.setValueAtIndex(this, (K) key, index, result,
                     null);
-            size--;
+            setSize(size - 1);
             return result;
         }
         return null;
@@ -548,7 +591,7 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
                 return put2(oomi, key, nextPos, value);
             }
             // New key ...
-            size++;
+            setSize(size + 1);
             if (posKey == null) {
                 array[pos] = oomi.setKeyAtIndex(this, pos, null, key);
                 return put2(oomi, key, pos, value);
@@ -719,7 +762,6 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
                 @Override
                 public Iterator<Map.Entry<K, V>> iterator() {
                     return new Iterator<Map.Entry<K, V>>() {
-                        private JacksonSerializer js;
                         final Iterator<K> keyIter = keySet().iterator();
 
                         @Override
@@ -755,7 +797,7 @@ public class MapBeanImpl<K, V> extends _BeanImpl implements _MapBean<K, V> {
     @Override
     protected _BeanImpl newInstance() {
         return new MapBeanImpl<K, V>(metaType, keyType, keyTypeIsFixed,
-                valueType, valueTypeIsFixed, nullValueAllowed);
+                valueType, valueTypeIsFixed, nullValueAllowed, softMax, max);
     }
 
     /* (non-Javadoc)

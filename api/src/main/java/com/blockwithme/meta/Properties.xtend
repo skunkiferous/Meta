@@ -1843,6 +1843,55 @@ package class PerTypeObjectPropertyData extends PerTypePropertyData {
 }
 
 
+/** Validates the "range" of a String property */
+class StringRangePropertyValidator implements ObjectPropertyValidator<Object,String,String> {
+	val String min
+	val String max
+	val String softMin
+	val String softMax
+
+	new (String min, String max, String softMin, String softMax) {
+		if ((min !== null) && (max !== null) && (min > max)) {
+			throw new IllegalArgumentException("min("+min+") > max("+max+")")
+		}
+		if ((softMin !== null) && (softMax !== null) && (softMin > softMax)) {
+			throw new IllegalArgumentException("softMin("+softMin+") > softMax("+softMax+")")
+		}
+		if ((min !== null) && (softMax !== null) && (max < softMax)) {
+			throw new IllegalArgumentException("max("+max+") < softMax("+softMax+")")
+		}
+		if ((softMin !== null) && (max !== null) && (softMin < min)) {
+			throw new IllegalArgumentException("softMin("+softMin+") < min("+min+")")
+		}
+		this.min = min
+		this.max = max
+		this.softMin = softMin
+		this.softMax = softMax
+	}
+
+	override beforeObjectPropertyChange(Object instance, ObjectProperty<Object, String, String, ?> prop,
+		String oldValue, String newValue) {
+		// If null is not valid, it should be checked with NotNullObjectPropertyValidator
+		if (newValue !== null) {
+			if ((min !== null) && (newValue < min)) {
+				return "newValue("+newValue+") < min("+min+")"
+			}
+			if ((max !== null) && (newValue > max)) {
+				return "newValue("+newValue+") > max("+max+")"
+			}
+			if ((softMin !== null) && (newValue < softMin)) {
+				val log = Logger.getLogger(instance.class.name)
+				log.warn("newValue("+newValue+") < softMin("+softMin+")")
+			} else if ((softMax !== null) && (newValue > softMax)) {
+				val log = Logger.getLogger(instance.class.name)
+				log.warn("newValue("+newValue+") > softMax("+softMax+")")
+			}
+		}
+		null
+	}
+}
+
+
 /**
  * Represents an Object (non-primitive) Property.
  * This is also the base-class of the meta-properties.
@@ -4672,32 +4721,21 @@ package final class MapProvider implements Provider<Map> {
   public static val INSTANCE = new MapProvider
 }
 
-/** A Provider that returns Map.Entries */
-package final class MapEntryProvider implements Provider<Map.Entry> {
-	private static final class DummyMapEntry implements Map.Entry {
-		override getKey() {
-			throw new UnsupportedOperationException()
-		}
-
-		override getValue() {
-			throw new UnsupportedOperationException()
-		}
-
-		override setValue(Object value) {
-			throw new UnsupportedOperationException()
-		}
-
+/** A dummy Map.Entry */
+final class DummyMapEntry implements Map.Entry {
+	override getKey() {
+		throw new UnsupportedOperationException()
 	}
 
-	private val DUMMY = new DummyMapEntry
+	override getValue() {
+		throw new UnsupportedOperationException()
+	}
 
-  /** Returns the constant */
-  override get() {
-    DUMMY
-  }
+	override setValue(Object value) {
+		throw new UnsupportedOperationException()
+	}
 
-  /** The singleton instance */
-  public static val INSTANCE = new MapEntryProvider
+	public static val INSTANCE = new DummyMapEntry
 }
 
 /** Implemented by Collections that want a different "content" the toArray */
@@ -4849,8 +4887,12 @@ public interface JavaMeta {
       Map.Entry, "value", Object, false, true, true, true, [value], [obj,value|obj.value = value;obj], false)
 
   /** The Map Type */
-  public static val MAP_ENTRY = BUILDER.newType(Map.Entry, MapEntryProvider.INSTANCE, Kind.Trait, null, null,
+  public static val MAP_ENTRY = BUILDER.newType(Map.Entry, new ConstantProvider(DummyMapEntry.INSTANCE), Kind.Trait, null, null,
     Type.NO_TYPE, <Property>newArrayList(MAP_ENTRY_KEY_PROP, MAP_ENTRY_VALUE_PROP), TWO_NULL_OBJECT_PROPS)
+
+  /** The Logger Type */
+  public static val LOGGER = BUILDER.newType(Logger, new ConstantProvider(Logger.getLogger(Logger.GLOBAL_LOGGER_NAME)),
+  	Kind.Implementation, null, null)
 
   /** The java.lang package */
   public static val JAVA_LANG_PACKAGE = BUILDER.newTypePackage(CLASS, OBJECT, VOID,
@@ -4864,12 +4906,15 @@ public interface JavaMeta {
   /** The java.util package */
   public static val JAVA_UTIL_PACKAGE = BUILDER.newTypePackage(ITERATOR, COLLECTION, LIST, SET, MAP, MAP_ENTRY)
 
+  /** The java.util.logger package */
+  public static val JAVA_UTIL_LOGGER_PACKAGE = BUILDER.newTypePackage(LOGGER)
+
   /** The java.math package */
   public static val JAVA_MATH_PACKAGE = BUILDER.newTypePackage(BIG_INTEGER, BIG_DECIMAL)
 
   /** The Hierarchy of Java's Runtime Types */
   public static val HIERARCHY = BUILDER.newHierarchy(JAVA_LANG_PACKAGE, JAVA_IO_PACKAGE,
-  	JAVA_UTIL_PACKAGE, JAVA_MATH_PACKAGE)
+  	JAVA_UTIL_PACKAGE, JAVA_UTIL_LOGGER_PACKAGE, JAVA_MATH_PACKAGE)
 
 }
 

@@ -663,12 +663,17 @@ interface Meta {
     val _BEAN__ROOT_BEAN = BUILDER.newObjectProperty(
     	_Bean, "rootBean", _Bean, true, true, false, false, [rootBean], null, true)
 
+	/** The log virtual Bean property */
+    val _BEAN__LOG = BUILDER.newObjectProperty(
+    	_Bean, "log", Logger, true, true, false, false, [log], null, true)
+
 	/** The _Bean Type */
 	val _BEAN = BUILDER.newType(_Bean, null, Kind.Trait, null, null, #[BEAN],
 		Meta._BEAN__CHANGE_COUNTER,
 		Meta._BEAN__PARENT_BEAN,
 		Meta._BEAN__PARENT_KEY,
-		Meta._BEAN__ROOT_BEAN)
+		Meta._BEAN__ROOT_BEAN,
+		Meta._BEAN__LOG)
 
 	/** The Entity Type */
 	val ENTITY = BUILDER.newType(Entity, null, Kind.Trait, null, null, #[BEAN])
