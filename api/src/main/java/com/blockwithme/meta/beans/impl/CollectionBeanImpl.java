@@ -1109,4 +1109,18 @@ public class CollectionBeanImpl<E> extends _BeanImpl implements _ListBean<E>,
             p.copyValue(_other, this);
         }
     }
+
+    /** Clears the collection, if it only contains null. Returns true on success. */
+    @Override
+    public final boolean clearIfEffectivelyEmpty() {
+        if (size > 0) {
+            for (final E e : this) {
+                if (e != null) {
+                    return false;
+                }
+            }
+            clear();
+        }
+        return true;
+    }
 }

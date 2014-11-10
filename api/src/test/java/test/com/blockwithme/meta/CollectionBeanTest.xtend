@@ -360,8 +360,8 @@ class CollectionBeanTest extends BaseTst {
     	assertTrue("orderedSet.empty", cb.orderedSet.empty)
     	assertTrue("sortedSet.empty", cb.sortedSet.empty)
     	assertTrue("unorderedSet.empty", cb.unorderedSet.empty)
-    	// TODO *** hashSet don't shrink!
-//    	assertTrue("hashSet.empty", cb.hashSet.empty)
+    	// hashSet don't shrink, so we need a special call here
+    	assertTrue("hashSet.empty", cb.hashSet.clearIfEffectivelyEmpty())
 	}
 
     @Test

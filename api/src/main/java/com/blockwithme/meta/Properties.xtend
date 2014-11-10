@@ -1749,8 +1749,10 @@ extends MetaBase<Type<OWNER_TYPE>> implements IProperty<OWNER_TYPE, PROPERTY_TYP
 		// Intentional potential NullPointerException here.
 		val result = type.propertyToPerTypeData.get(this)
 		if (result === null) {
+			val props = new ArrayList(type.propertyToPerTypeData.keySet)
+			Collections.sort(props)
 			throw new IllegalStateException("No per-Type data found in type "
-				+type.fullName+" for "+fullName)
+				+type.fullName+" for "+fullName+". Known Properties are: "+props)
 		}
 		result
 	}

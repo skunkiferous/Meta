@@ -1906,6 +1906,7 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
     val pkg = beanInfo.pkgName
     val simpleName = beanInfo.simpleName
     if (meta.findDeclaredField(metaTypeFieldName(simpleName)) === null) {
+      var hasBeanParent = false
       val parents = new StringBuilder
       for (p : beanInfo.parents) {
       	val parent = beanInfoToTypeCode(p, pkg)
@@ -1921,7 +1922,11 @@ class BeanProcessor extends Processor<TypeDeclaration,MutableTypeDeclaration> {
       	} else if (p.isBean) {
           parents.append(parent)
           parents.append(', ')
+          hasBeanParent = true
       	}
+      }
+      if (beanInfo.isBean && !hasBeanParent) {
+          parents.append(Meta.name+"._BEAN, ")
       }
       if (parents.length > 0) {
         parents.length = parents.length - 2

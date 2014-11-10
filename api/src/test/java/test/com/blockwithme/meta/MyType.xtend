@@ -4,6 +4,7 @@ import com.blockwithme.meta.Hierarchy
 import com.blockwithme.meta.HierarchyBuilderFactory
 import com.blockwithme.meta.JavaMeta
 import com.blockwithme.meta.Kind
+import com.blockwithme.meta.Property
 import com.blockwithme.meta.Type
 import com.blockwithme.meta.TypeImplemented
 import com.blockwithme.meta.beans.CollectionBean
@@ -118,7 +119,7 @@ class TestMyBeanMeta {
   /** Test Hierarchy Builder */
   public static val BUILDER = HierarchyBuilderFactory.getHierarchyBuilder(MyBean.name)
 
-  public static val MY_BEAN_TYPE = BUILDER.newType(MyBean, null, Kind::Implementation, null, null)
+  public static val MY_BEAN_TYPE = BUILDER.newType(MyBean, null, Kind::Implementation, null, null, #[Meta._BEAN], Property.NO_PROPERTIES)
 
   /** The test.com.blockwithme.meta package */
   public static val MY_PACKAGE = BUILDER.newTypePackage(MY_BEAN_TYPE)

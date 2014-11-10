@@ -530,6 +530,8 @@ interface _ListBean<E> extends ListBean<E>, _CollectionBean<E> {
 interface _SetBean<E> extends SetBean<E>, _CollectionBean<E> {
 	/** Returns the delegate, if any */
     override _SetBean<E> getDelegate()
+    /** Clears the collection, if it only contains null. Returns true on success. */
+    def boolean clearIfEffectivelyEmpty()
 }
 
 /** A Bean that represents a Map (always an HashMap) */
@@ -647,11 +649,18 @@ interface Meta {
 	/** The Bean Type */
 	val BEAN = BUILDER.newType(Bean, null, Kind.Trait, null, null)
 
-	/** The change counter Bean property */
+	/**
+	 * The change counter Bean property.
+	 * It would be good if this property was serialized. But we have to define
+	 * it as virtual, otherwise it gets used in "equals()".
+	 */
     val _BEAN__CHANGE_COUNTER = BUILDER.newIntegerProperty(
-    	_Bean, "changeCounter", [changeCounter], [obj,value|obj.changeCounter = value;obj], false)
+    	_Bean, "changeCounter", [changeCounter], [obj,value|obj.changeCounter = value;obj], true)
 
-	/** The parent virtual Bean property */
+	/**
+	 * The parent virtual Bean property.
+	 * Listeners will be informed of change after both parentBean, parentKey and rootBean were updated.
+	 */
     val _BEAN__PARENT_BEAN = BUILDER.newObjectProperty(
     	_Bean, "parentBean", _Bean, true, true, false, false, [parentBean], null, true)
 
@@ -694,7 +703,7 @@ interface Meta {
 
 	/** The CollectionBean Type */
 	val COLLECTION_BEAN = BUILDER.newType(CollectionBean, null, Kind.Trait, null, null,
-		#[BEAN, JavaMeta.LIST, JavaMeta.SET], <Property>newArrayList(COLLECTION_BEAN__CONFIG),
+		#[_BEAN, JavaMeta.LIST, JavaMeta.SET], <Property>newArrayList(COLLECTION_BEAN__CONFIG),
 		COLLECTION_BEAN__VALUE_TYPE as ObjectProperty)
 
 	/** The ListBean Type */
@@ -707,21 +716,6 @@ interface Meta {
 		#[COLLECTION_BEAN, JavaMeta.SET], Property.NO_PROPERTIES,
 		COLLECTION_BEAN__VALUE_TYPE as ObjectProperty)
 
-	/** The _CollectionBean Type */
-	val _COLLECTION_BEAN = BUILDER.newType(_CollectionBean, null, Kind.Trait, null, null,
-		#[COLLECTION_BEAN, _BEAN], Property.NO_PROPERTIES,
-		COLLECTION_BEAN__VALUE_TYPE as ObjectProperty)
-
-	/** The _ListBean Type */
-	val _LIST_BEAN = BUILDER.newType(_ListBean, null, Kind.Trait, null, null,
-		#[_COLLECTION_BEAN, LIST_BEAN], Property.NO_PROPERTIES,
-		COLLECTION_BEAN__VALUE_TYPE as ObjectProperty)
-
-	/** The _SetBean Type */
-	val _SET_BEAN = BUILDER.newType(_SetBean, null, Kind.Trait, null, null,
-		#[_COLLECTION_BEAN, SET_BEAN], Property.NO_PROPERTIES,
-		COLLECTION_BEAN__VALUE_TYPE as ObjectProperty)
-
 	/** The key-type property of the Map beans */
     val MAP_BEAN__KEY_TYPE = BUILDER.newObjectProperty(
     	MapBean, "keyType", Type, true, true, true, false, [keyType], null, false)
@@ -732,12 +726,7 @@ interface Meta {
 
 	/** The MapBean Type */
 	val MAP_BEAN = BUILDER.newType(MapBean, null, Kind.Trait, null, null,
-		#[BEAN, JavaMeta.MAP], Property.NO_PROPERTIES, MAP_BEAN__KEY_TYPE as ObjectProperty,
-		MAP_BEAN__VALUE_TYPE as ObjectProperty)
-
-	/** The _MapBean Type */
-	val _MAP_BEAN = BUILDER.newType(_MapBean, null, Kind.Trait, null, null,
-		#[MAP_BEAN, _BEAN], Property.NO_PROPERTIES, MAP_BEAN__KEY_TYPE as ObjectProperty,
+		#[_BEAN, JavaMeta.MAP], Property.NO_PROPERTIES, MAP_BEAN__KEY_TYPE as ObjectProperty,
 		MAP_BEAN__VALUE_TYPE as ObjectProperty)
 
 	/** The Ref Type */
@@ -746,8 +735,7 @@ interface Meta {
 	/** The Beans package */
 	val COM_BLOCKWITHME_META_BEANS_PACKAGE = BUILDER.newTypePackage(
 		BEAN, _BEAN, ENTITY, _ENTITY, COLLECTION_BEAN_CONFIG, COLLECTION_BEAN,
-		_COLLECTION_BEAN, LIST_BEAN, SET_BEAN, _LIST_BEAN, _SET_BEAN, MAP_BEAN,
-		_MAP_BEAN, REF)
+		LIST_BEAN, SET_BEAN, MAP_BEAN, REF)
 
 	/** The Hierarchy of Meta Types */
 	val HIERARCHY = BUILDER.newHierarchy(COM_BLOCKWITHME_META_BEANS_PACKAGE)

@@ -29,12 +29,14 @@ import java.util.logging.Logger;
 
 import com.blockwithme.meta.IProperty;
 import com.blockwithme.meta.ObjectProperty;
+import com.blockwithme.meta.ObjectPropertyListener;
 import com.blockwithme.meta.Property;
 import com.blockwithme.meta.Type;
 import com.blockwithme.meta.beans.Bean;
 import com.blockwithme.meta.beans.BeanPath;
 import com.blockwithme.meta.beans.Entity;
 import com.blockwithme.meta.beans.Interceptor;
+import com.blockwithme.meta.beans.Meta;
 import com.blockwithme.meta.beans._Bean;
 import com.blockwithme.util.base.SystemUtils;
 
@@ -707,8 +709,6 @@ public abstract class _BeanImpl implements _Bean {
 
     /**
      * Sets the "parent" Bean and optional key/index, if any.
-     *
-     * TODO *** Post-Set-Parent Hook method
      */
     @Override
     public final void setParentBeanAndKey(final _Bean parent,
@@ -733,9 +733,16 @@ public abstract class _BeanImpl implements _Bean {
             throw new IllegalArgumentException(
                     "parentKey can only be set if parent is not null");
         }
+        final _Bean oldValue = parent;
         this.parentBean = parent;
         this.parentKey = parentKey;
         updateRootBean();
+        for (final ObjectPropertyListener listener : Meta._BEAN__PARENT_BEAN
+                .getListeners((Type<_Bean>) getMetaType())) {
+            listener.afterObjectPropertyChangeValidation(this,
+                    Meta._BEAN__PARENT_BEAN, oldValue, parentBean);
+        }
+        onParentBeanAndKeyChange();
     }
 
     /** Updates the "root" Bean */
@@ -989,5 +996,10 @@ public abstract class _BeanImpl implements _Bean {
             }
         }
         return result;
+    }
+
+    /** Called after a change of parent/key. */
+    protected void onParentBeanAndKeyChange() {
+        // NOP
     }
 }
