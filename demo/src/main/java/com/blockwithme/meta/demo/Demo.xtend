@@ -278,6 +278,12 @@ interface CollectionOwner extends Root {
   Map<Person,Person> socialGraph
 }
 
+@Bean(data=true,instance=true)
+interface MyFirstWither {
+	int age
+	String name
+}
+
 ///** Example of the Trace annotation */
 //@Trace
 //class SomeClass {

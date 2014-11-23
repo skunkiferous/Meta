@@ -28,6 +28,7 @@ import com.blockwithme.meta.beans.BeanPath
 import java.util.ArrayList
 import com.blockwithme.meta.beans.Meta
 import com.blockwithme.meta.beans.impl.CollectionBeanImpl
+import test.com.blockwithme.meta.impl.MyBeanImpl
 
 /**
  * Tests the CollectionBean.

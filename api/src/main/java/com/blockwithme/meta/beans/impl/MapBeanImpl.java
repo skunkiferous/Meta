@@ -15,6 +15,8 @@
  */
 package com.blockwithme.meta.beans.impl;
 
+import java.io.IOException;
+import java.lang.reflect.UndeclaredThrowableException;
 import java.util.AbstractCollection;
 import java.util.AbstractSet;
 import java.util.Arrays;
@@ -42,7 +44,7 @@ import com.blockwithme.meta.beans.annotations.ValidationException;
 import com.blockwithme.util.base.SystemUtils;
 import com.blockwithme.util.shared.MurmurHash;
 
-class MapBeanEntry<K, V> implements Map.Entry<K, V>, TypeOwner {
+final class MapBeanEntry<K, V> implements Map.Entry<K, V>, TypeOwner {
     private final K key;
     private final V value;
     private final MapBeanImpl<K, V> map;
@@ -68,9 +70,26 @@ class MapBeanEntry<K, V> implements Map.Entry<K, V>, TypeOwner {
         return map.put(key, newValue);
     }
 
+    /** Computes the JSON representation */
+    public void toJSON(final Appendable appendable) {
+        try {
+            final JacksonSerializer j = JacksonSerializer
+                    .newSerializer(appendable);
+            j.visit(getMetaType(), this);
+            j.generator.flush();
+            j.generator.close();
+        } catch (final IOException e) {
+            throw new UndeclaredThrowableException(e);
+        }
+    }
+
+    /** Returns the String representation */
     @Override
     public String toString() {
-        return "{\"key\":" + key + ",\"value\":" + value + "}";
+        // Use JSON format
+        final StringBuilder buf = new StringBuilder(256);
+        toJSON(buf);
+        return buf.toString();
     }
 
     /* (non-Javadoc)

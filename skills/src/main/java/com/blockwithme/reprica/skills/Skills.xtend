@@ -27,6 +27,9 @@ import com.blockwithme.util.base.SystemUtils
 import java.util.Collections
 import com.blockwithme.meta.beans.Ref
 import com.blockwithme.meta.beans.annotations.Bean
+import com.blockwithme.meta.beans.impl._WitherImpl
+import com.blockwithme.meta.HierarchyBuilderFactory
+import com.blockwithme.meta.beans.Wither
 
 // TODO Percent modifier on Percent Attribute should add itself, instead of multiplying by itself. But then non-Percent modifier on Percent Attribute should be illegal.
 // But if we change this, we need to update the Buff/Debuff/Immunity computation.
@@ -104,56 +107,68 @@ enum EffectPolarity {
 	Immunity
 }
 
+/** Base type of everything in this package */
+@Bean
+interface Root {
+	// NOP
+}
+
 /**
  * A Category groups Attributes of the same type together.
  *
  * TODO This should be an enum, but Xtend enums do not support attributes.
  */
-@Data
-class AttributeCategory {
+@Bean(data=true,instance=true)
+interface AttributeCategory {
+	public static final class Impl {
+		/** Attributes that contribute to "attack" */
+		public static val Attack = build(0, "Attack", true, false, false, false, false)
+		/** Attributes that contribute to "defense" */
+		public static val Defense = build(1, "Defense", false, true, false, false, false)
+		/** Attributes that contribute to "crafting" */
+		public static val Crafting = build(2, "Crafting", false, false, true, false, false)
+		/** Special attributes, are those that normally have a fixed value, and are therefore not displayed */
+		public static val Special = build(3, "Special", false, false, false, true, false)
+		/** All other attributes */
+		public static val Auxiliary = build(4, "Auxiliary", false, false, false, false, true)
+
+		/** All instances of AttributeCategory */
+		public static val AttributeCategory[] ALL_SET = #[Attack, Defense, Crafting, Special, Auxiliary]
+
+		public def Object readResolve(AttributeCategory it) {
+			return ALL_SET.get(ordinal);
+		}
+
+		/** Creates a new AttributeCategory instance */
+		private static def AttributeCategory build(int theOrdinal, String theName, boolean theAttack,
+			boolean theDefense, boolean theCrafting, boolean theSpecial, boolean theAuxiliary) {
+			Meta.ATTRIBUTE_CATEGORY.create.withOrdinalNameAttackDefenseCraftingSpecialAuxiliary(
+				theOrdinal, theName, theAttack, theDefense, theCrafting, theSpecial, theAuxiliary)
+		}
+	}
+
 	/** The ID of this AttributeCategory */
 	int ordinal
 
 	/** The name of this AttributeCategory */
-	transient String name
+	String name
 
 	/** Does this attribute contributes to "attack"? */
-	transient boolean attack
+	boolean attack
 
 	/** Does this attribute contributes to "defense"? */
-	transient boolean defense
+	boolean defense
 
 	/** Does this attribute contributes to "crafting"? */
-	transient boolean crafting
+	boolean crafting
 
 	/** Is this a "special" attribute? */
-	transient boolean special
+	boolean special
 
 	/** Does this attribute contributes to none of the other categories? */
-	transient boolean auxiliary
-
-	/** toString */
-	override toString() {
-		_name
-	}
-
-	/** Attributes that contribute to "attack" */
-	public static val Attack = new AttributeCategory(0, "Attack", true, false, false, false, false)
-	/** Attributes that contribute to "defense" */
-	public static val Defense = new AttributeCategory(1, "Defense", false, true, false, false, false)
-	/** Attributes that contribute to "crafting" */
-	public static val Crafting = new AttributeCategory(2, "Crafting", false, false, true, false, false)
-	/** Special attributes, are those that normally have a fixed value, and are therefore not displayed */
-	public static val Special = new AttributeCategory(3, "Special", false, false, false, true, false)
-	/** All other attributes */
-	public static val Auxiliary = new AttributeCategory(4, "Auxiliary", false, false, false, false, true)
-
-	public static val AttributeCategory[] ALL_SET = #[Attack, Defense, Crafting, Special, Auxiliary]
-
-	private def Object readResolve() {
-		return ALL_SET.get(ordinal);
-	}
+	boolean auxiliary
 }
+
 
 /** Specifies what (technical) kind of data the attribute contains. */
 enum AttributeDataType {
@@ -168,12 +183,6 @@ enum AttributeDataType {
 	 * *52* bits of data in the value.
 	 */
 	BitField
-}
-
-/** Base type of everything in this package */
-@Bean
-interface Root {
-	// NOP
 }
 
 /** Marker interface, denoting objects that represent meta-information. */
@@ -331,25 +340,25 @@ interface EntityType extends MetaInfo, Provider<Entity> {
 		}
 		/** Creates and adds a new auxiliary attribute type, with default value, min, max, and non-percent */
 		static def AttributeType newAttr(EntityType it, String name) {
-			newAttr(it, name, AttributeCategory.Auxiliary, Skills.DEFAULT_ATTRIBUTE_VALUE,
+			newAttr(it, name, AttributeCategory.Impl.Auxiliary, Skills.DEFAULT_ATTRIBUTE_VALUE,
 				Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE,
 				Skills.DEFAULT_MAXIMUM_ATTRIBUTE_VALUE, AttributeDataType.Number)
 		}
 		/** Creates and adds a new auxiliary non-percent attribute type */
 		static def AttributeType newAttr(EntityType it, String name, double defaultValue, double min, double max) {
-			newAttr(it, name, AttributeCategory.Auxiliary, defaultValue, min, max, AttributeDataType.Number)
+			newAttr(it, name, AttributeCategory.Impl.Auxiliary, defaultValue, min, max, AttributeDataType.Number)
 		}
 		/** Creates and adds a new auxiliary attribute type, with default min, and non-percent */
 		static def AttributeType newAttr(EntityType it, String name, double defaultValue, double max) {
-			newAttr(it, name, AttributeCategory.Auxiliary, defaultValue, Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE, max, AttributeDataType.Number)
+			newAttr(it, name, AttributeCategory.Impl.Auxiliary, defaultValue, Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE, max, AttributeDataType.Number)
 		}
 		/** Creates and adds a new auxiliary attribute type, with default value, min, and non-percent */
 		static def AttributeType newAttr(EntityType it, String name, double max) {
-			newAttr(it, name, AttributeCategory.Auxiliary, Skills.DEFAULT_ATTRIBUTE_VALUE, Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE, max, AttributeDataType.Number)
+			newAttr(it, name, AttributeCategory.Impl.Auxiliary, Skills.DEFAULT_ATTRIBUTE_VALUE, Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE, max, AttributeDataType.Number)
 		}
 		/** Creates and adds a new auxiliary attribute type */
 		static def AttributeType newAttr(EntityType it, String name, double defaultValue, double min, double max, boolean percent) {
-			newAttr(it, name, AttributeCategory.Auxiliary, defaultValue, Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE, max, AttributeDataType.Number)
+			newAttr(it, name, AttributeCategory.Impl.Auxiliary, defaultValue, Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE, max, AttributeDataType.Number)
 		}
 		/** Creates and adds a new attribute type, with default value, min, max, and percent */
 		static def AttributeType newPercentAttr(EntityType it,
@@ -360,7 +369,7 @@ interface EntityType extends MetaInfo, Provider<Entity> {
 		}
 		/** Creates and adds a new auxiliary attribute type, with default value, min, max, and percent */
 		static def AttributeType newPercentAttr(EntityType it, String name) {
-			newAttr(it, name, AttributeCategory.Auxiliary, Skills.DEFAULT_ATTRIBUTE_VALUE,
+			newAttr(it, name, AttributeCategory.Impl.Auxiliary, Skills.DEFAULT_ATTRIBUTE_VALUE,
 				Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE,
 				Skills.DEFAULT_MAXIMUM_PERCENT_ATTRIBUTE_VALUE, AttributeDataType.Percent)
 		}
@@ -373,7 +382,7 @@ interface EntityType extends MetaInfo, Provider<Entity> {
 		}
 		/** Creates and adds a new auxiliary attribute type, with default value, min, max, and percent */
 		static def AttributeType newPercentAttr(EntityType it, String name, double defaultValue) {
-			newAttr(it, name, AttributeCategory.Auxiliary, defaultValue,
+			newAttr(it, name, AttributeCategory.Impl.Auxiliary, defaultValue,
 				Skills.DEFAULT_MINIMUM_ATTRIBUTE_VALUE,
 				Skills.DEFAULT_MAXIMUM_PERCENT_ATTRIBUTE_VALUE, AttributeDataType.Percent)
 		}
@@ -781,41 +790,46 @@ interface DeathEffect extends Effect {
 }
 
 /** Matches an attribute, to which an effect should be applied */
+@Bean(data=true)
 interface AttributeMatcher {
 	/** Returns true, if the attribute matches */
 	def boolean matches(ModifierTarget target, Attribute attribute)
 }
 
 /** Simply matches an attribute name */
-class SimpleAttributeMatcher implements AttributeMatcher {
+@Bean(data=true,instance=true)
+interface SimpleAttributeMatcher extends AttributeMatcher {
+	class Impl {
+		/** Constructor */
+		static def SimpleAttributeMatcher create(String name) {
+			Meta.SIMPLE_ATTRIBUTE_MATCHER.create.withName(requireNonNull(name, "name"))
+		}
+		/** Returns true, if the attribute matches */
+		static def boolean matches(SimpleAttributeMatcher it, ModifierTarget target, Attribute attribute) {
+			attribute.type.value.name == name
+		}
+	}
 	/** The desired name */
-	val String name
-	/** Constructor */
-	new(String name) {
-		this.name = requireNonNull(name, "name")
-	}
-	/** Returns true, if the attribute matches */
-	override boolean matches(ModifierTarget target, Attribute attribute) {
-		attribute.type.value.name == name
-	}
+	String name
 }
 
 /** A pair of attribute matcher, and effect type, to create an effect, when appropriate */
-@Data
-class EffectBuilder {
+@Bean(data=true,instance=true)
+interface EffectBuilder {
+	class Impl {
+		static def create(EffectType type, AttributeMatcher matcher) {
+			if (!requireNonNull(type, "type").immutable) {
+				throw new IllegalStateException("type must be immutable!")
+			}
+			Meta.EFFECT_BUILDER.create.withTypeMatcher(type, matcher)
+		}
+		/** Returns true, if the attribute matches */
+		static def boolean matches(EffectBuilder it, ModifierTarget target, Attribute attribute) {
+			type.matches(target, attribute) && matcher.matches(target, attribute)
+		}
+	}
 	EffectType type
 	AttributeMatcher matcher
-	new(EffectType type, AttributeMatcher matcher) {
-		_type = requireNonNull(type, "type")
-		if (!type.immutable) {
-			throw new IllegalStateException("type must be immutable!")
-		}
-		_matcher = matcher
-	}
-	/** Returns true, if the attribute matches */
-	def boolean matches(ModifierTarget target, Attribute attribute) {
-		type.matches(target, attribute) && matcher.matches(target, attribute)
-	}
 }
 
 /** The type of a modifier. */
@@ -828,7 +842,7 @@ interface ModifierType extends EntityType {
 			String name, double effect,
 			String attributeName) {
 			newEffect(it, 1.0, 1.0, name, duration, duration,
-				EffectCategory.Simple, effect, effect, false, new SimpleAttributeMatcher(attributeName))
+				EffectCategory.Simple, effect, effect, false, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newSimpleEffect(ModifierType it,
@@ -836,7 +850,7 @@ interface ModifierType extends EntityType {
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
 			newEffect(it, 1.0, 1.0, name, duration, duration,
-				EffectCategory.Simple, minEffect, maxEffect, false, new SimpleAttributeMatcher(attributeName))
+				EffectCategory.Simple, minEffect, maxEffect, false, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newSimpleEffect(ModifierType it,
@@ -844,7 +858,7 @@ interface ModifierType extends EntityType {
 			String name, double effect,
 			String attributeName) {
 			newEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
-				EffectCategory.Simple, effect, effect, false, new SimpleAttributeMatcher(attributeName))
+				EffectCategory.Simple, effect, effect, false, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newSimpleEffect(ModifierType it,
@@ -852,7 +866,7 @@ interface ModifierType extends EntityType {
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
 			newEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
-				EffectCategory.Simple, minEffect, maxEffect, false, new SimpleAttributeMatcher(attributeName))
+				EffectCategory.Simple, minEffect, maxEffect, false, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newSimpleEffect2(ModifierType it, double percentActivation,
@@ -860,7 +874,7 @@ interface ModifierType extends EntityType {
 			String name, double effect,
 			String attributeName) {
 			newEffect(it, percentActivation, 1.0, name, duration, duration,
-				EffectCategory.Simple, effect, effect, false, new SimpleAttributeMatcher(attributeName))
+				EffectCategory.Simple, effect, effect, false, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newSimpleEffect2(ModifierType it, double percentActivation,
@@ -868,7 +882,7 @@ interface ModifierType extends EntityType {
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
 			newEffect(it, percentActivation, 1.0, name, duration, duration,
-				EffectCategory.Simple, minEffect, maxEffect, false, new SimpleAttributeMatcher(attributeName))
+				EffectCategory.Simple, minEffect, maxEffect, false, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newSimpleEffect(ModifierType it, double percentActivation,
@@ -876,7 +890,7 @@ interface ModifierType extends EntityType {
 			String name, double effect,
 			String attributeName) {
 			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
-				EffectCategory.Simple, effect, effect, false, new SimpleAttributeMatcher(attributeName))
+				EffectCategory.Simple, effect, effect, false, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newSimpleEffect(ModifierType it, double percentActivation,
@@ -884,7 +898,7 @@ interface ModifierType extends EntityType {
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
 			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
-				EffectCategory.Simple, minEffect, maxEffect, false, new SimpleAttributeMatcher(attributeName))
+				EffectCategory.Simple, minEffect, maxEffect, false, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 
 		/** Creates and adds a new BasicEffect builder */
@@ -893,7 +907,7 @@ interface ModifierType extends EntityType {
 			String name, double effect,
 			String attributeName) {
 			newEffect(it, 1.0, 1.0, name, duration, duration,
-				category, effect, effect, false, new SimpleAttributeMatcher(attributeName))
+				category, effect, effect, false, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newEffect(ModifierType it,
@@ -901,7 +915,7 @@ interface ModifierType extends EntityType {
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
 			newEffect(it, 1.0, 1.0, name, duration, duration,
-				category, minEffect, maxEffect, false, new SimpleAttributeMatcher(attributeName))
+				category, minEffect, maxEffect, false, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newEffect(ModifierType it,
@@ -909,7 +923,7 @@ interface ModifierType extends EntityType {
 			String name, double effect,
 			String attributeName) {
 			newEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
-				category, effect, effect, false, new SimpleAttributeMatcher(attributeName))
+				category, effect, effect, false, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newEffect(ModifierType it,
@@ -917,7 +931,7 @@ interface ModifierType extends EntityType {
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
 			newEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
-				category, minEffect, maxEffect, false, new SimpleAttributeMatcher(attributeName))
+				category, minEffect, maxEffect, false, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newEffect(ModifierType it, double percentActivation,
@@ -925,7 +939,7 @@ interface ModifierType extends EntityType {
 			String name, double effect,
 			String attributeName) {
 			newEffect(it, percentActivation, 1.0, name, duration, duration,
-				category, effect, effect, false, new SimpleAttributeMatcher(attributeName))
+				category, effect, effect, false, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newEffect(ModifierType it, double percentActivation,
@@ -933,7 +947,7 @@ interface ModifierType extends EntityType {
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
 			newEffect(it, percentActivation, 1.0, name, duration, duration,
-				category, minEffect, maxEffect, false, new SimpleAttributeMatcher(attributeName))
+				category, minEffect, maxEffect, false, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newEffect(ModifierType it, double percentActivation,
@@ -941,7 +955,7 @@ interface ModifierType extends EntityType {
 			String name, double effect,
 			String attributeName) {
 			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
-				category, effect, effect, false, new SimpleAttributeMatcher(attributeName))
+				category, effect, effect, false, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newEffect(ModifierType it, double percentActivation,
@@ -949,7 +963,7 @@ interface ModifierType extends EntityType {
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
 			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
-				category, minEffect, maxEffect, false, new SimpleAttributeMatcher(attributeName))
+				category, minEffect, maxEffect, false, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 
 		/** Creates and adds a new BasicEffect builder */
@@ -1088,7 +1102,7 @@ interface ModifierType extends EntityType {
 			String name, double effect,
 			String attributeName) {
 			newEffect(it, 1.0, 1.0, name, duration, duration,
-				EffectCategory.Simple, effect, effect, true, new SimpleAttributeMatcher(attributeName))
+				EffectCategory.Simple, effect, effect, true, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newPercentSimpleEffect(ModifierType it,
@@ -1096,7 +1110,7 @@ interface ModifierType extends EntityType {
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
 			newEffect(it, 1.0, 1.0, name, duration, duration,
-				EffectCategory.Simple, minEffect, maxEffect, true, new SimpleAttributeMatcher(attributeName))
+				EffectCategory.Simple, minEffect, maxEffect, true, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newPercentSimpleEffect(ModifierType it,
@@ -1104,7 +1118,7 @@ interface ModifierType extends EntityType {
 			String name, double effect,
 			String attributeName) {
 			newEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
-				EffectCategory.Simple, effect, effect, true, new SimpleAttributeMatcher(attributeName))
+				EffectCategory.Simple, effect, effect, true, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newPercentSimpleEffect(ModifierType it,
@@ -1112,7 +1126,7 @@ interface ModifierType extends EntityType {
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
 			newEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
-				EffectCategory.Simple, minEffect, maxEffect, true, new SimpleAttributeMatcher(attributeName))
+				EffectCategory.Simple, minEffect, maxEffect, true, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newPercentSimpleEffect2(ModifierType it, double percentActivation,
@@ -1120,7 +1134,7 @@ interface ModifierType extends EntityType {
 			String name, double effect,
 			String attributeName) {
 			newEffect(it, percentActivation, 1.0, name, duration, duration,
-				EffectCategory.Simple, effect, effect, true, new SimpleAttributeMatcher(attributeName))
+				EffectCategory.Simple, effect, effect, true, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newPercentSimpleEffect2(ModifierType it, double percentActivation,
@@ -1128,7 +1142,7 @@ interface ModifierType extends EntityType {
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
 			newEffect(it, percentActivation, 1.0, name, duration, duration,
-				EffectCategory.Simple, minEffect, maxEffect, true, new SimpleAttributeMatcher(attributeName))
+				EffectCategory.Simple, minEffect, maxEffect, true, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newPercentSimpleEffect(ModifierType it, double percentActivation,
@@ -1136,7 +1150,7 @@ interface ModifierType extends EntityType {
 			String name, double effect,
 			String attributeName) {
 			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
-				EffectCategory.Simple, effect, effect, true, new SimpleAttributeMatcher(attributeName))
+				EffectCategory.Simple, effect, effect, true, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newPercentSimpleEffect(ModifierType it, double percentActivation,
@@ -1144,7 +1158,7 @@ interface ModifierType extends EntityType {
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
 			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
-				EffectCategory.Simple, minEffect, maxEffect, true, new SimpleAttributeMatcher(attributeName))
+				EffectCategory.Simple, minEffect, maxEffect, true, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 
 		/** Creates and adds a new BasicEffect builder */
@@ -1153,7 +1167,7 @@ interface ModifierType extends EntityType {
 			String name, double effect,
 			String attributeName) {
 			newEffect(it, 1.0, 1.0, name, duration, duration,
-				category, effect, effect, true, new SimpleAttributeMatcher(attributeName))
+				category, effect, effect, true, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newPercentEffect(ModifierType it,
@@ -1161,7 +1175,7 @@ interface ModifierType extends EntityType {
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
 			newEffect(it, 1.0, 1.0, name, duration, duration,
-				category, minEffect, maxEffect, true, new SimpleAttributeMatcher(attributeName))
+				category, minEffect, maxEffect, true, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newPercentEffect(ModifierType it,
@@ -1169,7 +1183,7 @@ interface ModifierType extends EntityType {
 			String name, double effect,
 			String attributeName) {
 			newEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
-				category, effect, effect, true, new SimpleAttributeMatcher(attributeName))
+				category, effect, effect, true, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newPercentEffect(ModifierType it,
@@ -1177,7 +1191,7 @@ interface ModifierType extends EntityType {
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
 			newEffect(it, 1.0, 1.0, name, minDuration, maxDuration,
-				category, minEffect, maxEffect, true, new SimpleAttributeMatcher(attributeName))
+				category, minEffect, maxEffect, true, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newPercentEffect(ModifierType it, double percentActivation,
@@ -1185,7 +1199,7 @@ interface ModifierType extends EntityType {
 			String name, double effect,
 			String attributeName) {
 			newEffect(it, percentActivation, 1.0, name, duration, duration,
-				category, effect, effect, true, new SimpleAttributeMatcher(attributeName))
+				category, effect, effect, true, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newPercentEffect(ModifierType it, double percentActivation,
@@ -1193,7 +1207,7 @@ interface ModifierType extends EntityType {
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
 			newEffect(it, percentActivation, 1.0, name, duration, duration,
-				category, minEffect, maxEffect, true, new SimpleAttributeMatcher(attributeName))
+				category, minEffect, maxEffect, true, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newPercentEffect(ModifierType it, double percentActivation,
@@ -1201,7 +1215,7 @@ interface ModifierType extends EntityType {
 			String name, double effect,
 			String attributeName) {
 			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
-				category, effect, effect, true, new SimpleAttributeMatcher(attributeName))
+				category, effect, effect, true, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 		/** Creates and adds a new BasicEffect builder */
 		static def EffectBuilder newPercentEffect(ModifierType it, double percentActivation,
@@ -1209,7 +1223,7 @@ interface ModifierType extends EntityType {
 			String name, double minEffect, double maxEffect,
 			String attributeName) {
 			newEffect(it, percentActivation, 1.0, name, minDuration, maxDuration,
-				category, minEffect, maxEffect, true, new SimpleAttributeMatcher(attributeName))
+				category, minEffect, maxEffect, true, SimpleAttributeMatcher.Impl.create(attributeName))
 		}
 
 		/** Creates and adds a new BasicEffect builder */
@@ -1350,7 +1364,7 @@ interface ModifierType extends EntityType {
 			type.durationRange(minDuration, maxDuration)
 			type.category = EffectCategory.Simple
 			type.name = "Death"
-			val result = new EffectBuilder(type.snapshot, new SimpleAttributeMatcher("dead"))
+			val result = EffectBuilder.Impl.create(type.snapshot, SimpleAttributeMatcher.Impl.create("dead"))
 			_builders.add(result)
 			result
 		}
@@ -1369,7 +1383,7 @@ interface ModifierType extends EntityType {
 			type.percent = percent
 			type.category = category
 			type.name = name
-			val result = new EffectBuilder(type.snapshot, matcher)
+			val result = EffectBuilder.Impl.create(type.snapshot, matcher)
 			_builders.add(result)
 			result
 		}
@@ -1464,36 +1478,36 @@ interface CharacterType extends EntityType {
 	class Impl {
 		/** Pseudo-constructor for basic effects */
 		static def void _init_(CharacterType it) {
-			newAttr("speed", AttributeCategory.Attack).moreIsBetter = false
-			newAttr("strength", AttributeCategory.Attack)
-			newAttr("anima", AttributeCategory.Attack)
+			newAttr("speed", AttributeCategory.Impl.Attack).moreIsBetter = false
+			newAttr("strength", AttributeCategory.Impl.Attack)
+			newAttr("anima", AttributeCategory.Impl.Attack)
 
-			newPercentAttr("dexterity", AttributeCategory.Attack)
-			newPercentAttr("rage", AttributeCategory.Attack)
-			newPercentAttr("fury", AttributeCategory.Attack)
+			newPercentAttr("dexterity", AttributeCategory.Impl.Attack)
+			newPercentAttr("rage", AttributeCategory.Impl.Attack)
+			newPercentAttr("fury", AttributeCategory.Impl.Attack)
 
-			newPercentAttr("psyche", AttributeCategory.Defense)
-			newPercentAttr("defense", AttributeCategory.Defense)
-			newPercentAttr("reflex", AttributeCategory.Defense)
-			newPercentAttr("block", AttributeCategory.Defense)
-			newPercentAttr("constitution", AttributeCategory.Defense)
-			newPercentAttr("spirit", AttributeCategory.Defense)
-			newPercentAttr("harmony", AttributeCategory.Defense)
+			newPercentAttr("psyche", AttributeCategory.Impl.Defense)
+			newPercentAttr("defense", AttributeCategory.Impl.Defense)
+			newPercentAttr("reflex", AttributeCategory.Impl.Defense)
+			newPercentAttr("block", AttributeCategory.Impl.Defense)
+			newPercentAttr("constitution", AttributeCategory.Impl.Defense)
+			newPercentAttr("spirit", AttributeCategory.Impl.Defense)
+			newPercentAttr("harmony", AttributeCategory.Impl.Defense)
 
-			newAttr("intelligence", AttributeCategory.Crafting)
-			newAttr("artistry", AttributeCategory.Crafting)
+			newAttr("intelligence", AttributeCategory.Impl.Crafting)
+			newAttr("artistry", AttributeCategory.Impl.Crafting)
 
-			newPercentAttr("visibleToFriends", AttributeCategory.Special).defaultValue = 1.0
-			newPercentAttr("visibleToFoes", AttributeCategory.Special).defaultValue = 1.0
-			newPercentAttr("confused", AttributeCategory.Special).moreIsBetter = false
-			newPercentAttr("skilled", AttributeCategory.Special).defaultValue = 1.0
-			newPercentAttr("paralyzed", AttributeCategory.Special).moreIsBetter = false
-			newBooleanAttr("dead", AttributeCategory.Special).moreIsBetter = false
-			newPercentAttr("xpGainRate", AttributeCategory.Special).defaultValue = 1.0
-			newPercentAttr("moneyGainRate", AttributeCategory.Special).defaultValue = 1.0
-			newPercentAttr("lootGainRate", AttributeCategory.Special).defaultValue = 1.0
-			newPercentAttr("hpRegeneration", AttributeCategory.Special)
-			newPercentAttr("manaRegeneration", AttributeCategory.Special)
+			newPercentAttr("visibleToFriends", AttributeCategory.Impl.Special).defaultValue = 1.0
+			newPercentAttr("visibleToFoes", AttributeCategory.Impl.Special).defaultValue = 1.0
+			newPercentAttr("confused", AttributeCategory.Impl.Special).moreIsBetter = false
+			newPercentAttr("skilled", AttributeCategory.Impl.Special).defaultValue = 1.0
+			newPercentAttr("paralyzed", AttributeCategory.Impl.Special).moreIsBetter = false
+			newBooleanAttr("dead", AttributeCategory.Impl.Special).moreIsBetter = false
+			newPercentAttr("xpGainRate", AttributeCategory.Impl.Special).defaultValue = 1.0
+			newPercentAttr("moneyGainRate", AttributeCategory.Impl.Special).defaultValue = 1.0
+			newPercentAttr("lootGainRate", AttributeCategory.Impl.Special).defaultValue = 1.0
+			newPercentAttr("hpRegeneration", AttributeCategory.Impl.Special)
+			newPercentAttr("manaRegeneration", AttributeCategory.Impl.Special)
 
 			newAttr("maxMana")
 			val mana = newAttr("mana")

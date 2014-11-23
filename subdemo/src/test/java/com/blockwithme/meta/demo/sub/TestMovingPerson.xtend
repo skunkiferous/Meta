@@ -57,12 +57,14 @@ class TestMovingPerson extends BaseTst {
 		list.addAll(Arrays.asList(Meta.MOVING_PERSON.inheritedProperties))
 		list.addAll(Arrays.asList(Meta.MOVING_PERSON.inheritedVirtualProperties))
 		Collections.sort(list)
-		Assert.assertEquals("[com.blockwithme.meta.beans._Bean.changeCounter, com.blockwithme.meta.beans._Bean.log, "
+		Assert.assertEquals("[com.blockwithme.meta.beans._Bean.changeCounter, "
 			+"com.blockwithme.meta.beans._Bean.parentBean, com.blockwithme.meta.beans._Bean.parentKey, "
 			+"com.blockwithme.meta.beans._Bean.rootBean, com.blockwithme.meta.demo.Aged.age, "
 			+"com.blockwithme.meta.demo.Named.name, com.blockwithme.meta.demo.Person.profession, "
 			+"com.blockwithme.meta.demo.Salutable.hello, com.blockwithme.meta.demo.sub.LandMoving.fast, "
-			+"com.blockwithme.meta.demo.sub.LandMoving.landMovingSpeed]", list.toString)
+			+"com.blockwithme.meta.demo.sub.LandMoving.landMovingSpeed, com.blockwithme.meta.util.Loggable.log]",
+			list.toString)
+
 	}
 
 	@Test

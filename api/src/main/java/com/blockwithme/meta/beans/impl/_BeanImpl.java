@@ -244,13 +244,7 @@ public abstract class _BeanImpl implements _Bean {
      * Lazily cached toString result (null == not computed yet)
      * Cleared automatically when the "state" of the Bean changes.
      */
-    private transient String toString;
-
-    /**
-     * Lazily cached hashCode result (0 == not computed yet)
-     * Cleared automatically when the "state" of the Bean changes.
-     */
-    private transient int toStringHashCode;
+    protected transient String toString;
 
     /** Speeds up, looking up Property indexes. */
     private transient Property<?, ?> lastIndexedProp;
@@ -258,15 +252,11 @@ public abstract class _BeanImpl implements _Bean {
     /** Speeds up, looking up Property indexes. */
     private transient int lastIndexedPropIndex = -1;
 
-    /** The Logger */
-    private transient Logger log;
-
     /** The "under construction" flag */
     private transient boolean underConstruction;
 
     /** Resets the cached state (when something changes) */
     private void resetCachedState() {
-        toStringHashCode = 0;
         toString = null;
     }
 
@@ -355,8 +345,16 @@ public abstract class _BeanImpl implements _Bean {
         Objects.requireNonNull(metaType, "metaType");
         // Make sure we get the "right" metaType
         final String myType = getClass().getName();
+        if (!myType.endsWith("Impl")) {
+            throw new IllegalArgumentException("Class " + myType
+                    + " should end with Impl");
+        }
         final int lastDot = myType.lastIndexOf('.');
         final String myPkg = myType.substring(0, lastDot);
+        if (!myPkg.endsWith(".impl")) {
+            throw new IllegalArgumentException("Class " + myType
+                    + " should be in package *.impl");
+        }
         final int preLastDot = myPkg.lastIndexOf('.');
         final String parentPkg = myPkg.substring(0, preLastDot);
         final String myInterfaceName = parentPkg + "."
@@ -582,13 +580,7 @@ public abstract class _BeanImpl implements _Bean {
     /** Returns the 32 bit hashcode */
     @Override
     public final int hashCode() {
-        if (toStringHashCode == 0) {
-            toStringHashCode = toString().hashCode();
-            if (toStringHashCode == 0) {
-                toStringHashCode = 1;
-            }
-        }
-        return toStringHashCode;
+        return toString().hashCode();
     }
 
     /** Computes the JSON representation */
@@ -620,20 +612,10 @@ public abstract class _BeanImpl implements _Bean {
     /** Compares for equality with another object */
     @Override
     public final boolean equals(final Object obj) {
-        if ((obj == null) || (obj.getClass() != getClass())) {
-            return false;
-        }
-        if (obj == this) {
-            return true;
-        }
-        final _BeanImpl other = (_BeanImpl) obj;
-        if (hashCode() != other.hashCode()) {
-            return false;
-        }
-        // Inequality here is unlikely.
-        // Since we, currently, build the hashCode on the toString text
-        // We know it was already computed, and so is a cheap way to compare.
-        return toString().equals(other.toString());
+        return (obj == this)
+                || ((obj != null) && (obj.getClass() == getClass())
+                        && (hashCode() == obj.hashCode()) && toString().equals(
+                        obj.toString()));
     }
 
     /** Returns the delegate */
@@ -867,7 +849,6 @@ public abstract class _BeanImpl implements _Bean {
     /** Make a new instance of the same type as self. */
     protected _BeanImpl newInstance() {
         final _BeanImpl result = (_BeanImpl) metaType.create();
-        result.toStringHashCode = toStringHashCode;
         result.toString = toString;
         return result;
     }
@@ -928,10 +909,7 @@ public abstract class _BeanImpl implements _Bean {
     /** Returns the Logger for this Bean */
     @Override
     public final Logger log() {
-        if (log == null) {
-            log = Logger.getLogger(getClass().getName());
-        }
-        return log;
+        return metaType.logger;
     }
 
     @Override
@@ -942,14 +920,14 @@ public abstract class _BeanImpl implements _Bean {
         values.add(this);
         BeanPath curPath = path;
         while (true) {
-            final Object[] keyMatcher = curPath.getKeyMatcher();
-            final BeanPath next = curPath.getNext();
+            final Object[] keyMatcher = curPath.keyMatcher;
+            final BeanPath next = curPath.next;
             final Object[] objects = values.toArray();
             values.clear();
             for (final Object obj : objects) {
                 if (obj instanceof _Bean) {
                     final _Bean bean = (_Bean) obj;
-                    for (final IProperty<?, ?> p : curPath.getPropertyMatcher()
+                    for (final IProperty<?, ?> p : curPath.propertyMatcher
                             .listProperty(bean)) {
                         if (failOnIncompatbileProperty) {
                             bean.readProperty(p, keyMatcher, values);

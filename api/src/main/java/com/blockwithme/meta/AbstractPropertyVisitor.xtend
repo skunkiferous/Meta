@@ -22,6 +22,17 @@ import java.util.ArrayList
  *
  * Visiting a "Typed" object causes all it's inheritedProperties to be visited.
  *
+ * TODO The visitor should support some basic data-transformations, like class-to-string,
+ * enum-to-string, enum-to-int, ...
+ *
+ * TODO The visitor should support a choice between "internal" (Bean impl) and "external" (Bean interface) values.
+ *
+ * TODO The visitor should give access to the "parent" object.
+ *
+ * TODO The visitor should offer a choice of automatically skipping default values.
+ *
+ * TODO The visitor should offer to only visit Beans.
+ *
  * @author monster
  */
 abstract class AbstractPropertyVisitor implements PropertyVisitor {

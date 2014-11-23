@@ -640,7 +640,8 @@ class TypeTest extends BaseTst {
     public def void testHierarchy() {
 //     	assertEquals(MyType, TestMeta.TEST.base)
      	assertEquals(newArrayList(JavaMeta.HIERARCHY,Meta.HIERARCHY), MetaTestHelper.TEST.dependencies.toList)
-     	assertEquals(new HashSet(#[JavaMeta.HIERARCHY,com.blockwithme.meta.Meta.HIERARCHY,Meta.HIERARCHY,MetaTestHelper.TEST]),
+     	assertEquals(new HashSet(#[JavaMeta.HIERARCHY,com.blockwithme.meta.Meta.HIERARCHY,Meta.HIERARCHY,
+     		MetaTestHelper.TEST, com.blockwithme.meta.util.Meta.HIERARCHY]),
      			new HashSet(Hierarchy.hierarchies.toList)
      	)
     }

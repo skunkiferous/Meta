@@ -15,6 +15,7 @@
  */
 package com.blockwithme.meta.beans
 
+import com.blockwithme.fn1.ProcObject
 import com.blockwithme.meta.BooleanProperty
 import com.blockwithme.meta.ByteProperty
 import com.blockwithme.meta.CharacterProperty
@@ -30,22 +31,23 @@ import com.blockwithme.meta.LongProperty
 import com.blockwithme.meta.ObjectProperty
 import com.blockwithme.meta.Property
 import com.blockwithme.meta.PropertyMatcher
-import com.blockwithme.meta.PropertyVisitor
 import com.blockwithme.meta.ShortProperty
 import com.blockwithme.meta.Type
+import com.blockwithme.meta.TypeOwner
+import com.blockwithme.meta.beans.impl._WitherImpl
+import com.blockwithme.util.shared.AnyAccessor
 import java.util.Collection
 import java.util.List
 import java.util.Map
 import java.util.Objects
 import java.util.Set
 import java.util.logging.Logger
-import com.blockwithme.util.shared.AnyAccessor
+
 import static com.blockwithme.util.shared.Preconditions.*
-import com.blockwithme.fn1.ProcObject
-import com.blockwithme.meta.TypeOwner
+import com.blockwithme.meta.util.Loggable
 
 /** Base for all data/bean objects */
-interface Bean {
+interface Bean extends TypeOwner, Loggable {
 	/** Returns the true if the instance is immutable */
     def boolean isImmutable()
 
@@ -57,9 +59,6 @@ interface Bean {
 
     /** Returns a lightweight mutable copy */
     def Bean wrapper()
-
-    /** Returns the Logger for this Bean */
-    def Logger log()
 }
 
 /**
@@ -67,7 +66,7 @@ interface Bean {
  *
  * The "selected" state is usually used to keep track of the "dirty" state.
  */
-interface _Bean extends Bean, TypeOwner {
+interface _Bean extends Bean {
 	/** Returns the current value of the change counter */
 	def int getChangeCounter()
 
@@ -166,8 +165,21 @@ interface _Bean extends Bean, TypeOwner {
      * Will throw if the values types don't match the Properties.
      */
     def Object resolvePath(Property ... props)
+}
 
-    // TODO Create standard Immutable-Static-Reference @Data object, with working serialization.
+
+/**
+ * Wither is similar to a Bean, but is immutable and has "withX" instead of "setX" methods.
+ */
+interface Wither extends TypeOwner, Loggable {
+	// Nothing so far
+}
+
+
+/** "Internal" base for all Wither objects. */
+interface _Wither extends Wither {
+    /** Computes the JSON representation */
+    def void toJSON(Appendable appendable)
 }
 
 
@@ -176,13 +188,12 @@ interface _Bean extends Bean, TypeOwner {
  *
  * Remember that paths can also "go up" by using the "parent" Property.
  */
-@Data
-class BeanPath {
+final class BeanPath extends _WitherImpl {
 	/**
 	 * A PropertyMatcher, that matches either the Property representing
 	 * the next step in a path, or representing the final value.
 	 */
-	PropertyMatcher propertyMatcher
+	public val PropertyMatcher propertyMatcher
 	/**
 	 * The optional list of matched keys/indexes, within the Property value,
 	 * if the Property value is a Map/Collection, pointing to next step in a path,
@@ -190,14 +201,15 @@ class BeanPath {
 	 *
 	 * A "null" matcher matches everything, and is required for non-maps/collections.
 	 */
-	Object[] keyMatcher
+	public val Object[] keyMatcher
 	/** The next link in the path, unless we are at the value, in which case it is null. */
-	BeanPath next
+	public val BeanPath next
 
   new(PropertyMatcher propertyMatcher, Object[] keyMatcher, BeanPath next) {
-    this._propertyMatcher = Objects.requireNonNull(propertyMatcher, "propertyMatcher")
-    this._keyMatcher = if ((keyMatcher !== null) && (keyMatcher.length == 0)) null else keyMatcher
-    this._next = next
+  	super(Meta.BEAN_PATH)
+    this.propertyMatcher = Objects.requireNonNull(propertyMatcher, "propertyMatcher")
+    this.keyMatcher = if ((keyMatcher !== null) && (keyMatcher.length == 0)) null else keyMatcher
+    this.next = next
   }
 
   new(PropertyMatcher propertyMatcher, Object[] keyMatcher) {
@@ -210,10 +222,6 @@ class BeanPath {
 
   new(PropertyMatcher propertyMatcher) {
     this(propertyMatcher, null, null)
-  }
-
-  override String toString() {
-    return "BeanPath("+propertyMatcher+","+keyMatcher+","+next+")";
   }
 
   /** Builds a full Bean path, from a list of Properties */
@@ -549,19 +557,16 @@ interface _MapBean<K,V> extends MapBean<K,V>, _Bean {
 }
 
 /** An immutable Reference to an immutable Bean. */
-@Data
-class Ref<E extends Bean> {
-	E value
-	new(E e) {
-		if ((e != null) && !e.immutable) {
-			throw new IllegalArgumentException("Reference must be immutable: "+e)
-		}
-		_value = e
-	}
+final class Ref<E extends Bean> extends _WitherImpl {
+	public final E value
 
-    override String toString() {
-        return "{\"value\":" + value + "}";
-    }
+	new(E newValue) {
+		super(Meta.REF)
+		if ((newValue !== null) && !newValue.immutable) {
+			throw new IllegalArgumentException("Reference must be immutable: "+newValue)
+		}
+		value = newValue
+	}
 }
 
 /** Represents a Property change event, within a Bean */
@@ -647,7 +652,7 @@ interface Meta {
 	val BUILDER = HierarchyBuilderFactory.getHierarchyBuilder(Bean.name)
 
 	/** The Bean Type */
-	val BEAN = BUILDER.newType(Bean, null, Kind.Trait, null, null)
+	val BEAN = BUILDER.newType(Bean, null, Kind.Trait, null, null, #[com.blockwithme.meta.util.Meta.LOGGABLE])
 
 	/**
 	 * The change counter Bean property.
@@ -672,17 +677,12 @@ interface Meta {
     val _BEAN__ROOT_BEAN = BUILDER.newObjectProperty(
     	_Bean, "rootBean", _Bean, true, true, false, false, [rootBean], null, true)
 
-	/** The log virtual Bean property */
-    val _BEAN__LOG = BUILDER.newObjectProperty(
-    	_Bean, "log", Logger, true, true, false, false, [log], null, true)
-
 	/** The _Bean Type */
 	val _BEAN = BUILDER.newType(_Bean, null, Kind.Trait, null, null, #[BEAN],
 		Meta._BEAN__CHANGE_COUNTER,
 		Meta._BEAN__PARENT_BEAN,
 		Meta._BEAN__PARENT_KEY,
-		Meta._BEAN__ROOT_BEAN,
-		Meta._BEAN__LOG)
+		Meta._BEAN__ROOT_BEAN)
 
 	/** The Entity Type */
 	val ENTITY = BUILDER.newType(Entity, null, Kind.Trait, null, null, #[BEAN])
@@ -690,8 +690,27 @@ interface Meta {
 	/** The _Entity Type */
 	val _ENTITY = BUILDER.newType(_Entity, null, Kind.Trait, null, null, #[ENTITY, _BEAN])
 
+	/** The Bean Type */
+	val WITHER = BUILDER.newType(Wither, null, Kind.Trait, null, null)
+
+	/** The _Bean Type */
+	val _WITHER = BUILDER.newType(_Wither, null, Kind.Trait, null, null, #[WITHER])
+
+	/** The value Ref property */
+    val REF__VALUE = BUILDER.newObjectProperty(
+    	Ref, "value", _Bean, true, true, true, true, [value], null, false)
+
+	/** The Ref Type */
+	val REF = BUILDER.newType(Ref, null, Kind.Data, null, null, #[_WITHER], Meta.REF__VALUE)
+
+	/** The BeanPath Type */
+	val BEAN_PATH = BUILDER.newType(BeanPath, null, Kind.Data, null, null, #[_WITHER])
+
+	/** The id CollectionBeanConfig property */
+	val COLLECTION_BEAN_CONFIG__ID = BUILDER.newIntegerProperty(CollectionBeanConfig, "id", [id], null, false)
+
 	/** The CollectionBeanConfig Type; we pretend it has no property. */
-	val COLLECTION_BEAN_CONFIG = BUILDER.newType(CollectionBeanConfig, null, Kind.Data, null, null)
+	val COLLECTION_BEAN_CONFIG = BUILDER.newType(CollectionBeanConfig, null, Kind.Data, null, null, #[_WITHER], Meta.COLLECTION_BEAN_CONFIG__ID)
 
 	/** The configuration property of the collection beans */
     val COLLECTION_BEAN__CONFIG = BUILDER.newObjectProperty(
@@ -729,13 +748,10 @@ interface Meta {
 		#[_BEAN, JavaMeta.MAP], Property.NO_PROPERTIES, MAP_BEAN__KEY_TYPE as ObjectProperty,
 		MAP_BEAN__VALUE_TYPE as ObjectProperty)
 
-	/** The Ref Type */
-	val REF = BUILDER.newType(Ref, null, Kind.Data, null, null)
-
 	/** The Beans package */
 	val COM_BLOCKWITHME_META_BEANS_PACKAGE = BUILDER.newTypePackage(
 		BEAN, _BEAN, ENTITY, _ENTITY, COLLECTION_BEAN_CONFIG, COLLECTION_BEAN,
-		LIST_BEAN, SET_BEAN, MAP_BEAN, REF)
+		LIST_BEAN, SET_BEAN, MAP_BEAN, WITHER, _WITHER, REF, BEAN_PATH)
 
 	/** The Hierarchy of Meta Types */
 	val HIERARCHY = BUILDER.newHierarchy(COM_BLOCKWITHME_META_BEANS_PACKAGE)

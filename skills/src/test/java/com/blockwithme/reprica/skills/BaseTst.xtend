@@ -23,6 +23,6 @@ import com.blockwithme.util.server.UtilServerModule
  *
  */
 class BaseTst {
-	static val injector = Guice.createInjector(new UtilServerModule)
-	static val hierarchy = Meta.BUILDER.newHierarchy(Meta.PACKAGE)
+	public static val injector = Guice.createInjector(new UtilServerModule)
+	public static val hierarchy = Meta.BUILDER.newHierarchy(Meta.PACKAGE)
 }

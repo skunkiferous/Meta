@@ -81,6 +81,7 @@ import java.lang.annotation.Target
 import java.lang.annotation.Retention
 import java.lang.annotation.RetentionPolicy
 import java.lang.annotation.ElementType
+import com.blockwithme.meta.util.Loggable
 
 /**
  * Hierarchy represents a Type hierarchy. It is not limited to types in the
@@ -714,7 +715,7 @@ final class ListenersMap {
  *
  * @author monster
  */
-class Type<JAVA_TYPE> extends MetaBase<TypePackage> implements PropertyMatcher {
+class Type<JAVA_TYPE> extends MetaBase<TypePackage> implements PropertyMatcher, Loggable {
   /** Property Comparator */
   static val Comparator<Property<?,?>> PROP_CMP = [a,b|
       val MetaBase ma = a
@@ -924,6 +925,9 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> implements PropertyMatcher {
   /** All our direct Property listeners. */
   package val Map<String, List<Object>> listeners
 
+  /** The logger */
+  public val Logger logger
+
   /** Creates and returns a "fake Provider" for abstract types. */
   private static def <JAVA_TYPE> Provider<JAVA_TYPE> asProvider(Class<JAVA_TYPE> theType) {
     val NoConstructor<JAVA_TYPE> tmp = new NoConstructor<JAVA_TYPE>(theType)
@@ -953,6 +957,7 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> implements PropertyMatcher {
     }
     primitive = primTypes.contains(theType)
     type = theType
+    logger = Logger.getLogger(type.name)
     empty = Array.newInstance(type, 0) as JAVA_TYPE[]
     constructor = if (theConstructor == null) asProvider(theType) else theConstructor
     kind = requireNonNull(theKind, "theKind")
@@ -1279,6 +1284,11 @@ class Type<JAVA_TYPE> extends MetaBase<TypePackage> implements PropertyMatcher {
 	final def isExactTypeOf(Object obj) {
 		(obj !== null) && (obj.class === type)
 	}
+
+	override final log() {
+		this.logger
+	}
+
 }
 
 

@@ -30,6 +30,7 @@ import java.util.HashSet
 import com.blockwithme.meta.beans.Entity
 import com.blockwithme.meta.Type
 import com.blockwithme.meta.beans.annotations.ValidationException
+import com.blockwithme.meta.beans.Wither
 
 /**
  * Singleton, used for all normal "beans".
@@ -343,9 +344,8 @@ class DefaultInterceptor implements Interceptor {
 	}
 
 	def validateObjectType(Object e) {
-		if (!(e.class.enum || VALID_PROPERTY_TYPES.contains(e.class))) {
-			if (!e.class.annotations.exists[it.annotationType==Data])
-				throw new ValidationException("Property values of type "
+		if (!(e.class.enum || Wither.isAssignableFrom(e.class) || VALID_PROPERTY_TYPES.contains(e.class))) {
+			throw new ValidationException("Property values of type "
 					+e.class+" not (yet) supported")
 		}
 	}

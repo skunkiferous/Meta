@@ -19,8 +19,7 @@ import com.blockwithme.meta.AbstractPropertyVisitor
 import com.blockwithme.meta.BooleanProperty
 import com.blockwithme.meta.IIntegralPrimitiveProperty
 import com.blockwithme.meta.IRealPrimitiveProperty
-import com.blockwithme.meta.ObjectProperty
-import com.blockwithme.meta.beans._Bean
+import com.blockwithme.meta.Type
 import com.fasterxml.jackson.core.JsonEncoding
 import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.core.JsonGenerator
@@ -32,10 +31,7 @@ import java.math.BigDecimal
 import java.math.BigInteger
 import java.util.IdentityHashMap
 import java.util.Objects
-import com.blockwithme.meta.Type
-import com.blockwithme.meta.beans.Bean
-import com.blockwithme.meta.Kind
-import com.blockwithme.meta.JavaMeta
+import com.blockwithme.meta.TypeOwner
 
 /**
  * A PropertyVisitor that produces a Jackson (normally JSON) output for beans.
@@ -78,7 +74,7 @@ class JacksonSerializer extends AbstractPropertyVisitor {
      */
     protected override beforeVisitInstance(Type<?> type, Object instance) {
     	if (instance !== null) {
-    		if (instance instanceof Bean) {
+    		if (instance instanceof TypeOwner) {
     			appendObjectStart(instance)
 			} else {
 				visitNonBeanValue(instance)
@@ -95,11 +91,11 @@ class JacksonSerializer extends AbstractPropertyVisitor {
      * @param instance The instance.
      */
     protected override void afterVisitInstance(Type<?> type, Object instance, boolean visited) {
-		if (visited)
-			appendObjectEnd
-		else if (instance === null) {
+    	if (instance === null) {
     		generator.writeNull
-    	}
+    	} else if (instance instanceof TypeOwner) {
+			appendObjectEnd
+		}
     }
 
 	/** Append Object start. Returns true if this is a new Object */

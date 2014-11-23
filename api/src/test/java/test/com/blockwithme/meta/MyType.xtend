@@ -6,20 +6,17 @@ import com.blockwithme.meta.JavaMeta
 import com.blockwithme.meta.Kind
 import com.blockwithme.meta.Property
 import com.blockwithme.meta.Type
-import com.blockwithme.meta.TypeImplemented
 import com.blockwithme.meta.beans.CollectionBean
 import com.blockwithme.meta.beans.CollectionBeanConfig
 import com.blockwithme.meta.beans.Meta
 import com.blockwithme.meta.beans.impl.CollectionBeanImpl
 import com.blockwithme.meta.beans.impl.MapBeanImpl
-import com.blockwithme.meta.beans.impl._BeanImpl
-import com.blockwithme.util.shared.converters.IntConverter
-import com.blockwithme.util.shared.converters.IntConverterBase
-import test.com.blockwithme.MyBean
-
-import static java.util.Objects.*
 import com.blockwithme.util.base.SystemUtils
 import com.blockwithme.util.server.DefaultSystemUtilsImpl
+import com.blockwithme.util.shared.converters.IntConverter
+import com.blockwithme.util.shared.converters.IntConverterBase
+
+import static java.util.Objects.*
 
 enum MyEnum {
   A,
@@ -96,22 +93,6 @@ class MyType {
 class MySubType extends MyType {
     /** Int property */
     package var intProp2 = 0
-}
-
-@TypeImplemented(implemented=MyBean)
-class MyBeanImpl extends _BeanImpl implements MyBean {
-	new() {
-		super(TestMyBeanMeta.MY_BEAN_TYPE)
-	}
-	override MyBean copy() {
-		throw new UnsupportedOperationException("TODO: auto-generated method stub")
-	}
-	override MyBean snapshot() {
-		throw new UnsupportedOperationException("TODO: auto-generated method stub")
-	}
-	override MyBean wrapper() {
-		throw new UnsupportedOperationException("TODO: auto-generated method stub")
-	}
 }
 
 
